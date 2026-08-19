@@ -76,7 +76,7 @@ for fw_json in "$ADMISSION_ROOT"/0*.json; do
         -v "$ws_probe:/workspace-admission" \
         -e FRAMEWORK_ID="$fw_id" \
         -e NATIVE_PROBE_PATHS="$probe_paths" \
-        -e OPENAI_API_KEY="sk-GSrR2ukJjYRpQBHnR6fbrUjocC19lHdMo0rkseU2D8TrhkJD" \
+        -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
         -e OPENAI_BASE_URL="http://host.docker.internal:8787/v1" \
         -e OPENAI_MODEL="$MODEL" \
         --entrypoint python3 \

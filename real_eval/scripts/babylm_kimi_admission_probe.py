@@ -46,7 +46,7 @@ def check_scorer_dependencies() -> dict:
 
 def check_relay_request() -> dict:
     base_url = os.environ.get("OPENAI_BASE_URL", "http://host.docker.internal:8787/v1")
-    api_key = os.environ.get("OPENAI_API_KEY", "sk-GSrR2ukJjYRpQBHnR6fbrUjocC19lHdMo0rkseU2D8TrhkJD")
+    api_key = os.environ.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
     model = os.environ.get("OPENAI_MODEL", "kimi-k2.6")
     try:
         import urllib.request
