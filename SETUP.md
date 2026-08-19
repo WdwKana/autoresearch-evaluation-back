@@ -78,15 +78,39 @@ bash real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_smoke.sh
 #### Run a full evaluation (requires Docker + datasets)
 
 ```bash
-# Build Docker images
+# 1. Build Docker images
 bash scripts/build_docker.sh
 
-# Set output directory
-export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun
+# 2. Download/prepare datasets
+bash scripts/setup_datasets.sh
 
-# Run
+# 3. Create a provider config
+cp provider.example.toml my_provider.toml
+nano my_provider.toml   # Add your API key and endpoint
+export PROVIDER_CONFIG=$PWD/my_provider.toml
+
+# 4. Set output directory and run
+export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun
 bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 ```
+
+#### Full-run reference: 3 frameworks × 5 topics
+
+| Framework | Topic | Smoke Script | Full Run Script |
+|-----------|-------|-------------|----------------|
+| **01 AI-Researcher** | ARC-WBE-2026 | `01_ai_researcher_arc_wbe_2026_smoke.sh` | `01_ai_researcher_arc_wbe_2026_fullrun.sh` |
+| | GAVE2-Task2 | `01_ai_researcher_gave2_task2_smoke.sh` | `01_ai_researcher_gave2_task2_fullrun.sh` |
+| | PsyDefDetect | `01_ai_researcher_psydefdetect_smoke.sh` | `01_ai_researcher_psydefdetect_fullrun.sh` |
+| | BabyLM-10M | — | `01_ai_researcher_real_babylm.sh` |
+| | TDC-ADMET-Tox | `01_ai_researcher_tdc_admet_tox_smoke.sh` | — |
+| **02 AI-Scientist-v2** | ARC-WBE-2026 | `02_ai_scientist_v2_arc_wbe_2026_smoke.sh` | `02_ai_scientist_v2_arc_wbe_2026_fullrun.sh` |
+| | GAVE2-Task2 | `02_ai_scientist_v2_gave2_task2_smoke.sh` | `02_ai_scientist_v2_gave2_task2_fullrun.sh` |
+| | PsyDefDetect | `02_ai_scientist_v2_psydefdetect_smoke.sh` | `02_ai_scientist_v2_psydefdetect_fullrun.sh` |
+| | BabyLM-10M | — | `02_ai_scientist_v2_real_babylm.sh` |
+| **04 AutoResearchClaw** | ARC-WBE-2026 | `04_autoresearchclaw_arc_wbe_2026_smoke.sh` | `04_autoresearchclaw_arc_wbe_2026_fullrun.sh` |
+| | GAVE2-Task2 | `04_autoresearchclaw_gave2_task2_smoke.sh` | `04_autoresearchclaw_gave2_task2_fullrun.sh` |
+| | PsyDefDetect | `04_autoresearchclaw_psydefdetect_smoke.sh` | `04_autoresearchclaw_psydefdetect_fullrun.sh` |
+| | BabyLM-10M | — | `04_autoresearchclaw_real_babylm.sh` |
 
 ### Prerequisites
 
@@ -308,15 +332,39 @@ bash real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_smoke.sh
 #### 完整运行（需要 Docker + 数据集）
 
 ```bash
-# 构建 Docker 镜像
+# 1. 构建 Docker 镜像
 bash scripts/build_docker.sh
 
-# 设置输出目录
-export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun
+# 2. 下载/准备数据集
+bash scripts/setup_datasets.sh
 
-# 运行
+# 3. 创建 provider 配置文件
+cp provider.example.toml my_provider.toml
+nano my_provider.toml   # 填入你的 API Key 和地址
+export PROVIDER_CONFIG=$PWD/my_provider.toml
+
+# 4. 设置输出目录并运行
+export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun
 bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 ```
+
+#### 完整运行参考：3 个框架 × 5 个主题
+
+| 框架 | 主题 | 冒烟测试脚本 | 完整运行脚本 |
+|------|------|-------------|-------------|
+| **01 AI-Researcher** | ARC-WBE-2026 | `01_ai_researcher_arc_wbe_2026_smoke.sh` | `01_ai_researcher_arc_wbe_2026_fullrun.sh` |
+| | GAVE2-Task2 | `01_ai_researcher_gave2_task2_smoke.sh` | `01_ai_researcher_gave2_task2_fullrun.sh` |
+| | PsyDefDetect | `01_ai_researcher_psydefdetect_smoke.sh` | `01_ai_researcher_psydefdetect_fullrun.sh` |
+| | BabyLM-10M | — | `01_ai_researcher_real_babylm.sh` |
+| | TDC-ADMET-Tox | `01_ai_researcher_tdc_admet_tox_smoke.sh` | — |
+| **02 AI-Scientist-v2** | ARC-WBE-2026 | `02_ai_scientist_v2_arc_wbe_2026_smoke.sh` | `02_ai_scientist_v2_arc_wbe_2026_fullrun.sh` |
+| | GAVE2-Task2 | `02_ai_scientist_v2_gave2_task2_smoke.sh` | `02_ai_scientist_v2_gave2_task2_fullrun.sh` |
+| | PsyDefDetect | `02_ai_scientist_v2_psydefdetect_smoke.sh` | `02_ai_scientist_v2_psydefdetect_fullrun.sh` |
+| | BabyLM-10M | — | `02_ai_scientist_v2_real_babylm.sh` |
+| **04 AutoResearchClaw** | ARC-WBE-2026 | `04_autoresearchclaw_arc_wbe_2026_smoke.sh` | `04_autoresearchclaw_arc_wbe_2026_fullrun.sh` |
+| | GAVE2-Task2 | `04_autoresearchclaw_gave2_task2_smoke.sh` | `04_autoresearchclaw_gave2_task2_fullrun.sh` |
+| | PsyDefDetect | `04_autoresearchclaw_psydefdetect_smoke.sh` | `04_autoresearchclaw_psydefdetect_fullrun.sh` |
+| | BabyLM-10M | — | `04_autoresearchclaw_real_babylm.sh` |
 
 可选：显式指定框架源码路径（否则使用设置脚本的克隆位置）：
 

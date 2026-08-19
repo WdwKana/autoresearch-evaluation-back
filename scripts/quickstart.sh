@@ -131,6 +131,63 @@ else
 fi
 
 # ============================================================================
+# Check 7: Full-run readiness (Docker + datasets)
+# ============================================================================
+header "Check 7: Full-Run Readiness"
+
+# Check Docker
+if command -v docker >/dev/null 2>&1; then
+  # Check required images
+  MISSING_IMAGES=()
+  for img in "ai-researcher:runtime-ready" "ai-scientist-v2:runtime-ready" "autoresearchclaw:runtime-ready"; do
+    docker image inspect "$img" >/dev/null 2>&1 || MISSING_IMAGES+=("$img")
+  done
+
+  if [[ ${#MISSING_IMAGES[@]} -eq 0 ]]; then
+    ok "All Docker images found"
+  else
+    warn "Missing Docker images: ${MISSING_IMAGES[*]}"
+    warn "Build them with: bash scripts/build_docker.sh"
+  fi
+
+  # Check for nvidia-container-toolkit (GPU support)
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    ok "GPU detected: $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)"
+  else
+    warn "No GPU detected or nvidia-smi not available"
+  fi
+else
+  warn "Docker not installed. Full runs will not work."
+fi
+
+# Check datasets
+if [[ -n "${ARC_WBE_2026_DATASET_ROOT:-}" ]] && [[ -d "$ARC_WBE_2026_DATASET_ROOT" ]]; then
+  ok "ARC-WBE-2026 dataset: $ARC_WBE_2026_DATASET_ROOT"
+else
+  warn "ARC_WBE_2026_DATASET_ROOT not set or not found"
+fi
+
+if [[ -n "${GAVE2_DATASET_ROOT:-}" ]] && [[ -d "$GAVE2_DATASET_ROOT" ]]; then
+  ok "GAVE2 dataset: $GAVE2_DATASET_ROOT"
+else
+  warn "GAVE2_DATASET_ROOT not set or not found"
+fi
+
+if [[ -n "${BABYLM_DATASET_ROOT:-}" ]] && [[ -d "$BABYLM_DATASET_ROOT" ]]; then
+  ok "BabyLM dataset: $BABYLM_DATASET_ROOT"
+else
+  warn "BABYLM_DATASET_ROOT not set or not found"
+fi
+
+# Check provider config
+if [[ -n "${PROVIDER_CONFIG:-}" ]] && [[ -f "$PROVIDER_CONFIG" ]]; then
+  ok "Provider config: $PROVIDER_CONFIG"
+else
+  warn "PROVIDER_CONFIG not set or not found"
+  warn "Create one from provider.example.toml"
+fi
+
+# ============================================================================
 # Summary
 # ============================================================================
 header "Quickstart Summary"
@@ -143,20 +200,26 @@ else
   echo ""
   echo "  ✅ Setup looks good!"
   echo ""
-  echo "  Next steps:"
+  echo "  Quickstart (smoke test, no Docker/datasets needed):"
   echo ""
-  echo "  1. Ensure your .env has API keys configured"
-  echo "  2. Run a smoke test for a specific framework + topic:"
+  echo "    export REAL_EVAL_RUN_ROOT=/tmp/rceval-smoke"
+  echo "    bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh"
   echo ""
-  echo "     export REAL_EVAL_RUN_ROOT=/tmp/rceval-smoke"
-  echo "     bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh"
+  echo "  Full run (requires Docker + datasets):"
   echo ""
-  echo "  3. Available smoke tests:"
-  echo "     01 - AI-Researcher:     arc_wbe_2026  gave2_task2  psydefdetect  tdc_admet_tox"
-  echo "     02 - AI-Scientist-v2:   arc_wbe_2026  gave2_task2  psydefdetect"
-  echo "     04 - AutoResearchClaw:  arc_wbe_2026  gave2_task2  psydefdetect"
+  echo "    # 1. Build Docker images"
+  echo "    bash scripts/build_docker.sh"
   echo ""
-  echo "  4. For full runs, build Docker images first:"
-  echo "     bash scripts/build_docker.sh"
+  echo "    # 2. Download datasets"
+  echo "    bash scripts/setup_datasets.sh"
+  echo ""
+  echo "    # 3. Set up provider config"
+  echo "    cp provider.example.toml my_provider.toml"
+  echo "    # Edit my_provider.toml with your API credentials"
+  echo "    export PROVIDER_CONFIG=\$PWD/my_provider.toml"
+  echo ""
+  echo "    # 4. Run"
+  echo "    export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun"
+  echo "    bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh"
   echo ""
 fi
