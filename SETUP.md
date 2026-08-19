@@ -19,44 +19,83 @@ ResearchClawEval is an evaluation control plane for research-agent frameworks. T
 - **Docker** (required for actual framework runs, not needed for dry-run/validation)
 - **~4 GB free disk space** (for cloning the three frameworks)
 
-### Quick Start
+### Quick Start (5 minutes)
 
-#### 1. Clone this repository
+#### 1. Clone and set up
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/researchclaweval-public.git
+git clone https://github.com/betterrrrr/-researchclaweval-public.git
 cd researchclaweval-public
+bash setup.sh --quick
 ```
 
-#### 2. Run the setup script
+This downloads 3 frameworks (AI-Researcher ~1.7GB, AI-Scientist-v2 ~12MB, AutoResearchClaw ~256MB) and installs all dependencies.
 
-The setup script will clone the three frameworks (AI-Researcher, AI-Scientist-v2, AutoResearchClaw), checkout the pinned commits, apply patches, and install dependencies:
+#### 2. Configure API keys
 
 ```bash
-bash setup.sh
+cp .env.example .env
+# Edit .env with your API credentials
+nano .env
 ```
 
-To set up only specific frameworks:
+#### 3. Verify everything works
 
 ```bash
-bash setup.sh --frameworks 01,04    # Only AI-Researcher and AutoResearchClaw
+bash scripts/quickstart.sh
 ```
 
-To clone frameworks to a different directory:
+### Running Evaluations
+
+#### Frameworks & Topics Matrix
+
+| # | Framework | Topics | Smoke | Full Run |
+|---|-----------|--------|-------|----------|
+| 01 | AI-Researcher | babylm, gave2_task2, arc_wbe_2026, psydefdetect, tdc_admet_tox | ✅ | ✅ |
+| 02 | AI-Scientist-v2 | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+| 04 | AutoResearchClaw | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+
+#### Run a smoke test
 
 ```bash
-bash setup.sh --dir /path/to/frameworks
+export REAL_EVAL_RUN_ROOT=/tmp/rceval-smoke
+bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh
 ```
 
-#### 3. Configure API keys
+Other smoke tests:
+```bash
+# Framework 01
+bash real_eval/scripts/01_ai_researcher_gave2_task2_smoke.sh
+bash real_eval/scripts/01_ai_researcher_psydefdetect_smoke.sh
 
-You need an LLM provider that supports OpenAI-compatible API. Set these environment variables:
+# Framework 02
+bash real_eval/scripts/02_ai_scientist_v2_arc_wbe_2026_smoke.sh
+
+# Framework 04
+bash real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_smoke.sh
+```
+
+#### Run a full evaluation (requires Docker + datasets)
 
 ```bash
-export OPENAI_API_KEY=your_api_key_here
-export OPENAI_BASE_URL=https://api.your-provider.com/v1
-export OPENAI_MODEL=your-model-name
+# Build Docker images
+bash scripts/build_docker.sh
+
+# Set output directory
+export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun
+
+# Run
+bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 ```
+
+### Prerequisites
+
+- **Linux** (evaluation runs require Linux)
+- **Python 3.10 – 3.12**
+- **[uv](https://docs.astral.sh/uv/)** (recommended package manager)
+- **Git**
+- **Docker** (required for actual framework runs, not needed for dry-run/validation)
+- **~4 GB free disk space** (for cloning the three frameworks)
 
 Optionally, set framework source paths explicitly (otherwise the setup script's clone locations are used):
 
@@ -210,43 +249,73 @@ ResearchClawEval 是一个科研 Agent 框架的评测控制层。本仓库包�
 - **Docker**（运行实际框架时需要，dry-run 验证不需要）
 - **约 4 GB 可用磁盘空间**（用于克隆三个框架）
 
-### 快速开始
+### 快速开始（5 分钟）
 
-#### 1. 克隆本仓库
+#### 1. 克隆并设置
 
 ```bash
-git clone https://github.com/你的用户名/researchclaweval-public.git
+git clone https://github.com/betterrrrr/-researchclaweval-public.git
 cd researchclaweval-public
+bash setup.sh --quick
 ```
 
-#### 2. 运行设置脚本
+这会自动下载 3 个框架（AI-Researcher ~1.7GB、AI-Scientist-v2 ~12MB、AutoResearchClaw ~256MB）并安装所有依赖。
 
-设置脚本会自动克隆三个框架（AI-Researcher、AI-Scientist-v2、AutoResearchClaw），切换到固定 commit，应用补丁，并安装依赖：
+#### 2. 配置 API Key
 
 ```bash
-bash setup.sh
+cp .env.example .env
+# 编辑 .env 填入你的 API 密钥
+nano .env
 ```
 
-只设置特定框架：
+#### 3. 验证设置
 
 ```bash
-bash setup.sh --frameworks 01,04    # 只设置 AI-Researcher 和 AutoResearchClaw
+bash scripts/quickstart.sh
 ```
 
-克隆到自定义目录：
+### 运行评测
+
+#### 框架与主题矩阵
+
+| # | 框架 | 支持的主题 | 冒烟测试 | 完整运行 |
+|---|------|-----------|---------|---------|
+| 01 | AI-Researcher | babylm, gave2_task2, arc_wbe_2026, psydefdetect, tdc_admet_tox | ✅ | ✅ |
+| 02 | AI-Scientist-v2 | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+| 04 | AutoResearchClaw | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+
+#### 运行冒烟测试
 
 ```bash
-bash setup.sh --dir /path/to/frameworks
+export REAL_EVAL_RUN_ROOT=/tmp/rceval-smoke
+bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh
 ```
 
-#### 3. 配置 API Key
+其他冒烟测试：
+```bash
+# 框架 01
+bash real_eval/scripts/01_ai_researcher_gave2_task2_smoke.sh
+bash real_eval/scripts/01_ai_researcher_psydefdetect_smoke.sh
 
-你需要一个支持 OpenAI 兼容接口的 LLM 提供商。设置以下环境变量：
+# 框架 02
+bash real_eval/scripts/02_ai_scientist_v2_arc_wbe_2026_smoke.sh
+
+# 框架 04
+bash real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_smoke.sh
+```
+
+#### 完整运行（需要 Docker + 数据集）
 
 ```bash
-export OPENAI_API_KEY=你的API密钥
-export OPENAI_BASE_URL=https://你的提供商地址/v1
-export OPENAI_MODEL=模型名称
+# 构建 Docker 镜像
+bash scripts/build_docker.sh
+
+# 设置输出目录
+export REAL_EVAL_RUN_ROOT=/tmp/rceval-fullrun
+
+# 运行
+bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 ```
 
 可选：显式指定框架源码路径（否则使用设置脚本的克隆位置）：
