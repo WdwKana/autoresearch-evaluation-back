@@ -10,6 +10,7 @@ build/
 # Credentials and local configuration
 .env
 .env.*
+!.env.example
 api/
 opencode.json
 
