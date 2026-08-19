@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "topics": [
     {
       "id": "babylm",
@@ -12,7 +13,8 @@
       ],
       "supported_modes": [
         "fullrun"
-      ]
+      ],
+      "maturity": "legacy"
     },
     {
       "id": "gave2_task2",
@@ -27,9 +29,11 @@
         "docs/gave2_submission_spec.md",
         "docs/gave2_data_layout.md"
       ],
-      "supported_modes": [],
+      "supported_modes": [
+        "smoke"
+      ],
       "status": "blocked",
-      "blocked_reason": "Local data/gave2/task2/ exists but is empty; no current dataset is available."
+      "maturity": "stable"
     },
     {
       "id": "arc_wbe_2026",
@@ -43,7 +47,8 @@
         "input_pack",
         "smoke",
         "fullrun"
-      ]
+      ],
+      "maturity": "stable"
     },
     {
       "id": "psydefdetect",
@@ -56,7 +61,8 @@
       "supported_modes": [
         "smoke",
         "fullrun"
-      ]
+      ],
+      "maturity": "beta"
     },
     {
       "id": "tdc_admet_tox",
@@ -78,7 +84,8 @@
         "smoke",
         "fullrun"
       ],
-      "status": "gpt_native_wrappers_ready_smoke_pending"
+      "status": "gpt_native_wrappers_ready_smoke_pending",
+      "maturity": "experimental"
     },
     {
       "id": "mountaincar_continuous",
@@ -93,7 +100,8 @@
       "supported_modes": [
         "smoke",
         "fullrun"
-      ]
+      ],
+      "maturity": "experimental"
     }
   ]
 }
