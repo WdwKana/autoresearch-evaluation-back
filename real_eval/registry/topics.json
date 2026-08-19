@@ -1,15 +1,15 @@
 {
-  "schema_version": 1,
   "topics": [
     {
       "id": "babylm",
       "label": "BabyLM-10M",
       "contract_file": "automation/babylm_contract.md",
-      "maturity": "legacy",
       "dataset_env": "BABYLM_DATASET_ROOT",
       "dataset_external_dir": "BabyLM-2026-Strict-Small",
       "dataset_root": "BabyLM-2026-Strict-Small",
-      "summary_files": [],
+      "summary_files": [
+        "Report/BabyLM_topic_realignment_report.md"
+      ],
       "supported_modes": [
         "fullrun"
       ]
@@ -17,7 +17,6 @@
     {
       "id": "gave2_task2",
       "label": "GAVE2-Task2",
-      "maturity": "stable",
       "contract_file": "automation/gave2_task2_contract.md",
       "dataset_env": "GAVE2_DATASET_ROOT",
       "dataset_external_dir": "GAVE2_preliminary",
@@ -28,16 +27,13 @@
         "docs/gave2_submission_spec.md",
         "docs/gave2_data_layout.md"
       ],
-      "supported_modes": [
-        "input_pack",
-        "smoke",
-        "fullrun"
-      ]
+      "supported_modes": [],
+      "status": "blocked",
+      "blocked_reason": "Local data/gave2/task2/ exists but is empty; no current dataset is available."
     },
     {
       "id": "arc_wbe_2026",
       "label": "ARC-WBE-2026",
-      "maturity": "stable",
       "contract_file": "automation/arc_wbe_2026_contract.md",
       "dataset_env": "ARC_WBE_2026_DATASET_ROOT",
       "dataset_external_dir": "ARC_WBE_2026",
@@ -52,7 +48,6 @@
     {
       "id": "psydefdetect",
       "label": "PsyDefDetect",
-      "maturity": "beta",
       "contract_file": "automation/psydefdetect_contract.md",
       "dataset_env": "PSYDEFDETECT_DATASET_ROOT",
       "dataset_external_dir": "PsyDefDetect",
@@ -66,7 +61,6 @@
     {
       "id": "tdc_admet_tox",
       "label": "TDC-ADMET-Tox",
-      "maturity": "experimental",
       "contract_file": "automation/tdc_admet_tox_contract.md",
       "dataset_env": "TDC_ADMET_TOX_DATASET_ROOT",
       "host_hidden_labels_env": "TDC_ADMET_TOX_HIDDEN_LABELS_ROOT",
@@ -84,7 +78,22 @@
         "smoke",
         "fullrun"
       ],
-      "status": "data_ready_wrappers_pending"
+      "status": "gpt_native_wrappers_ready_smoke_pending"
+    },
+    {
+      "id": "mountaincar_continuous",
+      "label": "MountainCar-Continuous",
+      "contract_file": "automation/mountaincar_continuous_contract.md",
+      "dataset_env": "MOUNTAINCAR_CONTINUOUS_DATASET_ROOT",
+      "dataset_external_dir": "mountaincar_continuous",
+      "dataset_root": "data/mountaincar_continuous",
+      "summary_files": [
+        "docs/mountaincar_continuous_summary.md"
+      ],
+      "supported_modes": [
+        "smoke",
+        "fullrun"
+      ]
     }
   ]
 }

@@ -15,10 +15,10 @@ automation/arc_wbe_2026_execution_budget.md
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
-export FRAMEWORK_RUNTIME_IMAGE="evoscientist:runtime-ready"
+export FRAMEWORK_RUNTIME_IMAGE="evoscientist:runtime-ready-arc2"
 export FRAMEWORK_ENTRYPOINT="bash"
 export FRAMEWORK_NATIVE_ENTRYPOINT="evoscientist --use-cwd --auto-mode"
-export FRAMEWORK_KIMI_INJECTION="custom-openai provider reads CUSTOM_OPENAI_BASE_URL and CUSTOM_OPENAI_API_KEY"
+export FRAMEWORK_KIMI_INJECTION="custom-openai provider reads CUSTOM_OPENAI_BASE_URL, CUSTOM_OPENAI_API_KEY, and EVOSCIENTIST_MODEL"
 export FRAMEWORK_NATIVE_LOG_MARKER="EVOSCIENTIST_NATIVE_CLI"
 export FRAMEWORK_EXECUTOR_KIND="framework_cli"
 export FRAMEWORK_DOCKER_ARGS=$(cat <<EOF
@@ -55,9 +55,47 @@ default_workdir: /workspace
 show_thinking: false
 enable_async_subagents: false
 YAML
-prompt="$(cat arc_wbe_2026_start_message.txt)
-This is a bounded Kimi evaluation. Do not inspect data or metadata, open parquet, install packages, access unmapped paths, or inspect scorer source. Execute weight-only experiment 1, weight-only experiment 2, then finalize; do not inspect the same file twice or make a third experiment. Official predict receives only injected mlp.weights. All internal API calls must use OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL. Before exit, write root-level estimator.py, submission.json, experiment_trace.json, final_report.md, and a provisional score.json. The host evaluator will replace score.json by officially scoring your estimator after exit."
-timeout "${EVOSCIENTIST_ARC_TIMEOUT_SECONDS:-1800}s" /opt/venv/bin/evoscientist --use-cwd -p "$prompt" --auto-mode --auto-approve --ui cli --no-thinking
+prompt='# ARC-WBE-2026 Native Evaluation Brief
+
+This is a framework-capability evaluation. The framework'\''s documented native entrypoint must own hypothesis generation, experiment design, implementation, execution, comparison, selection, and the final report.
+
+## Visible inputs
+
+- `/data/arc_wbe_2026`: real parquet records with 100 MLP samples and 32 weight matrices of shape (256,256); target labels remain host-only
+- `/workspace/automation/arc_wbe_2026_contract.md`
+- `/workspace/automation/arc_wbe_2026_execution_budget.md`
+- `/workspace/docs/arc_wbe_2026_summary.md`
+- `/workspace/automation/scripts/arc_wbe_2026_official_adapter.py`
+- `/workspace/automation/scripts/run_arc_wbe_2026_local_score.py`
+
+## Task description
+
+The goal is to predict the mean hidden activation of each neuron in every layer of a 32-layer MLP. Input: mlp.weights is a list of 32 weight matrices, each (256, 256), with ReLU activation. Output: predicted per-neuron mean activations for all 32 layers — a (depth, width) = (32, 256) fnp.ndarray of predicted values. This is a REGRESSION task, NOT classification.
+
+## Estimator interface
+
+`/workspace/estimator.py` must be self-contained. The official scorer imports it, instantiates the estimator class, and calls `predict(mlp)` without calling `fit` first. The estimator class `__init__` must load all trained parameters embedded directly in the source code (as Python literal values: lists, floats, np.array([...])). Do NOT reference external JSON, pickle, NPY, or any other data files.
+
+`predict(mlp)` must accept the official scorer'\''s MLP object. mlp.weights is a list of 32 (256, 256) matrices. mlp.depth=32, mlp.width=256. Return a fnp.ndarray of shape (32, 256) — predicted mean activation of each of the 256 hidden neurons in each of the 32 layers. The scorer sandbox has only flopscope.numpy (import as fnp) — do NOT import numpy, scipy, or torch. flopscope arrays are immutable — do NOT use item assignment (arr[i] = ...) or indexed in-place updates (arr[i] += ...). Build the result functionally using fnp.stack() / fnp.concatenate() or a list comprehension. Do NOT predict a scalar score or class label.
+
+## Required native workflow
+
+1. Propose a hypothesis using only the visible inputs.
+2. Complete 2 to 4 materially distinct framework-chosen experimental configurations.
+3. Immediately after the final experiment, select the best result and promote the selected artifacts.
+4. Before exit, write root-level: `/workspace/research_idea.json`, `/workspace/estimator.py`, `/workspace/submission.json`, `/workspace/experiment_trace.json`, `/workspace/final_report.md`.
+5. In experiment_trace.json, record framework_internal_model and framework_internal_api_base_url. The host creates score.json after native exit.
+
+## experiment_trace.json schema
+
+experiment_trace.json must be a complete contract object, not a one-experiment summary. Record every required field: framework_native_execution (true), consumed_topic_input (true), workspace_trace_root, framework_internal_model, framework_internal_api_base_url, experiments (2-4 entries, each with an id, configuration, validation metrics, and log references), selected_experiment_id (must equal one of the experiment ids), idea_artifact (research_idea.json), and idea_locked_before_experiments (true).
+
+## Constraints
+
+- Use only the injected evaluation provider (OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_MODEL) for all internal API calls.
+- Do not install packages, access unmapped paths, or perform downloads.
+- The framework owns the method choice; the host prescribes no algorithm family, feature representation, architecture, hyperparameters, or experiment sequence. Never write a zero-filled, broadcast, synthetic, or placeholder estimator. If the real weights-only records cannot be used to produce a genuine estimator, stop with a concrete blocker and do not create score.json.'
+timeout "${EVOSCIENTIST_ARC_TIMEOUT_SECONDS:-7200}s" /opt/venv/bin/evoscientist --use-cwd -p "$prompt" --auto-mode --auto-approve --ui cli --no-thinking
 EOF
 )
 exec "$ROOT"/real_eval/scripts/arc_framework_fullrun.sh

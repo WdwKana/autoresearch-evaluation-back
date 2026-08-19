@@ -5,7 +5,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 TOPIC_ID = "arc_wbe_2026"
 TOPIC_LABEL = "ARC-WBE-2026"
 RESULT_FIELDS = ["score", "score_source", "score_artifact", "submission_artifact"]
@@ -36,6 +35,14 @@ def render_shared_summary(dataset_root: Path, contract_file: Path) -> str:
 ## Goal
 Produce official-comparable ARC White-Box Estimation Challenge 2026 results.
 
+## Task description
+- The goal is to estimate the per-layer hidden activations of a 32-layer Transformer MLP from its weight matrices
+- Input: the 32 weight matrices of a 32-layer MLP, each layer is a (256, 256) matrix (ReLU activation)
+- Output: predicted activations for every layer — a matrix of shape (32, 256)
+- The estimator's `predict(mlp)` method must return a **numpy array of shape (32, 256)** (the predicted per-layer activations), NOT a scalar score or a 1-D vector
+- The official scorer compares the predicted activations to the ground-truth activations using MSE and other metrics
+- Do NOT predict a scalar performance metric (loss, accuracy, MSE, etc.) — the scorer computes the metric from the activation predictions
+
 ## Required normalized result fields
 - `score`
 - `score_source`
@@ -43,10 +50,18 @@ Produce official-comparable ARC White-Box Estimation Challenge 2026 results.
 - `submission_artifact`
 
 ## Expected deliverables
-- root-level `estimator.py`, `submission.json`, `score.json`, `experiment_trace.json`, and `final_report.md`
-- official local score evidence produced from the selected estimator
+- root-level `research_idea.json`, `estimator.py`, `submission.json`, `experiment_trace.json`, and `final_report.md`
+- host-produced official local score evidence after the native framework exits
 - manifest and state references
 - logs and preserved workspace traces
+
+## Estimator interface requirements
+- `estimator.py` must be self-contained: the official scorer imports it, instantiates the estimator class, and calls `predict(mlp)` without calling `fit` first
+- Embed all trained model parameters as Python literal values (lists, floats, arrays in `np.array([...])`) directly in `estimator.py` source code
+- Do NOT reference external JSON, pickle, NPY, or any other data files at import time or predict time
+- The estimator class `__init__` must load these embedded parameters so the instance is immediately ready for prediction
+- `predict(mlp)` must accept the official scorer's `MLP` object (which has a `.weights` attribute) and return a `(32, 256)` prediction matrix
+- Do not require any external files, pickled state, or `fit()` call at scoring time
 
 ## Phase-one scope
 - keep topic-specific inputs explicit for each framework
@@ -70,12 +85,15 @@ Build a reproducible ARC White-Box Estimation Challenge 2026 workflow that produ
 - contract file: {contract_file}
 
 # Concrete Goal
-Implement and evaluate one ARC-WBE-2026 run path that:
+Implement and evaluate an ARC-WBE-2026 run path that:
 1. consumes the challenge contract directly,
-2. produces official-format outputs or score evidence,
+2. writes and locks `research_idea.json` before the first experiment,
 3. emits a runnable `estimator.py` when possible so the official local scorer can be replayed,
 4. records reproducible commands and artifact locations,
 5. writes a concise final report.
+
+# Scientific Independence
+The framework owns the hypothesis, method choice, experiment design, comparison, and final selection. No algorithm family, feature representation, architecture, hyperparameters, baseline, or experiment sequence is prescribed.
 
 # Required Result Fields
 - score
@@ -94,13 +112,23 @@ Execute the ARC White-Box Estimation Challenge 2026 topic directly instead of fa
 ## Inputs
 - dataset root: {dataset_root}
 - contract file: {contract_file}
+- the mounted dataset contains real parquet records with `mlp_id`, `mlp_name`, `mlp_seed`, and `weights`; target labels are not visible to the framework
 
 ## Success Criteria
-- run 2-4 materially different framework-native estimator experiments, then finalize
-- produce root-level `estimator.py`, `submission.json`, `score.json`, `experiment_trace.json`, and `final_report.md`
+- write and lock `research_idea.json` before the first experiment
+- run 2-4 materially different framework-native experiments chosen by the framework, then finalize
+- produce root-level `research_idea.json`, `estimator.py`, `submission.json`, `experiment_trace.json`, and `final_report.md`
+- make `estimator.py` directly runnable by the supplied official scorer; expose an estimator object with a `predict(mlp)` method that returns a (32,256) NumPy array of predicted per-layer activations
+- the estimator's `predict(mlp)` must accept the official scorer's `MLP` object (which has a `.weights` attribute of shape (32, 256, 256)) and return a numpy array of shape (32,256) — the predicted activations for every layer
+- do NOT predict a scalar score or class label; the scorer computes the metric from the activation predictions
+- do not fabricate, synthesize, zero-fill, broadcast, or use placeholder predictions; if a real estimator cannot be produced, stop with a concrete blocker and do not write a score
+- record `framework_native_execution`, `consumed_topic_input`, `workspace_trace_root`, `experiments`, `selected_experiment_id`, `framework_internal_model`, `framework_internal_api_base_url`, `idea_artifact`, and `idea_locked_before_experiments` in `experiment_trace.json`
 - use the injected OpenAI-compatible API environment and record the model/base URL in the trace
 - preserve logs, manifests, and workspace traces
 - write `final_report.md`
+
+## Method Ownership
+The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method.
 
 ## Normalized Result Fields
 - score
@@ -111,16 +139,23 @@ Execute the ARC White-Box Estimation Challenge 2026 topic directly instead of fa
 
 
 def render_autoresearchclaw_topic() -> str:
-    return """ARC-WBE-2026: White-Box Estimation of Transformer MLP Activations
+     return """ARC-WBE-2026: White-Box Estimation of Transformer MLP Activations
 
 Execute the ARC White-Box Estimation Challenge 2026 contract in
 /workspace/automation/arc_wbe_2026_contract.md using the prepared dataset at
-/data/arc_wbe_2026. Design and run two bounded, materially different estimator
-experiments under the supplied execution budget, compare their official local
-scores, and select the better estimator. The framework must perform its own
-experiment planning, code generation, execution, and result selection. Deliver
-root-level estimator.py, submission.json, score.json, experiment_trace.json,
-and final_report.md. Record the injected model and API base URL in the trace.
+/data/arc_wbe_2026. The parquet records contain real weights only; target labels
+are host-only. The parquet file has columns: mlp_id (int32), mlp_name (string),
+mlp_seed (int64), weights (float32[32,256,256]). Load it with pyarrow.parquet.
+Before the first experiment, write and lock
+research_idea.json. Design and run 2-4 bounded, materially different experiments
+under the supplied execution budget, then select one result. The framework owns
+the hypothesis, method choice, experiment design, comparison, and final
+selection; no algorithm family, feature representation, architecture,
+hyperparameters, baseline, or experiment sequence is prescribed. Deliver
+root-level research_idea.json, estimator.py, submission.json,
+experiment_trace.json, and final_report.md. Record the injected model and API
+base URL in the trace. The host creates score.json after the native run exits.
+The dataset has a fixed validation split. Never compute val and test metrics on the same data.
 """
 
 
@@ -134,10 +169,11 @@ The dataset is available at:
 - /workplace/dataset_candidate/arc_wbe_2026
 - {dataset_root}
 """
-BASELINE = "Restore one real ARC benchmark execution path before attempting any improvement."
+BASELINE = "No host-prescribed baseline. The framework must choose and justify its own methods."
 COMPARISON = "Compare only official-format outputs or score evidence generated from the same ARC-WBE-2026 contract."
-EVALUATION = "Run 2-4 bounded framework-native estimator experiments. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level estimator.py, submission.json, score.json, experiment_trace.json (including model/base URL), and final_report.md; score with the local scorer."
-REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic submissions, or outputs from previous topics. The contract file is: {contract_file}"
+EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, estimator.py, submission.json, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit."
+REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic submissions, zero/broadcast predictions, fallback scores, or outputs from previous topics. The mounted parquet contains real weights-only records; do not fabricate labels. The contract file is: {contract_file}"
+METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
 DATA_INSPECTION_RULES = """
 When inspecting ARC-WBE-2026 parquet or dataset rows, Do not print raw weights, all_layer_means, final_means, or other large tensor/array payloads.
 Inspect schema, column names, dtypes, shapes, and concise scalar summaries only.
@@ -158,25 +194,12 @@ def build_ai_researcher_payload(dataset_root: Path, contract_file: Path) -> dict
         "venue": "Local Benchmark",
         "topic": "benchmark_execution",
         "field": "benchmarking",
-        "source_papers": [
-            {
-                "reference": "White-Box Estimation for Transformer MLP Activations",
-                "usage": "Use as a conceptual reference for the target estimator design and error analysis.",
-            },
-            {
-                "reference": "A Public Benchmark for White-Box Estimation Under Compute Budgets",
-                "usage": "Use as a reference for benchmark setup, scoring, and compute-budget-aware reporting.",
-            },
-            {
-                "reference": "Covariance Propagation for ReLU Network Mean Estimation",
-                "usage": "Use as a lightweight technical baseline for estimating hidden and final-layer means.",
-            },
-        ],
+        "source_papers": [],
         "dataset_root": str(dataset_root),
         "contract_file": str(contract_file),
         "result_fields": RESULT_FIELDS,
-        "task1": "Consume the ARC-WBE-2026 contract, run the benchmark workflow, and preserve official-format outputs, score evidence, logs, a runnable estimator.py when possible, and a concise final report.",
-        "task2": "Implement one minimal but reproducible ARC-WBE-2026 path that records score provenance, estimator entrypoints, and submission artifact paths.",
+        "task1": "Before the first experiment, write and lock research_idea.json. Consume the ARC-WBE-2026 contract, run 2-4 materially different framework-chosen experiments, and preserve a runnable estimator.py, submission artifact, trace, logs, and concise final report.",
+        "task2": "Own the hypothesis, method choice, experiment design, comparison, and final selection. Record estimator entrypoints and submission artifact paths; the host creates score.json after native exit.",
     }
 
 
@@ -192,8 +215,9 @@ def build_dr_claw_brief(dataset_root: Path, contract_file: Path) -> dict[str, ob
         "contract_file": str(contract_file),
         "result_fields": RESULT_FIELDS,
         "deliverables": [
+            "research_idea.json",
             "submission_artifact",
-            "score_evidence",
+            "experiment_trace.json",
             "final_report.md",
             "logs",
             "workspace_traces",
@@ -203,32 +227,54 @@ def build_dr_claw_brief(dataset_root: Path, contract_file: Path) -> dict[str, ob
 
 def build_dr_claw_tasks() -> dict[str, object]:
     return {
+        "method_policy": {
+            "framework_owns_method_choice": True,
+            "prescribed_methods": [],
+        },
         "tasks": [
             {
-                "id": "t1_contract_audit",
-                "title": "Read ARC contract and dataset layout",
-                "goal": "Confirm the workflow consumes ARC-WBE-2026 inputs directly.",
-            },
-            {
-                "id": "t2_execution",
-                "title": "Run a benchmark-oriented ARC workflow",
-                "goal": "Produce official-format outputs or local score evidence, preferably via a runnable estimator.py.",
-            },
-            {
-                "id": "t3_reporting",
-                "title": "Record normalized result fields",
-                "goal": "Write score, score_source, score_artifact, and submission_artifact in the final outputs.",
-            },
-        ]
+                "id": "native_research_workflow",
+                "title": "Complete the ARC-WBE-2026 native research workflow",
+                "goal": "Write the pre-experiment idea, choose and run 2-4 materially different experiments, compare them, select one result, and deliver the required framework-authored artifacts.",
+            }
+        ],
     }
 
 
 def build_autoresearchclaw_config(
+    repo_root: Path,
     dataset_root: Path,
     contract_file: Path,
     provider_base_url: str,
     primary_model: str,
 ) -> str:
+    _is_kimi = primary_model.startswith("kimi-")
+    if _is_kimi:
+        llm_block = f"""llm:
+  provider: "openai-compatible"
+  primary_model: "{primary_model}"
+  fallback_models: []
+  base_url: "{provider_base_url}"
+  api_key_env: "OPENAI_API_KEY"
+"""
+    else:
+        llm_block = f"""llm:
+  provider: "acp"
+  primary_model: "{primary_model}"
+  fallback_models: []
+  acp:
+    agent: "codex"
+    cwd: "/workspace"
+    base_url: "{provider_base_url}"
+    api_key_env: "OPENAI_API_KEY"
+"""
+    try:
+        contract_relative_path = contract_file.relative_to(repo_root)
+    except ValueError as error:
+        raise ValueError(
+            f"contract file is outside supplied repo root: {contract_file}"
+        ) from error
+    workspace_contract_file = f"/workspace/{contract_relative_path}"
     return f"""project:
   name: "{TOPIC_ID}"
   mode: "full-auto"
@@ -236,11 +282,13 @@ def build_autoresearchclaw_config(
 
 research:
   topic: "{TOPIC_LABEL}"
+  daily_paper_count: 0
+  quality_threshold: 0.0
 
 runtime:
   timezone: "Asia/Shanghai"
   max_parallel_tasks: 1
-  retry_limit: 0
+  retry_limit: 3
 
 notifications:
   channel: "none"
@@ -250,14 +298,44 @@ knowledge_base:
 
 assets:
   dataset_root: "{dataset_root}"
-  contract_file: "{contract_file}"
+  contract_file: "{workspace_contract_file}"
 
-llm:
-  provider: "openai-compatible"
-  primary_model: "{primary_model}"
-  fallback_models: []
-  base_url: "{provider_base_url}"
-  api_key_env: "OPENAI_API_KEY"
+{llm_block}
+# The evaluation container has no public-network dependency.  Keep the
+# framework's research pipeline native while preventing long retry loops in
+# the optional literature augmentation path.
+web_search:
+  enabled: false
+  enable_scholar: false
+  enable_crawling: false
+  enable_pdf_extraction: false
+  max_web_results: 0
+  max_scholar_results: 0
+  max_crawl_urls: 0
+
+prompts:
+  extra_prompts:
+    hypothesis_gen: >-
+      This is the ARC-WBE-2026 weights-only contract. Before any
+      experiment or generated experiment code, write and lock a substantive
+      root-level research_idea.json. Keep the idea method-free: the framework
+      must choose the hypothesis and method from the visible weights.
+    experiment_design: >-
+      Stay inside ARC-WBE-2026 only. Use the mounted weights-only parquet at
+      /data/arc_wbe_2026 and do not create generic torchvision, MNIST, CIFAR,
+      classification, or unrelated Hugging Face benchmark loaders. Design 2-4
+      materially different experiments chosen by the framework, with no host
+      prescribed algorithm family, representation, architecture,
+      hyperparameters, or sequence.
+    code_generation: >-
+      Generate only the ARC-WBE-2026 deliverables. Read the contract and
+      weights-only schema, keep labels hidden, and write root-level
+      research_idea.json, estimator.py, submission.json,
+      experiment_trace.json, and final_report.md. The estimator must consume
+      each input mlp.weights and return a finite nonzero (32,256) array with
+      direct input dependence; never use scalar, zero, broadcast, placeholder,
+      synthetic, or fallback predictions. Record the injected model and base
+      URL and keep the framework-native trace complete.
 
 evaluation:
   result_fields:
@@ -268,12 +346,20 @@ evaluation:
 
 experiment:
   mode: "sandbox"
-  time_budget_sec: 300
-  max_iterations: 2
+  time_budget_sec: 28800
+  max_iterations: 3
+  code_agent:
+    enabled: true
+    architecture_planning: true
+    sequential_generation: true
+    hard_validation: true
+    hard_validation_max_repairs: 4
+    exec_fix_max_iterations: 3
+    exec_fix_timeout_sec: 600
   sandbox:
-    python_path: "python3"
+    python_path: "/usr/bin/python3"
     gpu_required: false
-    allowed_imports: [math, json, pathlib, numpy, sklearn, datasets]
+    allowed_imports: [math, json, pathlib, numpy, pandas, scipy, sklearn, torch, pyarrow, datasets]
 """
 
 
@@ -300,16 +386,24 @@ def generate_native_inputs(
         "docs/arc_wbe_2026_summary.md": shared_summary,
         "automation/arc_wbe_2026_contract.md": authoritative_contract,
         "automation/arc_wbe_2026_execution_budget.md": (
-            (REPO_ROOT / "automation" / "arc_wbe_2026_execution_budget.md").read_text(encoding="utf-8")
+            (REPO_ROOT / "automation" / "arc_wbe_2026_execution_budget.md").read_text(
+                encoding="utf-8"
+            )
         ),
         "automation/scripts/run_arc_wbe_2026_local_score.py": (
-            (REPO_ROOT / "automation" / "scripts" / "run_arc_wbe_2026_local_score.py").read_text(encoding="utf-8")
+            (REPO_ROOT / "automation" / "scripts" / "run_arc_wbe_2026_local_score.py").read_text(
+                encoding="utf-8"
+            )
         ),
         "automation/scripts/arc_wbe_2026_official_adapter.py": (
-            (REPO_ROOT / "automation" / "scripts" / "arc_wbe_2026_official_adapter.py").read_text(encoding="utf-8")
+            (REPO_ROOT / "automation" / "scripts" / "arc_wbe_2026_official_adapter.py").read_text(
+                encoding="utf-8"
+            )
         ),
         "automation/scripts/prepare_arc_wbe_2026_dataset.py": (
-            (REPO_ROOT / "automation" / "scripts" / "prepare_arc_wbe_2026_dataset.py").read_text(encoding="utf-8")
+            (REPO_ROOT / "automation" / "scripts" / "prepare_arc_wbe_2026_dataset.py").read_text(
+                encoding="utf-8"
+            )
         ),
         "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/metaprompt.py": render_ai_researcher_metaprompt(
             dataset_root, contract_file
@@ -320,6 +414,7 @@ def generate_native_inputs(
         "Auto-claude-code-research-in-sleep/.aris-codex-project/ARC_WBE_2026_BRIEF.md": framework_brief,
         "AutoResearchClaw/topic.txt": render_autoresearchclaw_topic(),
         "AutoResearchClaw/config.arc.yaml": build_autoresearchclaw_config(
+            repo_root,
             dataset_root,
             contract_file,
             provider_base_url,
@@ -327,7 +422,7 @@ def generate_native_inputs(
         ),
         "DeepScientist/DEEPSCIENTIST_BRIEF.md": framework_brief,
         "EvoScientist/EVOSCIENTIST_BRIEF.md": framework_brief,
-        "EvoScientist/arc_wbe_2026_start_message.txt": f"Start ARC-WBE-2026. Read @EVOSCIENTIST_BRIEF.md, @docs/arc_wbe_2026_summary.md, and @automation/arc_wbe_2026_execution_budget.md first.\n",
+        "EvoScientist/arc_wbe_2026_start_message.txt": "Start ARC-WBE-2026. Read @EVOSCIENTIST_BRIEF.md, @docs/arc_wbe_2026_summary.md, and @automation/arc_wbe_2026_execution_budget.md first. IMPORTANT: This is a white-box estimation task: predict the per-layer hidden activation matrix of shape (32, 256) from the MLP weights.\n",
     }
     json_files = {
         "AI-Researcher/benchmark/final/arc_wbe_2026/arc_wbe_2026.json": build_ai_researcher_payload(

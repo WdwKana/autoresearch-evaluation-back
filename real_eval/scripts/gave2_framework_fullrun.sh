@@ -288,6 +288,109 @@ if [[ "$run_rc" -ne 0 ]]; then
   exit "$run_rc"
 fi
 
+if [[ "$FRAMEWORK_NAME" == "AutoResearchClaw" ]]; then
+  postrun_reason=""
+  if ! postrun_reason="$(python3 - "$WORKSPACE" <<'PY'
+import hashlib
+import json
+from datetime import datetime
+from pathlib import Path
+import sys
+
+workspace = Path(sys.argv[1]).resolve()
+
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+def current_path(relative: str) -> Path:
+    path = workspace / relative
+    if path.is_symlink():
+        fail(f"required artifact is a symlink: {relative}")
+    if not path.exists():
+        fail(f"missing required artifact: {relative}")
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(workspace)
+    except ValueError:
+        fail(f"required artifact is outside current workspace: {relative}")
+    return path
+
+submission = current_path("submission")
+if not submission.is_dir():
+    fail("required artifact is not a directory: submission/")
+submission_files = [item for item in submission.rglob("*") if item.is_file()]
+for item in submission_files:
+    if item.is_symlink():
+        fail(f"submission artifact is a symlink: {item.relative_to(workspace)}")
+    try:
+        item.resolve().relative_to(workspace)
+    except ValueError:
+        fail(f"submission artifact is outside current workspace: {item.relative_to(workspace)}")
+if not submission_files:
+    fail("required artifact is empty: submission/")
+for relative in (
+    "experiment_trace.json",
+    "final_report.md",
+    "research_idea.json",
+    "research_idea_lock_event.json",
+):
+    artifact = current_path(relative)
+    if artifact.stat().st_size == 0:
+        fail(f"required artifact is empty: {relative}")
+
+try:
+    idea = json.loads((workspace / "research_idea.json").read_text(encoding="utf-8"))
+    trace = json.loads((workspace / "experiment_trace.json").read_text(encoding="utf-8"))
+    event = json.loads((workspace / "research_idea_lock_event.json").read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    fail(f"invalid research idea lock evidence: {exc}")
+if not isinstance(idea, dict) or idea.get("framework") != "AutoResearchClaw":
+    fail("research idea is not framework-authored")
+if idea.get("idea_locked_before_experiments") is not True:
+    fail("research idea was not locked before experiments")
+if not isinstance(idea.get("source_artifact"), str) or not idea["source_artifact"].startswith("stage-08/"):
+    fail("research idea source is not native Stage 8 output")
+if not isinstance(event, dict) or event.get("event") != "research_idea_locked":
+    fail("missing native research_idea_locked event")
+if event.get("owner") != "framework" or event.get("writer") != "AutoResearchClaw":
+    fail("research idea lock event is not framework-owned")
+if event.get("artifact") != "research_idea.json" or not event.get("event_id"):
+    fail("research idea lock event does not identify the artifact")
+if event.get("artifact_sha256") != hashlib.sha256((workspace / "research_idea.json").read_bytes()).hexdigest():
+    fail("research idea lock event hash does not match artifact")
+if idea.get("lock_event_id") != event["event_id"] or idea.get("locked_at") != event.get("timestamp"):
+    fail("research idea lock metadata does not match lock event")
+if not isinstance(trace, dict) or trace.get("idea_artifact") != "research_idea.json":
+    fail("experiment trace does not identify research_idea.json")
+if trace.get("idea_locked_before_experiments") is not True:
+    fail("experiment trace does not confirm the pre-experiment lock")
+def timestamp(value: object, name: str) -> datetime:
+    if not isinstance(value, str) or not value:
+        fail(f"missing {name}")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        fail(f"invalid {name}")
+    if parsed.tzinfo is None:
+        fail(f"timezone missing from {name}")
+    return parsed
+if timestamp(event.get("timestamp"), "lock timestamp") >= timestamp(
+    trace.get("first_experiment_started_at"), "first_experiment_started_at"
+):
+    fail("research idea lock did not precede first experiment")
+PY
+)"; then
+    write_state "failed" "AutoResearchClaw postrun artifact gate failed: $postrun_reason" 29
+    python3 "$ROOT/real_eval/scripts/validate_framework_run.py" \
+      --framework gave2_fullrun \
+      --run-root "$BASE" \
+      --state-file "$STATE_FILE" \
+      --manifest-path "$ARTIFACT_MANIFEST" \
+      > "$LOG_DIR/validator.json" || true
+    exit 29
+  fi
+fi
+
 write_state "finished" "Framework runtime exited successfully" 0
 python3 "$ROOT/real_eval/scripts/validate_framework_run.py" \
   --framework gave2_fullrun \

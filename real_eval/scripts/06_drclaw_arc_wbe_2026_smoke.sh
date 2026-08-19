@@ -6,7 +6,7 @@ BASE="${REAL_EVAL_RUN_ROOT:?REAL_EVAL_RUN_ROOT is required}"
 FRAMEWORK_NAME="Dr. Claw"
 FRAMEWORK_SLUG="06_drclaw_arc_wbe_2026_smoke"
 DATASET_ROOT="${ARC_WBE_2026_DATASET_ROOT:-$(real_eval_resolve_topic_dataset "$ROOT" arc_wbe_2026)}"
-CONTRACT_FILE="${ARC_WBE_2026_CONTRACT_FILE:-$ROOT/automation/arc_white_box_estimation_2026_contract.md}"
+CONTRACT_FILE="${ARC_WBE_2026_CONTRACT_FILE:-$ROOT/automation/arc_wbe_2026_contract.md}"
 LOG_DIR="$BASE/logs"
 LOG_FILE="$LOG_DIR/smoke.log"
 STATE_FILE="$BASE/state.json"
@@ -36,7 +36,11 @@ brief = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 tasks = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 assert brief["project_name"] == "arc_wbe_2026"
 assert brief["dataset"]["root"] == sys.argv[3]
-assert len(tasks["tasks"]) >= 3
+assert tasks["method_policy"] == {
+    "framework_owns_method_choice": True,
+    "prescribed_methods": [],
+}
+assert len(tasks["tasks"]) == 1
 PY
 
 {

@@ -93,6 +93,26 @@ real_eval_rsync_repo() {
     "$src"/ "$dst"/
 }
 
+real_eval_assert_no_credential_copies() {
+  local workspace="$1"
+  local forbidden
+  forbidden="$(find "$workspace" -type f \
+    \( \
+      -name 'provider.env' -o \
+      -name 'upstream_relay.env' -o \
+      -name 'semantic.env' -o \
+      -name '.env' -o \
+      -name '.env.*' -o \
+      -name '*.env' -o \
+      -name 'config.toml' -o \
+      -name '.provider_config.toml' \
+    \) -print -quit 2>/dev/null || true)"
+  if [[ -n "$forbidden" ]]; then
+    echo "credential copy found in framework workspace: $forbidden" >&2
+    return 1
+  fi
+}
+
 real_eval_purge_cross_topic_residue() {
   local dst="$1"
   local topic_label="${2:-}"
@@ -107,6 +127,9 @@ real_eval_purge_cross_topic_residue() {
         \( \
           -iname '*babylm*' -o \
           -iname '*gave2*' -o \
+          -iname '*psydefdetect*' -o \
+          -iname '*tdc_admet_tox*' -o \
+          -iname '*tdc-admet-tox*' -o \
           -iname 'my_research_topic.*' -o \
           -iname 'config.project4.yaml' -o \
           -iname '.env' -o \
@@ -200,6 +223,34 @@ real_eval_purge_cross_topic_residue() {
   esac
 }
 
+real_eval_assert_no_cross_topic_residue() {
+  local root="$1"
+  local topic_id="$2"
+  local residue=""
+
+  case "$topic_id" in
+    arc_wbe_2026)
+      residue="$(find "$root" \
+        \( \
+          -iname '*babylm*' -o \
+          -iname '*gave2*' -o \
+          -iname '*psydefdetect*' -o \
+          -iname '*tdc_admet_tox*' -o \
+          -iname '*tdc-admet-tox*' \
+        \) \
+        -print -quit 2>/dev/null || true)"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  if [[ -n "$residue" ]]; then
+    echo "cross-topic residue remains after purge: $residue" >&2
+    return 1
+  fi
+}
+
 real_eval_write_state() {
   local path="$1"
   local json="$2"
@@ -216,7 +267,40 @@ real_eval_select_framework_config() {
   local generated_config
 
   if [[ -n "${REAL_EVAL_FRAMEWORK_CONFIG:-}" ]]; then
-    printf '%s\n' "$REAL_EVAL_FRAMEWORK_CONFIG"
+    if [[ "$topic_id" == "arc_wbe_2026" ]]; then
+      python3 - "$REAL_EVAL_FRAMEWORK_CONFIG" "$topic_id" "$mode" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+topic_id = sys.argv[2]
+mode = sys.argv[3]
+payload = json.loads(config_path.read_text(encoding="utf-8"))
+expected_validator = f"{topic_id}_{mode}"
+if topic_id == "arc_wbe_2026" and mode == "input_pack":
+    expected_validator = "arc_wbe_2026_input_pack"
+metadata_topic = payload.get("topic_id")
+metadata_mode = payload.get("mode")
+if metadata_topic is not None and metadata_topic != topic_id:
+    raise SystemExit(
+        f"framework config topic mismatch: expected {topic_id}, got {metadata_topic}"
+    )
+if metadata_mode is not None and metadata_mode != mode:
+    raise SystemExit(f"framework config mode mismatch: expected {mode}, got {metadata_mode}")
+rows = payload.get("frameworks")
+if not isinstance(rows, list) or not rows:
+    raise SystemExit("framework config must contain non-empty frameworks")
+wrong = [row.get("validator") for row in rows if row.get("validator") != expected_validator]
+if wrong:
+    raise SystemExit(
+        f"framework config mode mismatch: expected validator {expected_validator}, got {wrong}"
+    )
+print(config_path)
+PY
+    else
+      printf '%s\n' "$REAL_EVAL_FRAMEWORK_CONFIG"
+    fi
   elif [[ "${REAL_EVAL_USE_REGISTRY:-0}" == "1" ]]; then
     generated_config="$base_run_root/registry_framework_config.json"
     python3 "$root/real_eval/scripts/registry_to_config.py" --topic "$topic_id" --mode "$mode" > "$generated_config"
@@ -250,6 +334,8 @@ real_eval_write_frameworks_tsv() {
 import json, sys
 cfg = json.load(open(sys.argv[1], encoding='utf-8'))
 for item in cfg['frameworks']:
+    if item.get('status') in {'unsupported', 'blocked', 'completed'}:
+        continue
     print('\t'.join([
         item['id'],
         item['name'],
@@ -291,13 +377,13 @@ PY
 real_eval_resolve_framework_source() {
   local root="$1"
   local framework_id="$2"
-  python3 "$root/real_eval/scripts/registry_paths.py" --kind framework --id "$framework_id" --format path
+  RESEARCHCLAWEVAL_ROOT="$root" python3 "$root/real_eval/scripts/registry_paths.py" --kind framework --id "$framework_id" --format path
 }
 
 real_eval_resolve_topic_dataset() {
   local root="$1"
   local topic_id="$2"
-  python3 "$root/real_eval/scripts/registry_paths.py" --kind dataset --id "$topic_id" --format path
+  RESEARCHCLAWEVAL_ROOT="$root" python3 "$root/real_eval/scripts/registry_paths.py" --kind dataset --id "$topic_id" --format path
 }
 
 real_eval_provider_env_from_codex_toml() {

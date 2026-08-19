@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -324,12 +325,17 @@ def validate_ai_scientist_v2(root: Path) -> ValidationResult:
 
 
 def validate_aris(root: Path) -> ValidationResult:
-    final_report = glob_any(root, ["workspace/babylm_10m_harness/reports/final_report.md"])
+    final_report = glob_any(root, [
+        "workspace/babylm_10m_harness/reports/final_report.md",
+        "workspace/babylm_10m_harness/reports/report.md",
+    ])
     checkpoints = glob_any(
         root,
         [
             "workspace/babylm_10m_harness/outputs/models/**/*.safetensors",
             "workspace/babylm_10m_harness/outputs/models/**/*.bin",
+            "workspace/babylm_10m_harness/checkpoints/**/*.safetensors",
+            "workspace/babylm_10m_harness/checkpoints/**/*.bin",
         ],
     )
     eval_json = glob_any(root, ["workspace/**/*eval*.json"])
@@ -380,6 +386,59 @@ def validate_autoresearchclaw_resume(root: Path) -> ValidationResult:
         return ValidationResult(status, summary, evidence, [])
     return ValidationResult(
         "failed_no_artifacts", "AutoResearchClaw resume artifacts are incomplete.", evidence, []
+    )
+
+
+def validate_autoresearchclaw_babylm_fullrun(root: Path) -> ValidationResult:
+    run_id = root.parent.name
+    workspace = root / "workspace"
+    artifact_dir = workspace / "artifacts" / f"babylm-{run_id}"
+    deliverables = artifact_dir / "deliverables"
+    required_names = (
+        "research_idea.json",
+        "experiment_trace.json",
+        "final_report.md",
+    )
+    artifact_files = [deliverables / name for name in required_names]
+    handoff_files = [workspace / name for name in required_names]
+    artifact_complete = (
+        artifact_dir.is_dir()
+        and not artifact_dir.is_symlink()
+        and deliverables.is_dir()
+        and not deliverables.is_symlink()
+        and all(path.is_file() and not path.is_symlink() for path in artifact_files)
+    )
+    handoff_complete = all(
+        path.is_file() and not path.is_symlink() for path in handoff_files
+    )
+    handoff_matches_deliverables = artifact_complete and handoff_complete and all(
+        artifact.read_bytes() == handoff.read_bytes()
+        for artifact, handoff in zip(artifact_files, handoff_files, strict=True)
+    )
+    evidence = {
+        "run_id": run_id,
+        "artifact_dir": rel(artifact_dir, root) if artifact_dir.is_dir() else None,
+        "deliverables": rel(deliverables, root) if deliverables.is_dir() else None,
+        "deliverable_files": [
+            rel(path, root) for path in artifact_files if path.is_file()
+        ],
+        "handoff_files": [
+            rel(path, root) for path in handoff_files if path.is_file()
+        ],
+        "handoff_matches_deliverables": handoff_matches_deliverables,
+    }
+    if handoff_matches_deliverables:
+        return ValidationResult(
+            "finished",
+            "AutoResearchClaw current BabyLM full-run artifacts and handoff are complete.",
+            evidence,
+            [],
+        )
+    return ValidationResult(
+        "failed_no_artifacts",
+        "AutoResearchClaw current BabyLM full-run artifacts or handoff are incomplete.",
+        evidence,
+        [],
     )
 
 
@@ -533,6 +592,45 @@ def validate_gave2_input_pack(root: Path) -> ValidationResult:
         )
     return ValidationResult(
         "finished", "GAVE2 native input pack is prepared and validated.", evidence, []
+    )
+
+
+def validate_arc_wbe_2026_input_pack(root: Path) -> ValidationResult:
+    manifest_path = root / "native_pack_manifest.json"
+    evidence = {
+        "manifest": rel(manifest_path, root) if manifest_path.exists() else None,
+        "copied_inputs": [],
+        "framework": None,
+    }
+    if not manifest_path.exists():
+        return ValidationResult(
+            "failed_no_artifacts", "ARC native input pack manifest is missing.", evidence, []
+        )
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        evidence["parse_error"] = str(exc)
+        return ValidationResult(
+            "failed_no_artifacts", "ARC native input pack manifest is unreadable.", evidence, []
+        )
+
+    copied = manifest.get("copied_inputs", [])
+    missing = [rel_path for rel_path in copied if not (root / rel_path).exists()]
+    evidence["copied_inputs"] = copied
+    evidence["framework"] = manifest.get("framework")
+    evidence["dataset_root"] = manifest.get("dataset_root")
+    evidence["contract_file"] = manifest.get("contract_file")
+    if missing:
+        evidence["missing_inputs"] = missing
+        return ValidationResult(
+            "failed_no_artifacts", "ARC native input pack is missing copied input files.", evidence, []
+        )
+    if not copied:
+        return ValidationResult(
+            "failed_no_artifacts", "ARC native input pack did not record any copied inputs.", evidence, []
+        )
+    return ValidationResult(
+        "finished", "ARC native input pack is prepared and validated.", evidence, []
     )
 
 
@@ -733,6 +831,80 @@ OFFICIAL_ARC_SCORE_SOURCES = {
 }
 
 
+def arc_trace_integrity(
+    trace: object,
+    manifest: dict,
+) -> tuple[bool, list[str], dict[str, object]]:
+    failures: list[str] = []
+    details: dict[str, object] = {}
+    if not isinstance(trace, dict):
+        return False, ["missing_or_unreadable_experiment_trace"], details
+
+    details["framework_native_execution"] = trace.get("framework_native_execution")
+    details["consumed_topic_input"] = trace.get("consumed_topic_input")
+    details["workspace_trace_root"] = trace.get("workspace_trace_root")
+    details["framework_internal_model"] = trace.get("framework_internal_model")
+    details["framework_internal_api_base_url"] = trace.get("framework_internal_api_base_url")
+    details["selected_experiment_id"] = trace.get("selected_experiment_id")
+
+    if trace.get("framework_native_execution") is not True:
+        failures.append("framework_native_execution_not_proven")
+    if trace.get("consumed_topic_input") is not True:
+        failures.append("topic_input_consumption_not_proven")
+    if trace.get("workspace_trace_root") != "/workspace":
+        failures.append("invalid_workspace_trace_root")
+
+    experiments = trace.get("experiments")
+    experiment_ids: list[str] = []
+    if not isinstance(experiments, list) or not 2 <= len(experiments) <= 4:
+        failures.append("experiment_count_outside_2_to_4")
+    else:
+        for row in experiments:
+            experiment_id = row.get("experiment_id") or row.get("id") if isinstance(row, dict) else None
+            if not isinstance(experiment_id, str) or not experiment_id.strip():
+                failures.append("experiment_missing_id")
+                continue
+            experiment_ids.append(experiment_id.strip())
+        if len(set(experiment_ids)) != len(experiment_ids):
+            failures.append("duplicate_experiment_id")
+    details["experiment_count"] = len(experiments) if isinstance(experiments, list) else 0
+    details["experiment_ids"] = experiment_ids
+
+    selected_id = trace.get("selected_experiment_id")
+    if not isinstance(selected_id, str) or not selected_id.strip():
+        failures.append("missing_selected_experiment_id")
+    elif selected_id.strip() not in experiment_ids:
+        failures.append("selected_experiment_not_in_trace")
+
+    expected_model = manifest.get("evaluation_model")
+    actual_model = trace.get("framework_internal_model")
+    if not isinstance(expected_model, str) or not expected_model.strip():
+        failures.append("manifest_missing_evaluation_model")
+    elif actual_model != expected_model:
+        failures.append("framework_internal_model_mismatch")
+
+    expected_base_url = manifest.get("provider_base_url")
+    actual_base_url = trace.get("framework_internal_api_base_url")
+    for value, failure in (
+        (actual_model, "unexpanded_framework_internal_model"),
+        (actual_base_url, "unexpanded_framework_internal_api_base_url"),
+    ):
+        if isinstance(value, str) and re.search(r"\$\{?[A-Z_][A-Z0-9_]*\}?", value):
+            failures.append(failure)
+    if not isinstance(expected_base_url, str) or not expected_base_url.strip():
+        failures.append("manifest_missing_provider_base_url")
+    elif not isinstance(actual_base_url, str) or not actual_base_url.strip():
+        failures.append("missing_framework_internal_api_base_url")
+    elif actual_base_url.rstrip("/") != expected_base_url.rstrip("/"):
+        failures.append("framework_internal_api_base_url_mismatch")
+
+    if trace.get("idea_artifact") != "research_idea.json":
+        failures.append("invalid_idea_artifact")
+    if trace.get("idea_locked_before_experiments") is not True:
+        failures.append("idea_lock_not_proven")
+    return not failures, failures, details
+
+
 def has_arc_native_execution_log_evidence(log_path: Path, manifest: dict | None = None) -> bool:
     try:
         text = log_path.read_text(encoding="utf-8", errors="ignore")
@@ -803,6 +975,7 @@ def validate_arc_wbe_2026_fullrun(root: Path) -> ValidationResult:
         )
     evidence["native_entrypoint"] = fullrun_manifest.get("native_entrypoint")
     evidence["kimi_injection"] = fullrun_manifest.get("kimi_injection")
+    evidence["native_standard_version"] = fullrun_manifest.get("native_standard_version")
 
     if state.get("status") == "unsupported_native_entrypoint":
         reason = state.get(
@@ -838,8 +1011,66 @@ def validate_arc_wbe_2026_fullrun(root: Path) -> ValidationResult:
             evidence["score_artifact_source"] = score_payload["score_artifact"]
 
     submission_payload = read_json(submission_artifact) if submission_artifact is not None else None
+    trace_payload = read_json(root / "workspace/experiment_trace.json")
     if isinstance(submission_payload, dict):
         evidence["submission_payload"] = submission_payload
+
+    trace_ok, trace_failures, trace_evidence = arc_trace_integrity(trace_payload, fullrun_manifest)
+    evidence.update(trace_evidence)
+    evidence["trace_integrity_ok"] = trace_ok
+    evidence["trace_integrity_failures"] = trace_failures
+
+    if fullrun_manifest.get("native_standard_version") == "1.0":
+        idea_path = root / "workspace/research_idea.json"
+        trace_path = root / "workspace/experiment_trace.json"
+        idea = read_json(idea_path)
+        trace = trace_payload
+        evidence["research_idea"] = rel(idea_path, root) if idea_path.is_file() else None
+        evidence["experiment_trace"] = rel(trace_path, root) if trace_path.is_file() else None
+        idea_fields = (
+            "hypothesis",
+            "method_rationale",
+            "expected_failure_modes",
+            "comparison_logic",
+        )
+
+        def nonempty_idea_field(value: object) -> bool:
+            if isinstance(value, str):
+                return bool(value.strip())
+            if isinstance(value, list):
+                return bool(value) and all(isinstance(item, str) and item.strip() for item in value)
+            if isinstance(value, dict):
+                return bool(value)
+            return False
+
+        valid_idea = isinstance(idea, dict) and all(
+            nonempty_idea_field(
+                idea.get(key)
+                if key != "method_rationale"
+                else (idea.get("method_rationale") or idea.get("rationale"))
+            )
+            for key in idea_fields
+        )
+        valid_trace = (
+            isinstance(trace, dict)
+            and trace.get("idea_artifact") == "research_idea.json"
+            and trace.get("idea_locked_before_experiments") is True
+        )
+        if not valid_idea or not valid_trace:
+            return ValidationResult(
+                "failed_validation",
+                "ARC native-standard run lacks a valid pre-experiment research idea and lock evidence.",
+                evidence,
+                ["missing_or_invalid_research_idea_evidence"],
+            )
+
+    if not trace_ok:
+        return ValidationResult(
+            "failed_validation",
+            "ARC full-run experiment trace failed native, experiment-selection, or provider integrity checks.",
+            evidence,
+            trace_failures,
+        )
 
     if final_report is not None and not arc_report_looks_on_topic(final_report):
         return ValidationResult(
@@ -866,7 +1097,8 @@ def validate_arc_wbe_2026_fullrun(root: Path) -> ValidationResult:
         )
 
     if (
-        final_report is not None
+        state.get("status") == "finished"
+        and final_report is not None
         and submission_artifact is not None
         and score_path is not None
         and evidence.get("official_comparable")
@@ -878,29 +1110,10 @@ def validate_arc_wbe_2026_fullrun(root: Path) -> ValidationResult:
             [],
         )
     if final_report is not None and submission_artifact is not None:
-        native_execution = (
-            isinstance(submission_payload, dict)
-            and submission_payload.get("framework_native_execution") is True
-        )
-        consumed_topic_input = (
-            isinstance(submission_payload, dict)
-            and submission_payload.get("consumed_topic_input") is True
-        )
-        workspace_trace_root = (
-            submission_payload.get("workspace_trace_root")
-            if isinstance(submission_payload, dict)
-            else None
-        )
         log_has_native_entrypoint = has_arc_native_execution_log_evidence(
             log_path, fullrun_manifest
         )
-        if (
-            state.get("status") == "finished_degraded"
-            and native_execution
-            and consumed_topic_input
-            and workspace_trace_root
-            and log_has_native_entrypoint
-        ):
+        if state.get("status") == "finished_degraded" and trace_ok and log_has_native_entrypoint:
             return ValidationResult(
                 "finished_degraded",
                 "ARC full-run completed framework-native execution without local official scoring.",
@@ -1094,6 +1307,8 @@ def validate_tdc_admet_tox_smoke(root: Path) -> ValidationResult:
         "labeled_schema",
         "test_schema_unlabeled",
         "endpoint_sets_exact",
+        "cross_topic_paths_absent",
+        "credentials_absent_from_log",
         "agent_evidence",
         "no_final_outputs",
     }
@@ -1104,6 +1319,208 @@ def validate_tdc_admet_tox_smoke(root: Path) -> ValidationResult:
         )
     return ValidationResult(
         "finished", "TDC-ADMET-Tox blocking Codex smoke checks passed.", evidence, []
+    )
+
+
+def validate_tdc_admet_tox_fullrun(root: Path) -> ValidationResult:
+    manifest_path = root / "fullrun_manifest.json"
+    state_path = root / "state.json"
+    outcome_path = root / "outcome.json"
+    log_path = root / "logs/e2e.log"
+    evidence = {
+        "manifest": rel(manifest_path, root) if manifest_path.exists() else None,
+        "state": rel(state_path, root) if state_path.exists() else None,
+        "outcome": rel(outcome_path, root) if outcome_path.exists() else None,
+        "log": rel(log_path, root) if log_path.exists() else None,
+        "dimensions": {},
+        "score_artifact": None,
+        "main_score": None,
+    }
+    if not manifest_path.is_file() or not state_path.is_file() or not log_path.is_file():
+        return ValidationResult(
+            "failed_no_artifacts",
+            "TDC-ADMET-Tox full-run wrapper did not leave manifest/state/log evidence.",
+            evidence,
+            [],
+        )
+    manifest = read_json(manifest_path)
+    state = read_json(state_path)
+    if not isinstance(manifest, dict) or not isinstance(state, dict):
+        return ValidationResult(
+            "failed_no_artifacts", "TDC-ADMET-Tox full-run evidence is unreadable.", evidence, []
+        )
+    evidence["framework"] = manifest.get("framework")
+    evidence["native_entrypoint"] = manifest.get("native_entrypoint")
+    evidence["native_entrypoint_source"] = manifest.get("native_entrypoint_source")
+    evidence["actual_launch_command"] = manifest.get("actual_launch_command")
+    evidence["provider_injection"] = manifest.get("provider_injection")
+    evidence["evaluation_model"] = manifest.get("evaluation_model")
+    evidence["executor_kind"] = manifest.get("executor_kind")
+
+    status = state.get("status")
+    if status == "unsupported_native_entrypoint":
+        return ValidationResult(
+            "unsupported_native_entrypoint",
+            state.get("summary", "Framework has no admissible native entrypoint."),
+            evidence,
+            [],
+        )
+    if status == "blocked_benchmark_authorization":
+        return ValidationResult(
+            "blocked_benchmark_authorization",
+            state.get("summary", "Framework benchmark authorization is unavailable."),
+            evidence,
+            [],
+        )
+    if not outcome_path.is_file():
+        return ValidationResult(
+            "failed_no_artifacts", "TDC-ADMET-Tox full-run outcome.json is missing.", evidence, []
+        )
+    outcome = read_json(outcome_path)
+    if not isinstance(outcome, dict):
+        return ValidationResult(
+            "failed_no_artifacts", "TDC-ADMET-Tox full-run outcome is unreadable.", evidence, []
+        )
+    dimensions = {
+        key: outcome.get(key)
+        for key in (
+            "research_completed",
+            "scored",
+            "contract_complete",
+            "engineering_complete",
+        )
+    }
+    evidence["dimensions"] = dimensions
+    if any(not isinstance(value, bool) for value in dimensions.values()):
+        return ValidationResult(
+            "failed_validation", "TDC-ADMET-Tox outcome dimensions are incomplete.", evidence, []
+        )
+
+    network = manifest.get("network_isolation")
+    actual_launch = manifest.get("actual_launch_command")
+    executor_kind = manifest.get("executor_kind")
+    workspace = root / "workspace"
+    official_skill_ok = True
+    if executor_kind == "official_framework_skill":
+        official_skill_ok = (
+            str(manifest.get("native_entrypoint_source", "")).startswith("skills/skills-codex/")
+            and (workspace / ".aris/installed-skills-codex.txt").is_file()
+            and (workspace / ".agents/skills/research-pipeline").is_symlink()
+            and (workspace / "aris_tdc_admet_tox_last_message.txt").is_file()
+        )
+    launch_owner_ok = (
+        isinstance(actual_launch, str)
+        and bool(actual_launch.strip())
+        and ("codex exec" not in actual_launch or executor_kind == "official_framework_skill")
+    )
+    native_admission_ok = (
+        manifest.get("task_id") == "tdc_admet_tox"
+        and manifest.get("evaluation_variant") in {"gpt", "ds", "kimi", "gpt56luna"}
+        and manifest.get("framework_orchestration") is True
+        and isinstance(manifest.get("native_entrypoint"), str)
+        and bool(manifest["native_entrypoint"].strip())
+        and isinstance(manifest.get("native_entrypoint_source"), str)
+        and bool(manifest["native_entrypoint_source"].strip())
+        and executor_kind
+        in {
+            "framework_cli",
+            "framework_internal_codex_runner",
+            "official_framework_skill",
+        }
+        and launch_owner_ok
+        and official_skill_ok
+        and isinstance(network, dict)
+        and network.get("framework_network_internal") is True
+        and network.get("public_network_visible_to_framework") is False
+        and manifest.get("hidden_labels_projected") is False
+        and manifest.get("host_score_after_framework_gate") is True
+    )
+    evidence["native_admission_ok"] = native_admission_ok
+    evidence["official_skill_ok"] = official_skill_ok
+
+    pollution_markers = (
+        "babylm",
+        "gave2",
+        "arc_wbe_2026",
+        "arc-wbe-2026",
+        "psydefdetect",
+        "test_labels.csv",
+        "hidden_labels",
+    )
+    copied_inputs = manifest.get("copied_inputs")
+    copied_input_pollution = []
+    if not isinstance(copied_inputs, list) or any(
+        not isinstance(item, str) for item in copied_inputs
+    ):
+        copied_input_pollution.append("invalid_copied_inputs_manifest")
+    else:
+        copied_input_pollution.extend(
+            item
+            for item in copied_inputs
+            if any(marker in item.lower() for marker in pollution_markers)
+        )
+    workspace_path_pollution = []
+    if workspace.is_dir():
+        workspace_path_pollution = [
+            rel(path, workspace)
+            for path in workspace.rglob("*")
+            if any(marker in rel(path, workspace).lower() for marker in pollution_markers)
+        ]
+    evidence["copied_input_pollution"] = copied_input_pollution
+    evidence["workspace_path_pollution"] = workspace_path_pollution[:20]
+    if copied_input_pollution or workspace_path_pollution:
+        return ValidationResult(
+            "failed_validation",
+            "TDC-ADMET-Tox input manifest or workspace paths contain cross-topic/private-label material.",
+            evidence,
+            ["cross_topic_or_hidden_label_pollution"],
+        )
+
+    score_path = root / "workspace/score.json"
+    if score_path.is_file():
+        score = read_json(score_path)
+        if isinstance(score, dict):
+            evidence["score_artifact"] = rel(score_path, root)
+            evidence["main_score"] = score.get("main_score")
+            evidence["score_source"] = score.get("score_source")
+
+    if dimensions["contract_complete"]:
+        if not (
+            native_admission_ok
+            and dimensions["research_completed"]
+            and dimensions["scored"]
+            and dimensions["engineering_complete"]
+            and evidence.get("score_source") == "host_hidden_test_labels"
+            and is_number(evidence.get("main_score"))
+        ):
+            return ValidationResult(
+                "failed_validation",
+                "TDC-ADMET-Tox claims contract completion without complete native/score evidence.",
+                evidence,
+                [],
+            )
+        return ValidationResult(
+            "finished",
+            "TDC-ADMET-Tox native research passed framework audit, host scoring, and final audit.",
+            evidence,
+            [],
+        )
+
+    if dimensions["research_completed"]:
+        warning = "contract_incomplete"
+        if not dimensions["scored"]:
+            warning = "score_unavailable"
+        return ValidationResult(
+            "finished_degraded",
+            "TDC-ADMET-Tox native research completed with a retained score or contract warning.",
+            evidence,
+            [warning],
+        )
+    return ValidationResult(
+        "failed_validation",
+        "TDC-ADMET-Tox native framework did not complete an auditable research handoff.",
+        evidence,
+        ["research_not_completed"],
     )
 
 
@@ -1148,9 +1565,7 @@ def validate_psydefdetect_fullrun(root: Path) -> ValidationResult:
         )
         return ValidationResult("unsupported_native_entrypoint", reason, evidence, [])
     if state.get("status") == "blocked_benchmark_authorization":
-        reason = state.get(
-            "summary", "Framework benchmark authorization has not been supplied."
-        )
+        reason = state.get("summary", "Framework benchmark authorization has not been supplied.")
         return ValidationResult("blocked_benchmark_authorization", reason, evidence, [])
     final_report = pick_latest(
         [root / "workspace/final_report.md", root / "artifacts/final_report.md"]
@@ -1276,18 +1691,89 @@ def validate_psydefdetect_fullrun(root: Path) -> ValidationResult:
     )
 
 
+def validate_topic2_fullrun(root: Path) -> ValidationResult:
+    workspace = root / "workspace"
+    required_files = [
+        "research_idea.json",
+        "experiment_trace.json",
+        "final_report.md",
+        "score.json",
+        "src/config.yaml",
+    ]
+    missing = [name for name in required_files if not (workspace / name).is_file()]
+    ckpts = sorted((workspace / "checkpoints").glob("*.pkl")) if (workspace / "checkpoints").is_dir() else []
+    if len(ckpts) != 5:
+        missing.append(f"checkpoints/*.pkl (found {len(ckpts)})")
+    evidence: dict[str, object] = {
+        "missing_required_files": missing,
+        "checkpoint_count": len(ckpts),
+        "checkpoint_sample": [rel(p, root) for p in ckpts[:5]],
+    }
+    trace: dict = {}
+    idea: dict = {}
+    score: dict = {}
+    for name in ("experiment_trace.json", "research_idea.json", "score.json"):
+        path = workspace / name
+        if path.is_file():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict):
+                    raise ValueError("not a JSON object")
+                if name == "experiment_trace.json":
+                    trace = payload
+                elif name == "research_idea.json":
+                    idea = payload
+                else:
+                    score = payload
+            except Exception as exc:
+                missing.append(f"{name}:{exc}")
+    failures: list[str] = []
+    if trace.get("framework_native_execution") is not True:
+        failures.append("framework_native_execution_not_proven")
+    if trace.get("consumed_topic_input") is not True:
+        failures.append("topic_input_consumption_not_proven")
+    experiments = trace.get("experiments")
+    if not isinstance(experiments, list) or len(experiments) < 1:
+        failures.append("experiment_count_invalid")
+    selected = trace.get("selected_experiment_id")
+    if not isinstance(selected, str) or not selected.strip():
+        failures.append("missing_selected_experiment_id")
+    for key in ("hypothesis", "method_rationale", "expected_failure_modes", "comparison_logic"):
+        if not idea.get(key):
+            failures.append(f"research_idea_missing_{key}")
+    if score.get("score_source") != "official_evaluate_py":
+        failures.append("missing_official_score_source")
+    evidence["failures"] = failures
+    if missing or failures:
+        return ValidationResult(
+            "failed_validation",
+            "Topic 2 full-run artifacts, score, or trace are incomplete.",
+            evidence,
+            failures,
+        )
+    return ValidationResult(
+        "finished",
+        "Topic 2 full-run produced the required artifacts, official score, and trace.",
+        evidence,
+        [],
+    )
+
+
 def validate(framework: str, root: Path) -> ValidationResult:
     mapping = {
+        "topic2_fullrun": validate_topic2_fullrun,
         "ai_researcher_real": validate_ai_researcher_real,
         "ai_researcher_resume": validate_ai_researcher_resume,
         "ai_scientist_v2": validate_ai_scientist_v2,
         "aris": validate_aris,
         "autoresearchclaw_resume": validate_autoresearchclaw_resume,
+        "autoresearchclaw_babylm_fullrun": validate_autoresearchclaw_babylm_fullrun,
         "deepscientist": validate_deepscientist,
         "drclaw": validate_drclaw,
         "evoscientist_auto": validate_evoscientist,
         "evoscientist_continue": validate_evoscientist,
         "gave2_input_pack": validate_gave2_input_pack,
+        "arc_wbe_2026_input_pack": validate_arc_wbe_2026_input_pack,
         "gave2_smoke": validate_gave2_smoke,
         "gave2_fullrun": validate_gave2_fullrun,
         "arc_wbe_2026_smoke": validate_arc_wbe_2026_smoke,
@@ -1295,6 +1781,7 @@ def validate(framework: str, root: Path) -> ValidationResult:
         "psydefdetect_smoke": validate_psydefdetect_smoke,
         "psydefdetect_fullrun": validate_psydefdetect_fullrun,
         "tdc_admet_tox_smoke": validate_tdc_admet_tox_smoke,
+        "tdc_admet_tox_fullrun": validate_tdc_admet_tox_fullrun,
     }
     if framework not in mapping:
         raise SystemExit(f"Unknown framework validator: {framework}")

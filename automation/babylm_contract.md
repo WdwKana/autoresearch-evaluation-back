@@ -1,30 +1,25 @@
-# BabyLM-10M Legacy Evaluation Contract
+# BabyLM 2026 Strict-Small Contract
 
-## Status
+Topic id: `babylm` (Topic 1), evaluation variant `GPT / gpt-5.4`.
 
-This lane is retained as a legacy compatibility contract. New integrations
-should target a stable or beta topic from the registry.
+The framework receives only the read-only BabyLM Strict-Small dataset projected
+at `/data/BabyLM-2026-Strict-Small` and this contract. It must own question
+refinement, idea formation, method selection, experiment design, execution,
+comparison, selection, analysis, and final artifact delivery through its
+documented native entrypoint.
 
-## Inputs
+The host fixes only the visible data (6 `*.train.txt` files, no separate validation
+set), the train/validation split policy (framework must split the train data into
+train/validation sets), the perplexity/loss evaluation policy, resource and
+wall-clock limits, and the output schema. The host must not prescribe an
+algorithm family, representation, architecture, hyperparameters, experiment
+sequence, baseline, or selected method.
 
-- Dataset location is supplied through `BABYLM_DATASET_ROOT`.
-- Framework source location is resolved from the framework registry.
-- Datasets and framework checkouts are external assets and are not distributed
-  by ResearchClawEval.
+Before the first experiment the framework must write and lock
+`research_idea.json`, including a hypothesis, rationale, expected failure modes,
+and discriminating experiments. It must then run 2-4 materially distinct
+experiments using the real dataset and write `experiment_trace.json`,
+`final_report.md`, and its native submission artifacts. The framework may not
+author root-level `score.json`; the host creates that artifact after validation.
 
-## Execution
-
-- Run the framework through its documented native entrypoint.
-- Keep all generated files inside a fresh per-run workspace.
-- Do not use generic host-agent output as framework-native evidence.
-
-## Required evidence
-
-- A framework-authored final report.
-- Experiment or training logs sufficient to identify the selected approach.
-- Evaluation output and model/checkpoint evidence when the framework supports
-  those artifacts.
-- Runtime metadata identifying the framework version, model/provider, and
-  native launch command.
-
-Missing official score evidence is reported as `N/A`, never as zero.
+Proxy, n-gram-only, toy, copied, stale, or host-authored results are invalid.

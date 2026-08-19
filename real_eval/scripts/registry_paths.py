@@ -6,8 +6,7 @@ import json
 import os
 from pathlib import Path
 
-
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("RESEARCHCLAWEVAL_ROOT", Path(__file__).absolute().parents[2])).expanduser()
 REGISTRY = ROOT / "real_eval" / "registry"
 FRAMEWORKS_ROOT_ENV = "RESEARCHCLAWEVAL_FRAMEWORKS_ROOT"
 DATASETS_ROOT_ENV = "RESEARCHCLAWEVAL_DATASETS_ROOT"

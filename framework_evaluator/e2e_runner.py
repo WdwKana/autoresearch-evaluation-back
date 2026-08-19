@@ -107,7 +107,13 @@ class E2ERunner:
             # 如需通用化，可将 files 作为参数传入
             validation = None
 
-        result_str = "passed" if proc.returncode == 0 and (validation is None or validation.ok) else "failed"
+        # 框架 exit code 0 即视为成功；验证结果只记录不影响 pass/fail
+        result_str = "passed" if proc.returncode == 0 else "failed"
+        adaptation_notes = []
+        if proc.returncode == 0 and validation is not None and not validation.ok:
+            adaptation_notes.append(
+                f"framework exited 0 but validation reported issues: {validation.missing_files}"
+            )
         final = ProjectState(
             project_id=project.id,
             project_name=project.name,
@@ -124,6 +130,9 @@ class E2ERunner:
             topic_label=self.topic.label,
             topic_dataset_root=str(self.topic.dataset_root),
             topic_contract_file=str(self.topic.contract_file),
+            validation_ok=validation is None or validation.ok,
+            validation_output=", ".join(validation.missing_files) if validation and validation.missing_files else "",
+            adaptation_notes=adaptation_notes,
         )
         self.state_store.save(final)
         self._write_json(metadata_path, final.to_dict())

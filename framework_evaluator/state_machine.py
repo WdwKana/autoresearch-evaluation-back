@@ -53,6 +53,8 @@ class ProjectState:
     log_file: str = ""
     validation_ok: bool = False
     validation_output: str = ""
+    framework_completed: bool = False
+    adaptation_notes: list[str] = field(default_factory=list)
 
     def is_terminal(self) -> bool:
         return self.status in {

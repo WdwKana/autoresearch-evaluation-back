@@ -10,6 +10,7 @@ AI-Scientist-v2/ai_scientist/ideas/psydefdetect_topic.md
 docs/psydefdetect_literature_catalog.md
 automation/psydefdetect_contract.md
 automation/psydefdetect_execution_budget.md
+real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -29,6 +30,8 @@ export FRAMEWORK_COMMAND_LABEL="python ai_scientist/perform_ideation_temp_free.p
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
 set -euo pipefail
 echo "AI_SCIENTIST_V2_NATIVE_BFTS"
+python3 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
+echo "[psydef-wrapper] shared adapter applied"
 python3 - ai_scientist/llm.py "$OPENAI_MODEL" ai_scientist/utils/token_tracker.py ai_scientist/perform_ideation_temp_free.py ai_scientist/tools/semantic_scholar.py ai_scientist/treesearch/agent_manager.py ai_scientist/treesearch/parallel_agent.py launch_scientist_bfts.py ai_scientist/treesearch/backend/backend_openai.py ai_scientist/treesearch/interpreter.py <<'PY'
 from pathlib import Path
 import sys
@@ -46,42 +49,24 @@ text = text.replace(
 path.write_text(text, encoding="utf-8")
 
 tracker_path = Path(sys.argv[3])
-text = tracker_path.read_text(encoding="utf-8")
-old = '''        self.token_counts[model]["prompt"] += prompt_tokens
-        self.token_counts[model]["completion"] += completion_tokens
-        self.token_counts[model]["reasoning"] += reasoning_tokens
-        self.token_counts[model]["cached"] += cached_tokens'''
-new = '''        self.token_counts[model]["prompt"] += prompt_tokens or 0
-        self.token_counts[model]["completion"] += completion_tokens or 0
-        self.token_counts[model]["reasoning"] += reasoning_tokens or 0
-        self.token_counts[model]["cached"] += cached_tokens or 0'''
-if old not in text:
-    raise SystemExit("AI-Scientist-v2 token accounting insertion point not found")
-text = text.replace(old, new, 1)
-text = text.replace(
-    'if hasattr(result.usage, "prompt_tokens_details")',
-    'if getattr(result.usage, "prompt_tokens_details", None) is not None',
-)
-tracker_path.write_text(text, encoding="utf-8")
+# Shared adapter (patch_ai_scientist_v2_common.py) already handles:
+# - token tracker None safety (or 0)
+# - hasattr/getattr usage field check
+# Skip the inline patch to avoid conflict.
+tracker_path.write_text(tracker_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 idea_path = Path(sys.argv[4])
 text = idea_path.read_text(encoding="utf-8")
-old = "arguments_json = json.loads(arguments_text)"
-if text.count(old) != 2:
-    raise SystemExit("AI-Scientist-v2 idea action parser shape changed")
-text = text.replace(
-    old,
-    "arguments_json = json.JSONDecoder().raw_decode(arguments_text.lstrip())[0]",
-)
-text = text.replace(
-    "Ensure the JSON is properly formatted for automatic parsing.",
-    "Ensure the JSON is properly formatted for automatic parsing. Emit exactly one ACTION/ARGUMENTS block per response.",
-    1,
-)
+# Shared adapter (patch_ai_scientist_v2_common.py) already handles:
+# - robust parser (action blocks + lenient JSON)
+# - unclosed JSON fence
+# - mandatory ACTION/ARGUMENTS format enforcement
+# - literature search optional/offline
+# Only inject the PsyDef-specific contract
 marker = "# Define the initial idea generation prompt"
 mandatory = '''system_prompt += """
 
-PsyDefDetect mandatory runtime contract: propose exactly two local experiments and no others. Experiment 1 is word TF-IDF with class-balanced LogisticRegression. Experiment 2 is character TF-IDF with class-balanced LinearSVC or SGDClassifier using hinge loss. Use only installed numpy, pandas, scipy, and scikit-learn. Do not use or import sentence-transformers, transformers, torch, Hugging Face, pretrained models, embeddings, external datasets, prompt/API classification, package installation, or remote calls in the generated experiment code. Describe the implementation as installed local libraries only; do not enumerate prohibited alternatives in the idea prose. The program itself must run both experiments on the fixed split with the official local scorer, select the higher observed macro-F1, and write predictions.jsonl, score.json, experiment_trace.json, and final_report.md at /workspace. Include the positive experiment requirements in the Title, Abstract, Short Hypothesis, and Experiments fields so the downstream native BFTS code agent receives them.
+PsyDefDetect method-free ideation contract: propose exactly two materially different experiments and no others. Choose the hypothesis, method families, representations, architectures, and configuration details yourself from installed resources. Write a framework-authored research_idea.json before the first experiment with the rationale, expected failure modes, and comparison logic. Use only the fixed split and official local scorer. Do not use downloads, package installation, external datasets, or remote calls from experiment code. The generated program must execute both framework-selected experiments synchronously, select by observed macro-F1, and write predictions.jsonl, score.json, experiment_trace.json, and final_report.md at /workspace. Do not copy a host-prescribed algorithm into the idea.
 """
 
 # Define the initial idea generation prompt'''
@@ -94,16 +79,10 @@ semantic_path = Path(sys.argv[5])
 text = semantic_path.read_text(encoding="utf-8")
 if "from pathlib import Path\n" not in text:
     text = "from pathlib import Path\n" + text
-old = '''    def use_tool(self, query: str) -> Optional[str]:
-        papers = self.search_for_papers(query)'''
-new = '''    def use_tool(self, query: str) -> Optional[str]:
-        local_catalog = os.getenv("AI_SCIENTIST_LOCAL_LITERATURE_CATALOG")
-        if local_catalog and Path(local_catalog).is_file():
-            return Path(local_catalog).read_text(encoding="utf-8")
-        papers = self.search_for_papers(query)'''
-if old not in text:
-    raise SystemExit("AI-Scientist-v2 Semantic Scholar projection insertion point not found")
-semantic_path.write_text(text.replace(old, new, 1), encoding="utf-8")
+# Shared adapter (patch_ai_scientist_v2_common.py) already handles:
+# - semantic_scholar offline bypass and local catalog
+# Skip the inline patch to avoid conflict.
+semantic_path.write_text(text, encoding="utf-8")
 
 manager_path = Path(sys.argv[6])
 text = manager_path.read_text(encoding="utf-8")
@@ -116,10 +95,10 @@ new = '''        if os.getenv("AI_SCIENTIST_PSYDEFDETECT_TWO_EXPERIMENTS") == "1
             task_desc += f"""
 
 MANDATORY PSYDEFDETECT EXECUTION CONTRACT:
-- Generate one self-contained program that synchronously runs exactly two configurations: word TF-IDF plus class-balanced LogisticRegression, and character TF-IDF plus class-balanced LinearSVC or SGDClassifier(loss='hinge').
+- Generate one self-contained program that synchronously runs exactly two materially different configurations chosen and justified by the framework's own idea.
 - Use only the fixed /data/psydefdetect/PsyDefConv.json dataset, /workspace/automation/psydefdetect_split.json, standard library, numpy, pandas, scipy, and scikit-learn.
 - PsyDefConv.json is a top-level list whose rows use id, dialogue_id, dialogue, current_text, and integer label. Join train_record_ids/eval_record_ids from the split manifest to row['id']; use current_text as the target text and never assume conversation_id, defense_mechanism, or pre-split top-level objects.
-- Do not remove English stop words; short dialogue utterances and function words are valid signal.
+- Preserve the complete target text and any context used by the framework's chosen representation; do not silently discard valid signal.
 - Never import or use sentence_transformers, transformers, torch, Hugging Face, pretrained models, embeddings, external datasets, downloads, package installation, or remote calls.
 - Score both configurations with /workspace/automation/scripts/run_psydefdetect_local_score.py, select the higher observed macro-F1, and have the generated program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.
 - experiment_trace.json must contain exactly two unique experiment ids, the correct selected_experiment_id, framework_native_execution=true, consumed_topic_input=true, workspace_trace_root='/workspace', framework_internal_model='{os.getenv("OPENAI_MODEL", "")}', and framework_internal_api_base_url='{os.getenv("OPENAI_BASE_URL", "")}'.
@@ -199,12 +178,12 @@ new = '''    def _prompt_impl_guideline(self):
                     "Never import torch, sentence_transformers, transformers, or any package outside that allowlist.",
                     "Load only /data/psydefdetect/PsyDefConv.json and /workspace/automation/psydefdetect_split.json.",
                     "PsyDefConv.json is a top-level list with row keys id, dialogue_id, dialogue, current_text, and integer label; select rows by matching split train_record_ids/eval_record_ids to row['id'].",
-                    "Use current_text as the target text, optionally prepend dialogue turn text, and do not use stop_words='english' or assume conversation_id/defense_mechanism fields.",
-                    "Run exactly two configurations synchronously: word TF-IDF with balanced LogisticRegression, then character TF-IDF with balanced LinearSVC or SGDClassifier(loss='hinge').",
+                    "Use current_text as the target text, optionally prepend dialogue turn text, and do not assume conversation_id/defense_mechanism fields.",
+                    "Run exactly two materially different configurations selected by the framework's research idea; do not use a host-prescribed algorithm.",
                     "Invoke /workspace/automation/scripts/run_psydefdetect_local_score.py for each prediction file with complete CLI arguments.",
                     "Select the higher observed psydefdetect_score and have the program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.",
                     "Print `psydefdetect_score: <selected numeric score>` after the four root artifacts are written so the native metric parser can evaluate the implementation.",
-                    "Do not create plots, neural models, synthetic datasets, background jobs, or runtime installations.",
+                    "Do not create plots, synthetic datasets, background jobs, or runtime installations.",
                 ]
             }
         impl_guideline = ['''
@@ -269,15 +248,10 @@ if old not in text:
 backend_path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 interpreter_path = Path(sys.argv[10])
-text = interpreter_path.read_text(encoding="utf-8")
-old = "        global_scope: dict = {}"
-new = '''        global_scope: dict = {
-            "__name__": "__main__",
-            "__file__": str(self.working_dir / self.agent_file_name),
-        }'''
-if old not in text:
-    raise SystemExit("AI-Scientist-v2 interpreter main-module insertion point not found")
-interpreter_path.write_text(text.replace(old, new, 1), encoding="utf-8")
+# Shared adapter (patch_ai_scientist_v2_common.py) already handles:
+# - interpreter global_scope (__name__, __file__)
+# Skip the inline patch to avoid conflict.
+interpreter_path.write_text(interpreter_path.read_text(encoding="utf-8"), encoding="utf-8")
 PY
 rm -f ai_scientist/ideas/psydefdetect_topic.json
 timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_IDEATION_TIMEOUT_SECONDS:-1800}s" \
@@ -285,7 +259,7 @@ timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_IDEATION_TIMEOUT_SECONDS:-1800}s" \
   --workshop-file ai_scientist/ideas/psydefdetect_topic.md \
   --model "$OPENAI_MODEL" \
   --max-num-generations 1 \
-  --num-reflections 4
+  --num-reflections 2
 test -s ai_scientist/ideas/psydefdetect_topic.json
 python3 - ai_scientist/ideas/psydefdetect_topic.json <<'PY'
 import json
@@ -327,21 +301,46 @@ for sentence in experiment_sentences:
                 found.append(term)
                 break
             start = sentence.find(term, start + len(term))
-experiment_numbers = set(re.findall(r"\bexperiment\s+([1-9][0-9]*)\b", experiment_scope))
-required_groups = (
-    ("tf-idf", "tfidf"),
-    ("word",),
-    ("character", "char"),
-    ("logistic",),
-    ("linearsvc", "linear svm", "sgdclassifier", "hinge"),
+experiment_tokens = re.findall(r"\bexperiment\s+([1-9][0-9]*|[a-z])\b", experiment_scope)
+experiment_numbers = set(experiment_tokens)
+numbered_items = set(
+    re.findall(r"(?m)^\s*([1-9][0-9]*)\s*[).:-]\s+", experiment_scope)
 )
-missing = [group for group in required_groups if not any(term in scope for term in group)]
-if found or missing or experiment_numbers != {"1", "2"}:
+inline_items = set(
+    re.findall(r"(?<![A-Za-z0-9])([1-9][0-9]*)\s*[).:-]\s+", experiment_scope)
+)
+structured_experiments = idea.get("Experiments")
+structured_two_experiments = (
+    isinstance(structured_experiments, list)
+    and len(structured_experiments) == 2
+)
+two_experiments_declared = (
+    len(experiment_numbers) == 2
+    or numbered_items == {"1", "2"}
+    or inline_items == {"1", "2"}
+    or structured_two_experiments
+)
+if found or not two_experiments_declared:
     raise SystemExit(
-        "AI-Scientist-v2 idea violates local two-experiment contract: "
-        f"prohibited={found}, missing={missing}, experiment_numbers={sorted(experiment_numbers)}"
+        "AI-Scientist-v2 idea violates method-free two-experiment contract: "
+        f"prohibited={found}, experiment_numbers={sorted(experiment_numbers)}"
     )
 print("AI_SCIENTIST_V2_IDEA_CONTRACT_OK")
+from pathlib import Path
+native_idea = {
+    "framework": "AI-Scientist-v2",
+    "source_artifact": "ai_scientist/ideas/psydefdetect_topic.json",
+    "hypothesis": idea.get("Short Hypothesis") or idea.get("Hypothesis") or idea.get("Abstract", ""),
+    "method_rationale": idea.get("Experiments", ""),
+    "expected_failure_modes": idea.get("Expected Failure Modes") or idea.get("Failure Modes") or "",
+    "comparison_logic": idea.get("Comparison") or idea.get("Experiments", ""),
+    "native_idea": idea,
+}
+Path("/workspace/research_idea.json").write_text(
+    json.dumps(native_idea, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
+print("AI_SCIENTIST_V2_RESEARCH_IDEA_LOCKED")
 PY
 python3 - bfts_config.yaml "$OPENAI_MODEL" <<'PY'
 from pathlib import Path

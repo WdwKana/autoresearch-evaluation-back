@@ -23,13 +23,19 @@ Run framework-native experimentation for PsyDefDetect rather than a single fast 
 - Treat macro-F1 over positive labels `1-8` as the primary score.
 
 ## Required research behavior
-- Run at least 2 materially different experiments.
-- Compare them and select one final approach.
+- Run exactly 2 materially different experiments selected by the framework itself.
+- Before the first experiment, write a framework-authored `research_idea.json` containing the
+  hypothesis, method rationale, expected failure modes, and comparison logic.
+- Compare the experiments using official local macro-F1 evidence and select one final approach.
 - Use the framework's own orchestration flow for execution and finalization as much as possible.
-- Record the experiment history in `experiment_trace.json`.
-- Score the final predictions with `automation/scripts/run_psydefdetect_local_score.py`.
-- Do not depend on downloading new Hugging Face models at runtime.
-- Prefer API-based or already-available local methods for the second experiment.
+- Record the experiment history and selected idea in `experiment_trace.json`.
+- Score every prediction artifact with `automation/scripts/run_psydefdetect_local_score.py`.
+- Use only already-installed libraries and resources; do not download, install, or call remote
+  services from experiment code.
+
+The host intentionally does not prescribe an algorithm, feature representation, architecture,
+hyperparameter, baseline, or experiment order. Choose methods that are feasible under the
+provided resource and dependency budget.
 
 ## Required outputs
 - `predictions.jsonl` or `submission.csv`
@@ -79,12 +85,10 @@ EXPERIMENT_REQUIREMENTS = """# PsyDefDetect Experiment Requirements
 - A scored final prediction artifact
 
 ## Network / model policy
-- Do not assume `huggingface.co` model downloads are available at runtime.
-- Do not block the run waiting on new model downloads.
-- Prefer one of:
-  - API-based classification or reranking using the configured model provider
-  - container-local libraries and already-installed resources
-  - a non-neural comparative method that is materially different from the baseline
+- Do not rely on downloading new Hugging Face models during runtime; model downloads and public
+  network access are unavailable assumptions.
+- Do not block the run waiting on downloads or remote requests.
+- Use only the installed dependency allowlist and the visible local dataset.
 
 ## Required trace file
 Write `/workspace/experiment_trace.json` with at least:
@@ -128,8 +132,9 @@ You must:
    - experiment_trace.json
    - final_report.md
 
-Using a single TF-IDF or single sklearn baseline and stopping immediately is insufficient.
-Do not rely on downloading new Hugging Face models during runtime; prefer API-based or already-available local methods for the second experiment.
+The host does not prescribe the methods. Select two materially different, executable conditions
+yourself, and do not stop after a single baseline. Do not rely on downloads, runtime installation,
+or remote experiment calls. Do not rely on downloading new Hugging Face models during runtime.
 Do not leave only per-experiment subfolders such as `exp*/` or `experiment_*/` without a framework-level final artifact set at `/workspace`.
 """
 
@@ -142,33 +147,48 @@ AUTORESEARCHCLAW_COLLECTION_GUIDANCE = """Keep the candidate set compact and dir
 AUTORESEARCHCLAW_SCREEN_GUIDANCE = """The supplied candidates are a compact, relevance-ranked PsyDefDetect projection produced inside AutoResearchClaw. Select 15 to 25 papers from that projection and return them in the required shortlist JSON object. Keep PsyDefDetect shared-task papers, psychological defense-mechanism work, and directly applicable psychotherapy or clinical-NLP classification methods. Do not reject a relevant paper merely because it addresses an adjacent clinical-NLP classification task. Return an empty shortlist only when none of the supplied candidates qualifies; never fabricate or introduce a paper that is absent from the supplied candidates.
 """
 
-AUTORESEARCHCLAW_EXPERIMENT_DESIGN_GUIDANCE = """PSYDEFDETECT FIXED EXPERIMENT CONTRACT
+AUTORESEARCHCLAW_EXPERIMENT_DESIGN_GUIDANCE = """PSYDEFDETECT METHOD-FREE EXPERIMENT CONTRACT
 
-Design exactly two materially different, directly executable conditions and no ablations:
-1. `word_tfidf_logistic_regression`: word-level TF-IDF with class-balanced LogisticRegression.
-2. `char_tfidf_linear_svc`: character-level TF-IDF with class-balanced LinearSVC.
+Design exactly two materially different, directly executable conditions and no ablations.
+Choose both method names, representations, model families, and configuration details yourself
+from the installed dependency allowlist. The host must not select or imply a baseline,
+algorithm family, feature representation, architecture, hyperparameter, or experiment order.
+The two conditions must be scientifically motivated and distinguish the hypothesis in the
+framework-authored `research_idea.json`.
 
 The dataset is `/data/psydefdetect/PsyDefConv.json`, a top-level JSON list. Each row has `id` (string), `dialogue_id` (string), `dialogue` (list of `{text, speaker}` objects), `current_text` (string), and `label` (integer 0-8). Load it with Python `json.load`, preserving each `row["id"]` exactly as a string including leading zeroes such as `"0001"`; do not use `pandas.read_json`, which may coerce those ids to integers. Join `/workspace/automation/psydefdetect_split.json` to rows by the unchanged `row["id"]`, using `train_record_ids` and `eval_record_ids`. Do not invent CSV files, positional indices, another split, distant supervision, synthetic labels, a validation subset, or a different class count.
 
-The primary metric is macro-F1 over positive labels 1-8, direction `maximize`. The plan must explicitly state 9 classes (labels 0-8), the two artifact ids above, exactly two total runs, and the fixed split and filenames. `compute_budget.conditions` must contain exactly those two conditions. Keep `ablations` empty. Do not request repeated seeds, grid search, significance tests, bootstrap confidence intervals, SciPy, statsmodels, Torch, pretrained models, downloads, or remote calls from experiment code. Return only the framework's normal experiment-plan YAML.
+The primary metric is macro-F1 over positive labels 1-8, direction `maximize`. The plan must
+explicitly state 9 classes (labels 0-8), exactly two total runs, and the fixed split and
+filenames. `compute_budget.conditions` must contain the two framework-selected condition names.
+Keep `ablations` empty. Do not request repeated seeds, grid search, significance tests,
+bootstrap confidence intervals, downloads, package installation, or remote calls from
+experiment code. Return only the framework's normal experiment-plan YAML.
 """
 
-AUTORESEARCHCLAW_CODE_GENERATION_GUIDANCE = """PSYDEFDETECT COMPACT CODE CONTRACT
+AUTORESEARCHCLAW_CODE_GENERATION_GUIDANCE = """PSYDEFDETECT METHOD-FREE CODE CONTRACT
 
-Implement only the two conditions in the validated experiment plan: word TF-IDF plus class-balanced LogisticRegression, and character TF-IDF plus class-balanced LinearSVC. Use the exact PsyDefConv JSON-list schema and fixed id-based split described in the plan. Read `PsyDefConv.json` with `json.load`, never `pandas.read_json`, and preserve every string id byte-for-byte including leading zeroes before joining the split. Use `current_text` as required input text; dialogue context may be joined from `turn["text"]` but must not replace `current_text`.
+Implement exactly the two conditions in the framework's validated experiment plan; do not
+replace them with a host-supplied method. Use the exact PsyDefConv JSON-list schema and fixed
+id-based split described in the plan. Read `PsyDefConv.json` with `json.load`, never
+`pandas.read_json`, and preserve every string id byte-for-byte including leading zeroes before
+joining the split. Use `current_text` as required input text; dialogue context may be joined
+from `turn["text"]` but must not replace `current_text`.
 
-Keep the project compact: at most three Python files with one canonical definition for each helper. Use only Python standard library, numpy, pandas, and scikit-learn. No generated Python file may import or call `runpy`. Do not directly import scipy, statsmodels, torch, transformers, openai, or optional statistical packages. Do not install or download anything and do not make remote calls from experiment code. Use sklearn Pipelines so each vectorizer is fitted only on raw training text. Initialize every local variable before conditional use, include a real `if __name__ == "__main__":` entrypoint, and run both conditions synchronously exactly once.
+Keep the project compact: at most three Python files with one canonical definition for each helper. Use only Python standard library, numpy, pandas, and scikit-learn. No generated Python file may import or call `runpy`. Do not install or download anything and do not make remote calls from experiment code. Initialize every local variable before conditional use, include a real `if __name__ == "__main__":` entrypoint, and run the two framework-selected conditions synchronously exactly once.
 
 Score each condition by invoking the mounted `/workspace/automation/scripts/run_psydefdetect_local_score.py` through `subprocess.run(..., check=True)` with all four CLI arguments: `--dataset-root /data/psydefdetect`, `--split-manifest /workspace/automation/psydefdetect_split.json`, `--predictions <condition prediction file>`, and `--output-score <condition score file>`. If the official scorer exits unsuccessfully, let `subprocess.CalledProcessError` propagate and abort the experiment immediately; do not catch it and continue. Never invoke the scorer in-process through `runpy`, generate or import another file named `run_psydefdetect_local_score.py`, write a null/placeholder score, or locally reimplement the scorer. You must never use a fallback summary. Select the higher observed `psydefdetect_score` from the two official score JSON files.
 
 Before the native pipeline exits, the framework must deliver root-level `/workspace/predictions.jsonl`, `/workspace/score.json`, `/workspace/experiment_trace.json`, and `/workspace/final_report.md`. Copy the selected official score JSON to `/workspace/score.json`; it must retain numeric `psydefdetect_score` and `score_key: "psydefdetect_score"`. The trace must be one top-level JSON object containing exactly two `experiments`, each with a unique `experiment_id`, numeric `psydefdetect_score`, prediction/score paths, and the complete official `scorer_command`; `selected_experiment_id` must identify the higher-scoring record. It must also set `framework_native_execution: true`, `consumed_topic_input: true`, `workspace_trace_root: "/workspace"`, `framework_internal_model` from `OPENAI_MODEL`, and `framework_internal_api_base_url` from `OPENAI_BASE_URL`. Do not fabricate metrics or copy values from prompts.
+IMPLEMENTATION CHECKLIST: `main.py` must never contain `None` for any score. After each
+condition prediction is written, call the mounted official scorer with
+`subprocess.run([...], check=True)`, immediately load its JSON with `json.load`, and use that
+numeric value to build the experiment trace. Write final trace and score only after both calls
+succeed. Keep the implementation short and executable; do not add prose about forbidden paths.
 """
 
 AUTORESEARCHCLAW_PSYDEF_BENCHMARK_KNOWLEDGE = """domains:
   psydefdetect:
-    required_baselines:
-      - Word TF-IDF Logistic Regression
-      - Character TF-IDF Linear SVM
     keywords:
       - psydefdetect
       - psychological defense mechanism
@@ -182,15 +202,7 @@ AUTORESEARCHCLAW_PSYDEF_BENCHMARK_KNOWLEDGE = """domains:
         metrics: [macro_f1_positive_1_8]
         api: "json.load(open('/data/psydefdetect/PsyDefConv.json', encoding='utf-8'))"
         note: "Use the fixed split at /workspace/automation/psydefdetect_split.json and the local scorer."
-    common_baselines:
-      - name: Word TF-IDF Logistic Regression
-        source: "sklearn word n-gram TfidfVectorizer plus class-balanced LogisticRegression"
-        paper: "Local reproducible sparse text baseline"
-        pip: []
-      - name: Character TF-IDF Linear SVM
-        source: "sklearn character n-gram TfidfVectorizer plus class-balanced LinearSVC"
-        paper: "Local complementary sparse text baseline"
-        pip: []
+    method_note: "The benchmark host does not prescribe a method. The framework must choose and justify two materially different methods from the installed dependencies."
 """
 
 AI_SCIENTIST_LITERATURE_CATALOG = """# PsyDefDetect Offline Literature Candidate Context
@@ -200,23 +212,118 @@ This is a framework-visible input projection for environments where Semantic Sch
 ## Benchmark context
 - PsyDefDetect is a nine-class psychological defense mechanism classification task over supportive-conversation dialogue context.
 - The authoritative task definition, labels, split, and metric are the mounted local contract and dataset.
-- Relevant methodological areas include dialogue-level text classification, class-imbalanced learning, prompt-based classification, contextual representation, and confusion analysis for semantically adjacent labels.
+- Relevant scientific questions include how to represent dialogue context, how to handle class
+  imbalance, and how to distinguish semantically adjacent labels. These are research questions,
+  not prescribed implementation methods.
 
-## Candidate implementation families
-- Sparse lexical and character features with calibrated linear classifiers provide a reproducible local baseline.
-- Context-aware prompting can compare the target utterance with its preceding supportive-conversation turns.
-- Few-shot prompting, label-description prompting, reranking, and self-consistency are possible API-based comparisons when calls are batched.
-- Any proposal must remain feasible with installed libraries and the injected model provider; do not require model downloads.
+## Method-choice policy
+The benchmark host does not choose an implementation family. The framework must formulate
+its own feasible proposal using only installed resources and the visible task contract.
 
 The framework should use this candidate context to formulate and select its own proposal.
 """
+
+AI_RESEARCHER_REFERENCE_CANDIDATES = '''{
+  "task": "PsyDefDetect psychological defense mechanism classification",
+  "selection_policy": "The Prepare Agent must compare this compact catalog, select at least five useful references, and return its own selection through case_resolved. Do not clone repositories or scan unrelated workspace files during catalog selection. This file is an input candidate pool, not a host selection or experiment result.",
+  "snapshot_path": "/workspace/benchmark/process/dataset_candidate/psydefdetect/reference_candidates.json",
+  "repositories": [
+    {
+      "name": "huggingface/transformers",
+      "url": "https://github.com/huggingface/transformers",
+      "language": "Python",
+      "relevance": "Transformer text classification models and training utilities"
+    },
+    {
+      "name": "UKPLab/sentence-transformers",
+      "url": "https://github.com/UKPLab/sentence-transformers",
+      "language": "Python",
+      "relevance": "Sentence and dialogue representation learning"
+    },
+    {
+      "name": "huggingface/setfit",
+      "url": "https://github.com/huggingface/setfit",
+      "language": "Python",
+      "relevance": "Efficient few-shot text classification"
+    },
+    {
+      "name": "scikit-learn/scikit-learn",
+      "url": "https://github.com/scikit-learn/scikit-learn",
+      "language": "Python",
+      "relevance": "Reproducible sparse text classification baselines"
+    },
+    {
+      "name": "cleanlab/cleanlab",
+      "url": "https://github.com/cleanlab/cleanlab",
+      "language": "Python",
+      "relevance": "Classification diagnostics and label-quality analysis"
+    },
+    {
+      "name": "thunlp/OpenPrompt",
+      "url": "https://github.com/thunlp/OpenPrompt",
+      "language": "Python",
+      "relevance": "Prompt-based text classification"
+    },
+    {
+      "name": "allenai/allennlp",
+      "url": "https://github.com/allenai/allennlp",
+      "language": "Python",
+      "relevance": "NLP classification components and experiment patterns"
+    },
+    {
+      "name": "explosion/spaCy",
+      "url": "https://github.com/explosion/spaCy",
+      "language": "Python",
+      "relevance": "Production NLP pipelines and text categorization"
+    }
+  ]
+}
+'''
+
+AI_RESEARCHER_REFERENCE_TEX = '''\\documentclass{article}
+\\title{PsyDefDetect Local Concept Reference}
+\\begin{document}
+\\maketitle
+
+\\section{Scope}
+This is a benchmark-provided conceptual reference, not a claim of an external
+publication. The authoritative inputs are the mounted PsyDefDetect dataset and
+runtime contract. The task is dialogue-level classification of a target
+help-seeker utterance using its preceding supportive-conversation context.
+
+\\section{Labels and metric}
+The nine labels are No Defense, Action Defenses, Major Image-Distorting,
+Disavowal, Minor Image-Distorting, Neurotic, Obsessional, High-Adaptive, and
+Needs More Information. The primary metric is macro-F1 over positive classes
+1 through 8; class 0 is excluded from that macro average.
+
+\\section{Experimental considerations}
+Useful baselines include sparse lexical features with a linear classifier and
+context-aware prompting through the injected evaluation model. Dialogue
+context, class imbalance, semantically adjacent defense categories, and output
+schema consistency are central error sources. Experiments must use the fixed
+split and official local scorer. Compare two to four materially different
+experiments, select using recorded score evidence, and immediately deliver the
+selected prediction, score, trace, and report at the workspace root.
+
+\\section{Integrity constraints}
+Do not download large model assets or substitute another dataset. Any internal
+LLM experiment must use OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL from
+the injected environment. The framework must perform planning, execution,
+selection, and final delivery itself.
+
+\\end{document}
+'''
 
 
 def render_framework_brief(dataset_root: Path, contract_file: Path) -> str:
     return f"""# PsyDefDetect Native Evaluation Brief
 
 ## Objective
-Use the framework's own orchestration to plan, implement, execute, compare, and select 2-4 materially different PsyDefDetect experiments.
+Use the framework's own orchestration to formulate an idea, implement, execute, compare, and
+select exactly 2 materially different PsyDefDetect experiments. The framework owns the method
+choice; the host does not prescribe an algorithm, feature representation, architecture,
+hyperparameter, baseline, or experiment order.
 
 ## Inputs
 - dataset root inside the runtime: `/data/psydefdetect`
@@ -226,12 +333,13 @@ Use the framework's own orchestration to plan, implement, execute, compare, and 
 - official local scorer: `automation/scripts/run_psydefdetect_local_score.py`
 
 ## Required framework-owned handoff
+- `/workspace/research_idea.json` (written before the first experiment)
 - `/workspace/predictions.jsonl` or `/workspace/submission.csv`
 - `/workspace/score.json`
 - `/workspace/experiment_trace.json`
 - `/workspace/final_report.md`
 
-The framework must create and promote these artifacts itself. The host will validate them but will not generate, modify, or backfill them. The trace must record the effective model and API base URL, 2-4 experiments, the selected experiment, topic-input consumption, and framework-native execution.
+The framework must create and promote these artifacts itself. The host will validate them but will not generate, modify, or backfill them. The trace must record the effective model and API base URL, exactly 2 experiments, the selected experiment, topic-input consumption, and framework-native execution. Each experiment must be traceable to the pre-experiment idea.
 """
 
 
@@ -240,8 +348,8 @@ def render_ai_researcher_metaprompt() -> str:
 DATASET = """
 Use only the real PsyDefDetect dataset mounted at /data/psydefdetect and exposed in the framework workplace. Use automation/psydefdetect_split.json without changing the split.
 """
-BASELINE = "Implement and score one reproducible local classification baseline on the fixed split using only libraries already installed in the runtime. Do not use or download pretrained Hugging Face models."
-COMPARISON = "Run exactly one second materially different local experiment with installed libraries, compare official local macro-F1 evidence, and immediately select the better valid result. Experiment code must not make remote API calls."
+BASELINE = "Choose and score the first reproducible local classification experiment yourself on the fixed split using only libraries already installed in the runtime. The host does not prescribe its method."
+COMPARISON = "Design and run exactly one second materially different experiment yourself, compare official local macro-F1 evidence, and immediately select the better valid result. Experiment code must not make remote API calls."
 EVALUATION = "Use automation/scripts/run_psydefdetect_local_score.py. The framework must write predictions.jsonl or submission.csv, score.json, experiment_trace.json, and final_report.md at the workplace root so they map to /workspace in the evaluation handoff."
 REF = "Do not use another topic, prior outputs, fabricated metrics, host-authored artifacts, runtime package installation, remote calls from experiment code, background jobs, or sleep/poll loops. The framework agent itself uses the injected evaluation provider for planning and code generation."
 '''
@@ -274,10 +382,10 @@ def build_ai_researcher_payload() -> dict[str, object]:
 
 def render_ai_scientist_topic(primary_model: str, provider_base_url: str) -> str:
     return f"""# Title
-Local sparse classifiers for PsyDefDetect
+Framework-native research on PsyDefDetect
 
 # TL;DR
-Run exactly two materially different local sparse classifiers on the fixed dialogue-level split: word TF-IDF with class-balanced LogisticRegression, and character TF-IDF with class-balanced LinearSVC or SGDClassifier(loss="hinge"). Compare official macro-F1 over positive labels 1-8 and select the higher observed score.
+Formulate and run exactly two materially different experiments of your own design on the fixed dialogue-level split. Compare official macro-F1 over positive labels 1-8 and select the higher observed score. Do not treat any host text as a prescribed method.
 
 # Dataset
 Use `/data/psydefdetect/PsyDefConv.json` and `automation/psydefdetect_split.json` only.
@@ -291,8 +399,8 @@ Use `/data/psydefdetect/PsyDefConv.json` and `automation/psydefdetect_split.json
 # Mandatory implementation constraints
 - Use only Python's standard library plus installed numpy, pandas, scipy, and scikit-learn.
 - Do not import or use sentence_transformers, transformers, torch, Hugging Face, pretrained models, embeddings, external datasets, downloads, package installation, or remote calls from experiment code.
-- Do not propose prompt-based or API classification experiments. The injected `{primary_model}` provider is used by AI-Scientist-v2 for planning and code generation only.
-- The generated program must execute both experiments synchronously, invoke `automation/scripts/run_psydefdetect_local_score.py` with its complete CLI arguments, and select the higher observed score.
+- The injected `{primary_model}` provider is used by AI-Scientist-v2 for planning and code generation only; experiment code must follow the network policy.
+- The generated program must execute both framework-designed experiments synchronously, invoke `automation/scripts/run_psydefdetect_local_score.py` with its complete CLI arguments, and select the higher observed score.
 - The two experiments must have unique string ids. `selected_experiment_id` must identify the higher-scoring experiment.
 - Before the native BFTS workflow exits, the generated program itself must write `/workspace/predictions.jsonl`, `/workspace/score.json`, `/workspace/experiment_trace.json`, and `/workspace/final_report.md`.
 - `experiment_trace.json` must record exactly two experiments, `framework_native_execution: true`, `consumed_topic_input: true`, `workspace_trace_root: "/workspace"`, `framework_internal_model: "{primary_model}"`, and `framework_internal_api_base_url: "{provider_base_url}"`.
@@ -300,13 +408,32 @@ Use `/data/psydefdetect/PsyDefConv.json` and `automation/psydefdetect_split.json
 
 
 def build_autoresearchclaw_config(provider_base_url: str, primary_model: str) -> str:
+    _is_kimi = primary_model.startswith("kimi-")
+    if _is_kimi:
+        llm_block = f"""llm:
+  provider: "openai-compatible"
+  primary_model: "{primary_model}"
+  fallback_models: []
+  base_url: "{provider_base_url}"
+  api_key_env: "OPENAI_API_KEY"
+"""
+    else:
+        llm_block = f"""llm:
+  provider: "acp"
+  primary_model: "{primary_model}"
+  fallback_models: []
+  acp:
+    agent: "codex"
+    cwd: "/workspace"
+    timeout_sec: 3600
+"""
     return f"""project:
   name: "psydefdetect-native"
   mode: "full-auto"
   output_dir: "./artifacts/psydefdetect-${{REAL_EVAL_RUN_ID}}"
 
 research:
-  topic: "NLP classification of psychological defense mechanisms in supportive dialogue"
+  topic: "NLP classification of psychological defense mechanisms in supportive dialogue. The dataset has a fixed validation split. Never compute val and test metrics on the same data."
   domains:
     - "clinical natural language processing"
     - "computational psychology"
@@ -329,16 +456,10 @@ assets:
   dataset_root: "/data/psydefdetect"
   contract_file: "automation/psydefdetect_contract.md"
 
-llm:
-  provider: "openai-compatible"
-  primary_model: "{primary_model}"
-  fallback_models: []
-  base_url: "{provider_base_url}"
-  api_key_env: "OPENAI_API_KEY"
-
+{llm_block}
 experiment:
   mode: "sandbox"
-  time_budget_sec: 1800
+  time_budget_sec: 28800
   max_iterations: 2
   metric_key: "macro_f1_positive"
   metric_direction: "maximize"
@@ -353,7 +474,7 @@ experiment:
     hard_validation: true
     hard_validation_max_repairs: 8
     exec_fix_max_iterations: 0
-    exec_fix_timeout_sec: 90
+    exec_fix_timeout_sec: 600
     review_max_rounds: 0
   sandbox:
     python_path: "/usr/bin/python3"
@@ -435,6 +556,8 @@ def main() -> int:
     framework_brief = render_framework_brief(dataset_root, contract_file)
     framework_files = {
         "AI-Researcher/benchmark/process/dataset_candidate/psydefdetect/metaprompt.py": render_ai_researcher_metaprompt(),
+        "AI-Researcher/benchmark/process/dataset_candidate/psydefdetect/reference_candidates.json": AI_RESEARCHER_REFERENCE_CANDIDATES,
+        "AI-Researcher/benchmark/process/dataset_candidate/psydefdetect/defense_mechanism_classification_in_supportive_conversations.tex": AI_RESEARCHER_REFERENCE_TEX,
         "AI-Scientist-v2/ai_scientist/ideas/psydefdetect_topic.md": render_ai_scientist_topic(
             args.primary_model, args.provider_base_url
         ),

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("RESEARCHCLAWEVAL_ROOT", str(Path(__file__).absolute().parents[2]))).expanduser()
 REGISTRY = ROOT / "real_eval" / "registry"
 
 
@@ -26,7 +27,11 @@ def config_for(topic_id: str, mode: str) -> dict:
     topics, frameworks, runs = load_registry()
     if topic_id not in topics:
         raise SystemExit(f"unknown topic: {topic_id}")
-    if mode not in topics[topic_id]["supported_modes"]:
+    topic = topics[topic_id]
+    if topic.get("status") in {"blocked", "unsupported"}:
+        reason = topic.get("blocked_reason", "no dispatch reason recorded")
+        raise SystemExit(f"topic {topic_id} is {topic['status']}: {reason}")
+    if mode not in topic["supported_modes"]:
         raise SystemExit(f"topic {topic_id} does not support mode: {mode}")
 
     rows = []
@@ -47,6 +52,18 @@ def config_for(topic_id: str, mode: str) -> dict:
         rows.append(row)
     if not rows:
         raise SystemExit(f"no run rows for topic={topic_id} mode={mode}")
+    if topic_id == "tdc_admet_tox":
+        payload = {
+            "topic_id": "tdc_admet_tox",
+            "evaluation_variant": "gpt",
+        }
+        if mode == "fullrun":
+            payload["comparison_mode"] = "native_framework_orchestration"
+        payload["model"] = "gpt-5.4"
+        if mode == "smoke":
+            payload["mode"] = "smoke"
+        payload["frameworks"] = rows
+        return payload
     return {"frameworks": rows}
 
 

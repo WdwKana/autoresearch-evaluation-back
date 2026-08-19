@@ -19,7 +19,7 @@ EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
 export FRAMEWORK_RUNTIME_IMAGE="${AI_RESEARCHER_RUNTIME_IMAGE:-ai-researcher:runtime-ready}"
-export FRAMEWORK_DISABLE_GPU="0"
+export FRAMEWORK_DISABLE_GPU="1"
 export FRAMEWORK_NATIVE_ENTRYPOINT="research_agent/run_infer_idea.py"
 export FRAMEWORK_PROVIDER_INJECTION="COMPLETION_MODEL/CHEEP_MODEL/API_BASE_URL from the injected evaluation provider environment"
 export FRAMEWORK_NATIVE_LOG_MARKER="AI_RESEARCHER_NATIVE_INFER_IDEA"
@@ -35,7 +35,7 @@ CHEEP_MODEL=$AI_RESEARCHER_CHEAP_MODEL
 -e
 BASE_IMAGES=${AI_RESEARCHER_EXEC_RUNTIME_IMAGE:-ai-researcher-exec:runtime-ready}
 -e
-GPUS=device=1
+GPUS=
 -e
 PYTHONPATH=/workspace
 -e
@@ -354,9 +354,9 @@ new = '''    def instructions(context_variables):
         return f"""\\
 You are AI-Researcher's Machine Learning Agent executing the fixed PsyDefDetect benchmark in `/{working_dir}`.
 
-Act on the supplied implementation task immediately. Do not repeatedly list or inspect the project directory. Use the framework tools to create the experiment code, then execute it synchronously. Use only the mounted PsyDefDetect dataset and fixed split. Run exactly two materially different experiments, score both with the supplied local scorer, select the better valid result, and promote predictions.jsonl or submission.csv, score.json, experiment_trace.json, and final_report.md to `/{working_dir}`.
+Act on the supplied implementation task immediately. Do not repeatedly list or inspect the project directory. Use the framework tools to create the experiment code, then execute it synchronously. Use only the mounted PsyDefDetect dataset and fixed split. Select exactly two materially different experiments yourself, score both with the supplied local scorer, select the better valid result, and promote predictions.jsonl or submission.csv, score.json, experiment_trace.json, and final_report.md to `/{working_dir}`. Write a framework-authored research_idea.json before the first experiment. The host does not prescribe an algorithm, feature representation, architecture, hyperparameter, baseline, or experiment order.
 
-Use only installed local packages. Experiment code must not import requests/openai or make remote API calls; the outer AI-Researcher agent already uses the injected evaluation provider for planning and code generation. Do not download models, install packages, start background jobs, or poll. Invoke `run_psydefdetect_local_score.py` through execute_command with all required CLI arguments; run_python cannot pass those scorer arguments and must not be used for the scorer. The trace must contain exactly two experiment objects whose string `id` fields are exactly `exp1` and `exp2`; `selected_experiment_id` must equal whichever of those two ids has the higher observed score. Also record framework_native_execution=true, consumed_topic_input=true, workspace_trace_root="/workspace", framework_internal_model="{os.getenv('OPENAI_MODEL', '')}", and framework_internal_api_base_url="{os.getenv('OPENAI_BASE_URL', '')}". After both scores exist, do not inspect the workspace again. Call write_psydefdetect_handoff with your selected id and your complete score JSON, trace JSON, and final report text; then immediately call complete_psydefdetect with a concise evidence summary. Do not inspect samples or start another experiment after the handoff exists.
+Use only installed local packages. Experiment code must not import requests/openai or make remote API calls; the outer AI-Researcher agent already uses the injected evaluation provider for planning and code generation. Do not download models, install packages, start background jobs, or poll. Invoke `run_psydefdetect_local_score.py` through execute_command with all required CLI arguments; run_python cannot pass those scorer arguments and must not be used for the scorer. The trace must contain exactly two experiment objects whose string `id` fields are exactly `exp1` and `exp2`; `selected_experiment_id` must equal whichever of those two ids has the higher observed score. At the trace TOP LEVEL, as siblings of experiments, record framework_native_execution=true, consumed_topic_input=true, workspace_trace_root="/workspace", framework_internal_model="{os.getenv('OPENAI_MODEL', '')}", and framework_internal_api_base_url="{os.getenv('OPENAI_BASE_URL', '')}". score.json must contain only psydefdetect_score and score_key; do not retype accuracy or other metrics. After both scores exist, do not inspect the workspace again. Call write_psydefdetect_handoff with your selected id and your complete score JSON, trace JSON, and final report text; then immediately call complete_psydefdetect with a concise evidence summary. Do not inspect samples or start another experiment after the handoff exists.
 """
       return f"""\\
 You are a machine learning engineer tasked with implementing innovative ML projects.'''
@@ -370,6 +370,8 @@ old = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
 new = '''    tools = [gen_code_tree_structure, execute_command, read_file, create_file, write_file, list_files, create_directory, run_python, case_resolved, case_not_resolved, terminal_page_down, terminal_page_up, terminal_page_to]
     tools = [with_env(code_env)(tool) if 'env' in signature(tool).parameters else tool for tool in tools]
     if os.getenv("AI_RESEARCHER_PSYDEFDETECT_COMPACT_EXECUTION") == "1":
+        tools = [gen_code_tree_structure, execute_command, create_file, write_file, create_directory, run_python, case_resolved, case_not_resolved]
+        tools = [with_env(code_env)(tool) if 'env' in signature(tool).parameters else tool for tool in tools]
         required_artifacts = tuple(
             Path("/workspace") / name
             for name in (
@@ -410,14 +412,29 @@ new = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
             evidence = experiment_evidence()
             if evidence is None:
                 return "Run and officially score exactly two local experiments before completing."
+            trace_shape = {
+                "framework_native_execution": True,
+                "consumed_topic_input": True,
+                "workspace_trace_root": "/workspace",
+                "framework_internal_model": os.getenv("OPENAI_MODEL", ""),
+                "framework_internal_api_base_url": os.getenv("OPENAI_BASE_URL", ""),
+                "selected_experiment_id": evidence["best_id"],
+                "experiments": [
+                    {"id": "exp1", "score": evidence["scores"][0]},
+                    {"id": "exp2", "score": evidence["scores"][1]},
+                ],
+            }
             return (
                 f"Both experiments are scored: exp1={evidence['scores'][0]:.12g}, "
                 f"exp2={evidence['scores'][1]:.12g}; {evidence['best_id']} is the required selection. "
                 "Do not call read_file, list_files, execute_command, or run_python again. Call "
                 "write_psydefdetect_handoff now with selected_experiment_id, a score_json object string "
-                "containing psydefdetect_score and score_key, an experiment_trace_json object string "
-                "containing both exp1/exp2 scores and all required native/provider fields, and your "
-                "final_report Markdown."
+                "containing ONLY psydefdetect_score and score_key, plus your final_report Markdown. "
+                "The experiment_trace_json MUST use this TOP-LEVEL shape (fill in the two observed "
+                f"scores exactly): {json.dumps(trace_shape, separators=(',', ':'))}. "
+                "The native/provider keys must be siblings of experiments, never only inside each "
+                "experiment. Report only the two official macro-F1 scores; do not invent accuracy or "
+                "other metrics."
             )
 
         def handoff_status():
@@ -448,6 +465,24 @@ new = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
             if isinstance(selected_score, dict):
                 selected_score = selected_score.get("psydefdetect_score")
             root_score_value = root_score.get("psydefdetect_score") if isinstance(root_score, dict) else None
+            required_top_level = {
+                "framework_native_execution": True,
+                "consumed_topic_input": True,
+                "workspace_trace_root": "/workspace",
+                "framework_internal_model": os.getenv("OPENAI_MODEL"),
+                "framework_internal_api_base_url": os.getenv("OPENAI_BASE_URL"),
+            }
+            missing_top_level = [
+                key for key, expected in required_top_level.items()
+                if trace.get(key) != expected
+            ]
+            unverified_experiment_metrics = [
+                key
+                for item in experiments or []
+                if isinstance(item, dict)
+                for key in ("accuracy", "macro_f1_positive_1_8", "macro_f1_all_0_8")
+                if key in item
+            ]
             valid = (
                 evidence is not None
                 and isinstance(experiments, list)
@@ -460,14 +495,35 @@ new = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
                 and abs(float(selected_score) - evidence["best_score"]) < 1e-12
                 and isinstance(root_score_value, (int, float))
                 and abs(float(root_score_value) - evidence["best_score"]) < 1e-12
+                and set(root_score) == {"psydefdetect_score", "score_key"}
+                and root_score.get("score_key") == "psydefdetect_score"
                 and required_artifacts[0].read_bytes() == evidence["best_predictions"].read_bytes()
-                and trace.get("framework_native_execution") is True
-                and trace.get("consumed_topic_input") is True
-                and trace.get("workspace_trace_root") == "/workspace"
-                and trace.get("framework_internal_model") == os.getenv("OPENAI_MODEL")
-                and trace.get("framework_internal_api_base_url") == os.getenv("OPENAI_BASE_URL")
+                and not missing_top_level
+                and not unverified_experiment_metrics
             )
             if not valid:
+                if missing_top_level:
+                    return (
+                        "experiment_trace.json must place these keys at the TOP LEVEL as siblings "
+                        "of experiments and selected_experiment_id: "
+                        + ", ".join(missing_top_level)
+                        + ". Call write_file on /workspace/experiment_trace.json now; do not put "
+                        "these fields only inside experiment objects."
+                    )
+                if (
+                    not isinstance(root_score, dict)
+                    or set(root_score) != {"psydefdetect_score", "score_key"}
+                ):
+                    return (
+                        "score.json must contain ONLY psydefdetect_score and score_key from the "
+                        "official selected score. Remove retyped accuracy or other metrics with write_file."
+                    )
+                if unverified_experiment_metrics:
+                    return (
+                        "experiment_trace.json contains retyped non-primary metrics that are not "
+                        "accepted evidence. Keep each experiment's id, score, description/config/path "
+                        "evidence only, then rewrite the trace."
+                    )
                 return (
                     "The root handoff fails the required contract: select the higher observed score, make score.json and "
                     "predictions.jsonl match that experiment, record two unique ids/scores, and preserve native/topic/model/base-url fields."
@@ -501,10 +557,11 @@ new = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
                 not isinstance(root_score, (int, float))
                 or abs(float(root_score) - evidence["best_score"]) >= 1e-12
                 or score_payload.get("score_key") != "psydefdetect_score"
+                or set(score_payload) != {"psydefdetect_score", "score_key"}
             ):
                 return (
-                    "score_json must preserve the selected official psydefdetect_score and "
-                    'score_key="psydefdetect_score".'
+                    "score_json must contain ONLY the selected official psydefdetect_score and "
+                    'score_key="psydefdetect_score"; do not retype other metrics.'
                 )
             experiments = trace_payload.get("experiments")
             if not isinstance(experiments, list) or len(experiments) != 2:
@@ -538,6 +595,15 @@ new = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
                 and trace_payload.get("framework_internal_model") == os.getenv("OPENAI_MODEL")
                 and trace_payload.get("framework_internal_api_base_url")
                 == os.getenv("OPENAI_BASE_URL")
+                and not any(
+                    key in item
+                    for item in experiments
+                    for key in (
+                        "accuracy",
+                        "macro_f1_positive_1_8",
+                        "macro_f1_all_0_8",
+                    )
+                )
             )
             if not trace_valid:
                 return (
@@ -550,9 +616,13 @@ new = '''    tools = [gen_code_tree_structure, execute_command, read_file, creat
                 or "exp1" not in report_text
                 or "exp2" not in report_text
                 or evidence["best_id"] not in report_text
+                or not any(
+                    marker in report_text.lower()
+                    for marker in ("psydefdetect", "defense mechanism")
+                )
             ):
                 return (
-                    "final_report must be substantive and discuss exp1, exp2, and the selected experiment."
+                    "final_report must be substantive, on-topic, and discuss exp1, exp2, and the selected experiment."
                 )
             required_artifacts[0].write_bytes(evidence["best_predictions"].read_bytes())
             required_artifacts[1].write_text(score_json.strip() + "\\n", encoding="utf-8")
@@ -661,7 +731,7 @@ You are an `Idea Generation Agent` specialized in analyzing academic papers loca
 new = '''    def instructions(context_variables):
         if os.getenv("AI_RESEARCHER_PSYDEFDETECT_COMPACT_SURVEY") == "1":
             return """\\
-You are AI-Researcher's Idea Generation Agent for the fixed PsyDefDetect benchmark. The user message already contains the complete conceptual reference and task contract. Do not browse files or call navigation tools. Produce one concise, feasible idea based on exactly two local numpy/pandas/scikit-learn experiments: a word-level TF-IDF linear baseline and a materially different character-level TF-IDF linear baseline. Explain the comparison and selection criterion, then return the idea directly in this turn.
+You are AI-Researcher's Idea Generation Agent for the fixed PsyDefDetect benchmark. The user message already contains the complete conceptual reference and task contract. Do not browse files or call navigation tools. Produce one concise, feasible research idea and choose exactly two materially different experiments from the installed local resources. Explain the hypothesis, method rationale, failure modes, comparison, and selection criterion, then return the idea directly in this turn. Do not copy a host-prescribed algorithm.
 """
         return f"""\\
 You are an `Idea Generation Agent` specialized in analyzing academic papers located in `{file_env.docker_workplace}/papers/` and generating innovative ideas.'''
@@ -696,7 +766,7 @@ You are a `Code Survey Agent` specialized in analyzing code implementations of i
 new = '''    def instructions(context_variables):
         if os.getenv("AI_RESEARCHER_PSYDEFDETECT_COMPACT_SURVEY") == "1":
             return """\\
-You are AI-Researcher's Code Survey Agent for the fixed PsyDefDetect benchmark. Do not inspect directories or external codebases. Based on the idea supplied in the user message, return a concise implementation report for exactly two installed-library local experiments: word TF-IDF plus logistic regression and character TF-IDF plus a linear SVM. Include fixed-split scoring, evidence-based selection, and root-level artifact delivery requirements. Return the report directly in this turn.
+You are AI-Researcher's Code Survey Agent for the fixed PsyDefDetect benchmark. Do not inspect directories or external codebases. Based on the framework-authored idea supplied in the user message, return a concise implementation report for exactly two installed-library local experiments chosen by the framework. Include fixed-split scoring, evidence-based selection, research_idea.json-before-execution, and root-level artifact delivery requirements. Return the report directly in this turn.
 """
         return f"""\\
 You are a `Code Survey Agent` specialized in analyzing code implementations of innovative ideas.'''
@@ -789,7 +859,7 @@ new = '''        if category == "psydefdetect":
             ml_dev_query = f"""\\
 Implement and execute PsyDefDetect now in /{workplace_name}. Do not begin with directory listing.
 
-Use /{workplace_name}/project/data/psydefdetect, automation/psydefdetect_split.json, and automation/scripts/run_psydefdetect_local_score.py. Design exactly two materially different local experiments with installed numpy/pandas/scikit-learn components. Experiment code must not make remote calls. Run and score both experiments, select by observed macro-F1, and immediately write the complete framework-owned handoff at /{workplace_name}: predictions.jsonl or submission.csv, score.json, experiment_trace.json, and final_report.md. The trace must use exactly `exp1` and `exp2` as its two experiment ids and set string `selected_experiment_id` to the higher-scoring id. Do not install packages, download models, use background jobs, or start a third experiment. After both official score files exist, call write_psydefdetect_handoff directly instead of inspecting files, then call complete_psydefdetect with the two observed scores and selected id.
+Use /{workplace_name}/project/data/psydefdetect, automation/psydefdetect_split.json, and automation/scripts/run_psydefdetect_local_score.py. Choose exactly two materially different local experiments yourself using installed resources and lock their rationale in research_idea.json before execution. Experiment code must not make remote calls. Run and score both experiments, select by observed macro-F1, and immediately write the complete framework-owned handoff at /{workplace_name}: predictions.jsonl or submission.csv, score.json, experiment_trace.json, and final_report.md. The trace must use exactly `exp1` and `exp2` as its two experiment ids and set string `selected_experiment_id` to the higher-scoring id. Do not install packages, download models, use background jobs, or start a third experiment. After both official score files exist, call write_psydefdetect_handoff directly instead of inspecting files, then call complete_psydefdetect with the two observed scores and selected id.
 """
         messages = [{"role": "user", "content": ml_dev_query}]'''
 if old not in text:
@@ -858,7 +928,7 @@ s.close()
 PY
 )"
 cd research_agent
-timeout "${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-14400}s" python run_infer_idea.py \
+timeout "${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}s" python run_infer_idea.py \
   --instance_path ../benchmark/final/psydefdetect/psydefdetect.json \
   --container_name "$inner_prefix" \
   --model "$COMPLETION_MODEL" \

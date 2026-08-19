@@ -25,10 +25,10 @@ class TopicConfig:
     ) -> TopicConfig:
         """从环境变量构造 TopicConfig，支持 RESEARCHCLAWEVAL_TOPIC_* 前缀。"""
         repo_root = Path(
-            os.environ.get("RESEARCHCLAWEVAL_ROOT", Path(__file__).resolve().parents[1])
-        )
-        dataset_root = fallback_dataset_root or repo_root / "data" / "babylm"
-        contract_file = fallback_contract_file or repo_root / "automation" / "babylm_contract.md"
+            os.environ.get("RESEARCHCLAWEVAL_ROOT", str(Path(__file__).resolve().parents[1])),
+        ).expanduser()
+        dataset_root = fallback_dataset_root or repo_root / "BabyLM-2026-Strict-Small"
+        contract_file = fallback_contract_file or repo_root / "BabyLM-10M_七框架任务包装与分发指南.md"
         return cls(
             label=os.environ.get("RESEARCHCLAWEVAL_TOPIC_LABEL", fallback_label),
             dataset_root=Path(os.environ.get("RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT", str(dataset_root))),

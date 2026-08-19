@@ -45,10 +45,12 @@ Only this value determines the main ranking. AUPRC, calibration, runtime, and re
 Framework-produced outputs, written inside the current fresh run workspace:
 
 - root-level `predictions.csv`
+- root-level `research_idea.json`, written and locked before the first validation experiment
 - root-level `experiment_trace.json`
 - runnable code and a recorded reproduction command
 - complete per-experiment logs and configuration files
 - `paper.md`, or `paper.pdf` plus a machine-auditable Markdown claim sidecar
+- framework-authored `final_report.md`
 - root-level `environment.json`
 
 Host-produced output, created only after the framework has exited:
@@ -98,8 +100,8 @@ Markdown references use `<!-- claim:table1_ames_auroc_model_b -->` in the same t
 
 ## Audit And Reproduction
 
-- Follow `docs/tdc_admet_tox_experiment_requirements.md` and `automation/tdc_admet_tox_execution_budget.md`.
-- Validate framework artifacts with `automation/scripts/validate_tdc_admet_tox_run.py --stage framework` before scoring.
+- Follow `docs/tdc_admet_tox_experiment_requirements.md` and `automation/tdc_admet_tox_execution_budget.md`. The framework owns the order and rationale of its experiments; the host does not prescribe a baseline, method sequence, or promotion workflow.
+- Validate framework artifacts with `automation/scripts/validate_tdc_admet_tox_run.py --stage framework --public-dataset-root /data/tdc_admet_tox` before scoring.
 - Generate the official result with `automation/scripts/run_tdc_admet_tox_host_score.py` on the host.
 - Validate the completed package with `automation/scripts/validate_tdc_admet_tox_run.py --stage final`.
 - Record source-data revisions and file hashes when the dataset is materialized.

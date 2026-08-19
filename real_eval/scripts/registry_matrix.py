@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
-
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("RESEARCHCLAWEVAL_ROOT", str(Path(__file__).absolute().parents[2]))).expanduser()
 REGISTRY = ROOT / "real_eval" / "registry"
 
 
@@ -21,9 +21,13 @@ def load_registry() -> tuple[dict[str, dict], dict[str, dict], list[dict]]:
     return topics, frameworks, runs
 
 
-def filter_runs(runs: list[dict], topic: str | None, mode: str | None) -> list[dict]:
+def filter_runs(
+    runs: list[dict], topic: str | None, mode: str | None, topics: dict[str, dict] | None = None
+) -> list[dict]:
     filtered = []
     for run in runs:
+        if topics and topics.get(run["topic_id"], {}).get("status") in {"blocked", "unsupported"}:
+            continue
         if topic and run["topic_id"] != topic:
             continue
         if mode and run["mode"] != mode:
@@ -69,14 +73,14 @@ def render_json(topics: dict[str, dict], frameworks: dict[str, dict], runs: list
 
 
 def main() -> int:
+    topics, frameworks, runs = load_registry()
     parser = argparse.ArgumentParser(description="Print the ResearchClawEval registry matrix.")
-    parser.add_argument("--topic", choices=["babylm", "gave2_task2"])
+    parser.add_argument("--topic", choices=sorted(topics))
     parser.add_argument("--mode", choices=["input_pack", "smoke", "fullrun"])
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     args = parser.parse_args()
 
-    topics, frameworks, runs = load_registry()
-    runs = filter_runs(runs, args.topic, args.mode)
+    runs = filter_runs(runs, args.topic, args.mode, topics)
     if args.format == "json":
         print(render_json(topics, frameworks, runs))
     else:

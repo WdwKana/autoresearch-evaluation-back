@@ -21,6 +21,7 @@ EXPECTED_RESOURCE_BUDGET = {
     "network_policy": "injected_llm_relay_only",
 }
 PREDICTION_FIELDS = ["sample_id", "endpoint", "probability"]
+PUBLIC_TEST_FIELDS = ["sample_id", "endpoint", "smiles"]
 CLAIM_MARKER = re.compile(r"<!--\s*claim:([A-Za-z0-9_.:-]+)\s*-->")
 NUMBER = re.compile(r"(?<![A-Za-z0-9_.])[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?%?")
 TABLE_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
@@ -96,6 +97,21 @@ def validate_predictions(path: Path) -> int:
         {endpoint for _, endpoint in seen} == set(ENDPOINTS), "predictions.csv misses an endpoint"
     )
     return len(seen)
+
+
+def validate_prediction_keys(path: Path, public_dataset_root: Path) -> None:
+    test_path = public_dataset_root / "test.csv"
+    require(test_path.is_file(), f"public test.csv is missing: {test_path}")
+    with test_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        require(reader.fieldnames == PUBLIC_TEST_FIELDS, "public test.csv has an invalid schema")
+        expected = {(row["sample_id"].strip(), row["endpoint"].strip()) for row in reader}
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        actual = {
+            (row["sample_id"].strip(), row["endpoint"].strip())
+            for row in csv.DictReader(handle)
+        }
+    require(actual == expected, "predictions.csv keys do not exactly match public test.csv")
 
 
 def validate_environment(root: Path, trace: dict) -> Path:
@@ -424,6 +440,24 @@ def reject_hidden_label_artifacts(root: Path) -> None:
     require(not hits, f"framework workspace contains possible hidden test labels: {hits}")
 
 
+def reject_cross_topic_or_private_markers(paths: set[Path]) -> None:
+    forbidden = re.compile(
+        r"(?:babylm|gave2|arc_wbe_2026|arc-wbe-2026|psydefdetect|"
+        r"TDC_ADMET_TOX_HIDDEN_LABELS_ROOT|test_labels[.]csv)",
+        re.IGNORECASE,
+    )
+    hits: list[str] = []
+    for path in sorted(paths):
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        match = forbidden.search(text)
+        if match:
+            hits.append(f"{path}: {match.group(0)}")
+    require(not hits, f"framework outputs contain cross-topic or private-label markers: {hits}")
+
+
 def validate_reproduction(root: Path, trace: dict) -> Path:
     reproduction = trace.get("reproduction")
     require(isinstance(reproduction, dict), "reproduction must be an object")
@@ -474,7 +508,7 @@ def validate_final_score(root: Path, predictions: Path) -> dict:
     return score
 
 
-def audit(root: Path, stage: str) -> dict:
+def audit(root: Path, stage: str, public_dataset_root: Path | None = None) -> dict:
     root = root.resolve()
     require(root.is_dir(), f"run workspace does not exist: {root}")
     reject_hidden_label_artifacts(root)
@@ -482,8 +516,23 @@ def audit(root: Path, stage: str) -> dict:
     predictions = root / "predictions.csv"
     require(predictions.is_file(), "root-level predictions.csv is required")
     prediction_count = validate_predictions(predictions)
+    if public_dataset_root is not None:
+        validate_prediction_keys(predictions, public_dataset_root.resolve())
     trace = read_json(root / "experiment_trace.json")
     require(trace.get("task_id") == TASK_ID, "experiment_trace.json has the wrong task_id")
+    require(
+        trace.get("framework_native_execution") is True,
+        "experiment_trace.json must set framework_native_execution=true",
+    )
+    require(
+        trace.get("consumed_topic_input") is True,
+        "experiment_trace.json must set consumed_topic_input=true",
+    )
+    for field in ("framework_internal_model", "framework_internal_api_base_url"):
+        require(
+            isinstance(trace.get(field), str) and trace[field].strip(),
+            f"experiment_trace.json must include non-empty {field}",
+        )
     require(
         trace.get("selection_metric") == "validation_macro_average_auroc",
         "selection must use validation macro average AUROC",
@@ -521,6 +570,11 @@ def audit(root: Path, stage: str) -> dict:
     claims = validate_claims(root, trace, experiments, paths_by_id)
     paper, checked_table_numbers = validate_paper(root, claims)
 
+    authored_paths = {root / "experiment_trace.json", environment, paper}
+    for experiment_paths in paths_by_id.values():
+        authored_paths.update(experiment_paths.values())
+    reject_cross_topic_or_private_markers(authored_paths)
+
     logs_dir = root / "logs"
     require(
         logs_dir.is_dir() and any(path.is_file() for path in logs_dir.rglob("*")),
@@ -555,13 +609,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Audit a TDC-ADMET-Tox framework handoff.")
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--stage", choices=("framework", "final"), required=True)
+    parser.add_argument("--public-dataset-root", type=Path)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        payload = audit(args.workspace, args.stage)
+        payload = audit(args.workspace, args.stage, args.public_dataset_root)
     except AuditError as exc:
         print(
             json.dumps(

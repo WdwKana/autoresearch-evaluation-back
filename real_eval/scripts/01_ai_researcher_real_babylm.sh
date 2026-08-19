@@ -12,15 +12,21 @@ DATASET_ROOT="${BABYLM_DATASET_ROOT:-$ROOT/BabyLM-2026-Strict-Small}"
 CONTRACT_FILE="${BABYLM_CONTRACT_FILE:-$ROOT/BabyLM-10M_七框架任务包装与分发指南.md}"
 PROVIDER_CONFIG="${PROVIDER_CONFIG:-$ROOT/api/codex_gpt54_shubiaobiao.toml}"
 SEMANTIC_SOURCE="${SEMANTIC_SOURCE:-$ROOT/api/_semantic_scholar_api_usage.md}"
+AI_RESEARCHER_MODEL="${REAL_EVAL_FRAMEWORK_MODEL:-${REAL_EVAL_MODEL:-deepseek-v4-flash}}"
 PORT="${AI_RESEARCHER_PORT:-12372}"
 CONTAINER_NAME="ai_researcher_babylm_${RUN_ID}"
 OUTER_CONTAINER_NAME="ai_researcher_outer_${RUN_ID}"
 PROVIDER_ENV="$BASE/provider.env"
 SEMANTIC_ENV="$BASE/semantic.env"
+GITHUB_ENV="$BASE/github.env"
 
 cleanup_inner_container() {
   docker ps -a --format '{{.Names}}' | rg "^(${OUTER_CONTAINER_NAME}|${CONTAINER_NAME})" | xargs -r docker rm -f >/dev/null 2>&1 || true
 }
+
+# Preemptive cleanup: remove any stale AI-Researcher containers from previous runs
+docker ps -a --format '{{.Names}}' | rg '^ai_researcher_babylm_' | xargs -r docker rm -f >/dev/null 2>&1 || true
+
 trap cleanup_inner_container EXIT
 
 real_eval_require_clean_dir "$BASE"
@@ -28,6 +34,7 @@ mkdir -p "$BASE" "$LOG_DIR"
 real_eval_rsync_repo "$SRC" "$REPO"
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
+cp "$ROOT/api/github.env" "$GITHUB_ENV" 2>/dev/null || echo "GITHUB_AI_TOKEN=" > "$GITHUB_ENV"
 
 mkdir -p "$REPO/benchmark/final/babylm"
 mkdir -p "$REPO/benchmark/process/dataset_candidate/babylm"
@@ -66,9 +73,8 @@ old = '''def setup_dataset(category: str, local_workplace: str):
         return
     
     # 检查源目录是否存在
-    repo_root = Path(__file__).resolve().parents[3]
-    source_path = repo_root / "benchmark" / "process" / "dataset_candidate" / category
-    if not source_path.exists():
+    source_path = f"../benchmark/process/dataset_candidate/{category}"
+    if not os.path.exists(source_path):
         raise Exception(f"source path {source_path} not exists")
     
     try:
@@ -84,9 +90,8 @@ new = '''def setup_dataset(category: str, local_workplace: str):
         print("dataset_candidate exists")
         return
 
-    repo_root = Path(__file__).resolve().parents[3]
-    source_path = repo_root / "benchmark" / "process" / "dataset_candidate" / category
-    if not source_path.exists():
+    source_path = f"../benchmark/process/dataset_candidate/{category}"
+    if not os.path.exists(source_path):
         raise Exception(f"source path {source_path} not exists")
 
     if category == "babylm":
@@ -95,7 +100,8 @@ new = '''def setup_dataset(category: str, local_workplace: str):
             raise Exception(f"BabyLM dataset root not available: {real_dataset}")
         try:
             os.makedirs(dataset_candidate_path, exist_ok=True)
-            shutil.copy2(source_path / "metaprompt.py", os.path.join(dataset_candidate_path, "metaprompt.py"))
+            if os.path.isfile(os.path.join(source_path, "metaprompt.py")):
+                shutil.copy2(os.path.join(source_path, "metaprompt.py"), os.path.join(dataset_candidate_path, "metaprompt.py"))
             copied_dataset = os.path.join(dataset_candidate_path, "BabyLM-2026-Strict-Small")
             shutil.copytree(real_dataset, copied_dataset)
             project_dir = os.path.join(local_workplace, "project")
@@ -128,6 +134,12 @@ import sys
 
 p = Path(sys.argv[1])
 s = p.read_text()
+# Fix docker_workplace for "." workplace_name
+s = s.replace(
+    '        self.docker_workplace = f"/{config.workplace_name}"',
+    '        self.docker_workplace = "/workspace" if config.workplace_name == "." else f"/{config.workplace_name}"',
+    1,
+)
 old = '''        docker_command = [
             "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + ["--name", self.container_name, 
             "--user", "root", "-v", f"{self.local_workplace}:{self.docker_workplace}",
@@ -155,6 +167,27 @@ new = '''        extra_mounts = []
 if old not in s:
     raise SystemExit("docker_command block not found")
 p.write_text(s.replace(old, new))
+s2 = p.read_text()
+s2 = s2.replace(
+    "hostname = 'localhost'",
+    "hostname = os.getenv('RESEARCHCLAWEVAL_DOCKER_HOST', 'localhost')",
+    1,
+)
+s2 = s2.replace(
+    "assert port_info and (port_info[0] == port_info[1])",
+    "assert port_info",
+    1,
+)
+s2 = s2.replace(
+    "        if self.wait_for_container_ready(timeout=60):",
+    "        if result.returncode == 0:\n"
+    "            _r = subprocess.run([\"docker\", \"inspect\", \"--format\", \"{{.State.Status}}\", self.container_name], capture_output=True, text=True)\n"
+    "            if _r.stdout.strip() != \"running\":\n"
+    "                subprocess.run([\"docker\", \"start\", self.container_name])\n"
+    "        if self.wait_for_container_ready(timeout=300):",
+    1,
+)
+p.write_text(s2)
 PY
 python3 - "$REPO/research_agent/inno/tools/arxiv_source.py" <<'PY'
 from pathlib import Path
@@ -466,21 +499,24 @@ cat > "$BASE/state.json" <<EOF
 EOF
 
 set +e
-docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --gpus all \
-  -e COMPLETION_MODEL=gpt-5.4 \
-  -e CHEEP_MODEL=gpt-5.4 \
-  -e BASE_IMAGES=ai-researcher-exec:runtime-ready \
-  -e GPUS=${GPUS:-device=1} \
-  -e PYTHONPATH=/workspace/AI-Researcher \
+docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 \
+  --add-host host.docker.internal:host-gateway \
+  -e COMPLETION_MODEL=openai/$AI_RESEARCHER_MODEL \
+  -e CHEEP_MODEL=openai/$AI_RESEARCHER_MODEL \
+  -e BASE_IMAGES=${AI_RESEARCHER_EXEC_RUNTIME_IMAGE:-ai-researcher-exec:blackwell-25.11} \
+  -e GPUS=all \
+  -e PYTHONPATH=/workspace/AI-Researcher:/workspace/AI-Researcher/research_agent/inno/tools \
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=BabyLM-10M \
   -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/BabyLM-2026-Strict-Small \
   -e RESEARCHCLAWEVAL_TOPIC_HOST_DATASET_ROOT="$DATASET_ROOT" \
+  -e RESEARCHCLAWEVAL_DOCKER_HOST=host.docker.internal \
   -e RESEARCHCLAWEVAL_TOPIC_CONTRACT_FILE=/input/contract.md \
   -e RESEARCHCLAWEVAL_TOPIC_HOST_CONTRACT_FILE="$CONTRACT_FILE" \
   -e RESEARCHCLAWEVAL_AI_RESEARCHER_HOST_REPO="$REPO" \
 	  --env-file "$ROOT/AI-Researcher/.env.project01" \
 	  --env-file "$PROVIDER_ENV" \
 	  --env-file "$SEMANTIC_ENV" \
+	  --env-file "$GITHUB_ENV" \
 	  -v "$REPO":/workspace/AI-Researcher \
   -v "$DATASET_ROOT":/data/BabyLM-2026-Strict-Small:ro \
   -v "$CONTRACT_FILE":/input/contract.md:ro \
@@ -489,7 +525,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -v /var/run/docker.sock:/var/run/docker.sock \
   -w /workspace/AI-Researcher/research_agent \
   ai-researcher:runtime-ready \
-	  bash -lc "python run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model gpt-5.4 --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm && python prepare_babylm_paper_agent.py --run-id $RUN_ID --model gpt-5.4 --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m" \
+	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m" \
 	  2>&1 | tee "$LOG_DIR/e2e.log"
 rc=${PIPESTATUS[0]}
 set -e

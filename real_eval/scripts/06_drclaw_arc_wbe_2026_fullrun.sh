@@ -15,7 +15,7 @@ automation/arc_wbe_2026_execution_budget.md
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
-export FRAMEWORK_RUNTIME_IMAGE="dr-claw:runtime-ready"
+export FRAMEWORK_RUNTIME_IMAGE="dr-claw:runtime-ready-arc3"
 export FRAMEWORK_ENTRYPOINT="bash"
 export FRAMEWORK_DOCKER_ARGS=$(cat <<'EOF'
 --user
@@ -25,14 +25,15 @@ NODE_PATH=/opt/dr-claw/node_modules
 EOF
 )
 export FRAMEWORK_NATIVE_ENTRYPOINT="node server/cli.js chat"
-export FRAMEWORK_KIMI_INJECTION="Dr. Claw OpenRouter-compatible client reads injected OPENAI_BASE_URL and OPENAI_API_KEY"
+export FRAMEWORK_KIMI_INJECTION="Dr. Claw OpenAI-compatible client reads OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL"
 export FRAMEWORK_NATIVE_LOG_MARKER="DRCLAW_NATIVE_CHAT"
 export FRAMEWORK_EXECUTOR_KIND="framework_cli"
-export FRAMEWORK_COMMAND_LABEL="node server/cli.js chat --model kimi-k2.6"
+export FRAMEWORK_COMMAND_LABEL='node server/cli.js chat --model $OPENAI_MODEL'
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
 set -euo pipefail
 echo "DRCLAW_NATIVE_CHAT"
-prompt='Read dr-claw/research_brief.json, dr-claw/tasks.json, docs/arc_wbe_2026_summary.md, automation/arc_wbe_2026_contract.md, and automation/arc_wbe_2026_execution_budget.md. Execute the task with your native planning and tool loop. Use only the injected Kimi relay. Run two bounded ARC estimator experiments, select one, and write root-level estimator.py, submission.json, score.json, experiment_trace.json, and final_report.md. Do not access data outside /data/arc_wbe_2026 or write outside /workspace.'
+export DRCLAW_MAX_AGENT_TURNS="${DRCLAW_MAX_AGENT_TURNS:-100}"
+prompt='Read dr-claw/research_brief.json, dr-claw/tasks.json, docs/arc_wbe_2026_summary.md, automation/arc_wbe_2026_contract.md, and automation/arc_wbe_2026_execution_budget.md. Execute the complete task through the native Dr. Claw planning and tool loop using only the injected evaluation provider. The runtime image provides pyarrow, pandas, numpy, and flopscope 0.8.0rc5 in the system Python (/usr/local/bin/python3); if dependency availability is uncertain, verify it with a minimal import probe and record the result. Before the first experiment, write and lock research_idea.json. research_idea.json must be a top-level JSON object with non-empty hypothesis, method_rationale, expected_failure_modes, and comparison_logic fields. The framework owns the hypothesis, method choice, experiment design, comparison, and final selection; the host prescribes no algorithm family, feature representation, architecture, hyperparameters, baseline, or experiment sequence. The mounted /data/arc_wbe_2026 contains real weights-only parquet records; read them to design and validate a genuine estimator (the workspace sandbox blocks LS outside /workspace, but Read and Glob work on /data/arc_wbe_2026). Target labels are host-only by design: the challenge never provides them, none are needed, and their absence is not a blocker. Run 2-4 materially different framework-chosen experiments and write root-level research_idea.json, estimator.py, submission.json, experiment_trace.json, and final_report.md. The estimator.py must have a predict(self, mlp) method that returns a real (32, 256) fnp.ndarray dependent on mlp.weights; a final-layer-only (256,) output is invalid. Do not zero-fill, broadcast, synthesize, or use a placeholder; validate the estimator locally against the visible records with structural and consistency checks on its fnp output. The scorer sandbox has only flopscope.numpy (import as fnp) — do not import numpy, scipy, or torch. The host creates score.json only after a successful official adapter scorer run; your estimator.py must import flopscope.numpy as fnp exactly as the scorer does. experiment_trace.json must be a complete contract object recording framework_native_execution, consumed_topic_input true as a boolean, workspace_trace_root, framework_internal_model, framework_internal_api_base_url, experiments (2-4 entries with id, configuration, validation metrics, and logs), selected_experiment_id, idea_artifact exactly "research_idea.json", and idea_locked_before_experiments true. Do not access data outside /data/arc_wbe_2026 or write outside /workspace.'
 echo "DRCLAW_STDIN_EOF_AFTER_ACTIVE_TURN"
 printf '%s\n' "$prompt" | timeout "${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-1800}s" node server/cli.js chat --model "$OPENAI_MODEL"
 EOF

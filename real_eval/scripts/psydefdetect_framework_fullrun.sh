@@ -24,6 +24,7 @@ FRAMEWORK_NATIVE_LOG_MARKER="${FRAMEWORK_NATIVE_LOG_MARKER:?FRAMEWORK_NATIVE_LOG
 FRAMEWORK_EXECUTOR_KIND="${FRAMEWORK_EXECUTOR_KIND:-framework_cli}"
 FRAMEWORK_COMMAND_LABEL="${FRAMEWORK_COMMAND_LABEL:-$FRAMEWORK_NATIVE_ENTRYPOINT}"
 FRAMEWORK_LOG_FORBIDDEN_PATTERN="${FRAMEWORK_LOG_FORBIDDEN_PATTERN:-}"
+FRAMEWORK_ISOLATED_RELAY="${FRAMEWORK_ISOLATED_RELAY:-0}"
 HOST_NODE_ROOT="${REAL_EVAL_HOST_NODE_ROOT:-$(dirname "$(dirname "$(command -v node)")")}"
 CONTAINER_NODE_ROOT="/opt/researchclaweval-node"
 DATASET_ROOT="${PSYDEFDETECT_DATASET_ROOT:-$(real_eval_resolve_topic_dataset "$ROOT" psydefdetect)}"
@@ -36,6 +37,10 @@ if [[ "$FRAMEWORK_PROVIDER_BASE_URL" != */v1 ]]; then
   FRAMEWORK_PROVIDER_BASE_URL="$FRAMEWORK_PROVIDER_BASE_URL/v1"
 fi
 SEMANTIC_SOURCE="${SEMANTIC_SOURCE:-$ROOT/api/_semantic_scholar_api_usage.md}"
+RELAY_NETWORK="psydef-int-${RUN_ID//[^A-Za-z0-9_.-]/-}"
+RELAY_NAME="psydef-relay-${RUN_ID//[^A-Za-z0-9_.-]/-}"
+RELAY_STARTED=0
+NETWORK_CREATED=0
 
 WORKSPACE="$BASE/workspace"
 INPUT_ROOT="$BASE/inputs"
@@ -58,7 +63,14 @@ check_template_clean() {
     real_eval_assert_no_new_forbidden_artifacts "$FRAMEWORK_SRC" "$TEMPLATE_ARTIFACTS_BEFORE"
   fi
 }
-trap check_template_clean EXIT
+cleanup_relay() {
+  local rc=$?
+  set +e
+  [[ "$RELAY_STARTED" == "1" ]] && docker rm -f "$RELAY_NAME" >/dev/null 2>&1
+  [[ "$NETWORK_CREATED" == "1" ]] && docker network rm "$RELAY_NETWORK" >/dev/null 2>&1
+  exit "$rc"
+}
+trap 'check_template_clean; cleanup_relay' EXIT
 
 write_state() {
   local status="$1"
@@ -103,7 +115,7 @@ if [[ "$EVAL_MODEL" == kimi-* ]]; then
     write_state "blocked" "Kimi PsyDefDetect evaluation model must be kimi-k2.6, got: $EVAL_MODEL" 27
     exit 27
   fi
-  if [[ "$PROVIDER_CONFIG" != "$ROOT/api/codex_kimi_k27_code_relay_container.toml" || "$PROVIDER_BASE_URL" != "http://host.docker.internal:8787/v1" ]]; then
+  if [[ "$FRAMEWORK_ISOLATED_RELAY" != "1" && ( "$PROVIDER_CONFIG" != "$ROOT/api/codex_kimi_k27_code_relay_container.toml" || "$PROVIDER_BASE_URL" != "http://host.docker.internal:8787/v1" ) ]]; then
     write_state "blocked" "Kimi PsyDefDetect requires the canonical Docker-bridge relay provider config" 28
     exit 28
   fi
@@ -117,17 +129,25 @@ if [[ ! -x "$HOST_NODE_ROOT/bin/codex" ]]; then
   exit 25
 fi
 
+INPUT_PROVIDER_BASE_URL="$FRAMEWORK_PROVIDER_BASE_URL"
+if [[ "$FRAMEWORK_ISOLATED_RELAY" == "1" ]]; then
+  INPUT_PROVIDER_BASE_URL="http://psydef-relay:8787/v1"
+fi
 python3 "$ROOT/automation/scripts/generate_psydefdetect_native_inputs.py" \
   --output-root "$INPUT_ROOT" \
   --dataset-root "$DATASET_ROOT" \
   --contract-file "$CONTRACT_FILE" \
-  --provider-base-url "${FRAMEWORK_PROVIDER_BASE_URL:-https://api.openai.com/v1}" \
+  --provider-base-url "${INPUT_PROVIDER_BASE_URL:-https://api.openai.com/v1}" \
   --primary-model "$EVAL_MODEL" >/dev/null
 
 real_eval_snapshot_forbidden_artifacts "$FRAMEWORK_SRC" "$TEMPLATE_ARTIFACTS_BEFORE"
 real_eval_rsync_repo "$FRAMEWORK_SRC" "$WORKSPACE"
-real_eval_purge_cross_topic_residue "$WORKSPACE" psydefdetect
-chmod -R a+rwX "$WORKSPACE"
+ real_eval_purge_cross_topic_residue "$WORKSPACE" psydefdetect
+ chmod -R a+rwX "$WORKSPACE"
+ # Copy contract tools into workspace for PYTHONPATH import
+ if [ -f "$ROOT/real_eval_contract_tools.py" ]; then
+   cp "$ROOT/real_eval_contract_tools.py" "$WORKSPACE/real_eval_contract_tools.py"
+ fi
 mkdir -p "$(dirname "$RUNTIME_DATASET_ROOT")" "$(dirname "$RUNTIME_CONTRACT_FILE")"
 real_eval_rsync_repo "$DATASET_ROOT" "$RUNTIME_DATASET_ROOT"
 cp "$CONTRACT_FILE" "$RUNTIME_CONTRACT_FILE"
@@ -135,8 +155,30 @@ chmod -R a+rX "$INPUT_ROOT"
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
 cp "$PROVIDER_CONFIG" "$CODEX_HOME_DIR/config.toml"
-chmod 755 "$CODEX_HOME_DIR"
-chmod 644 "$CODEX_HOME_DIR/config.toml"
+chmod 700 "$CODEX_HOME_DIR"
+chmod 600 "$CODEX_HOME_DIR/config.toml"
+if [[ "$FRAMEWORK_ISOLATED_RELAY" == "1" ]]; then
+  client_key="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+  python3 "$ROOT/real_eval/scripts/prepare_psydefdetect_relay.py" \
+    --provider-config "$PROVIDER_CONFIG" \
+    --client-base-url "http://psydef-relay:8787/v1" \
+    --client-key "$client_key" \
+    --upstream-env "$BASE/upstream_relay.env" \
+    --client-env "$PROVIDER_ENV" \
+    --codex-config "$CODEX_HOME_DIR/config.toml" \
+    --evidence "$BASE/provider_relay_evidence.json"
+  docker network create "$RELAY_NETWORK" >/dev/null
+  NETWORK_CREATED=1
+  docker run -d --name "$RELAY_NAME" --network bridge \
+    --add-host=host.docker.internal:host-gateway \
+    --env-file "$BASE/upstream_relay.env" \
+    -v "$ROOT/real_eval/codex_relay/relay.py:/app/relay.py:ro" \
+    "${PSYDEFDETECT_RELAY_IMAGE:-researchclaweval/codex-kimi-relay:test}" >/dev/null
+  RELAY_STARTED=1
+  docker network connect --alias psydef-relay "$RELAY_NETWORK" "$RELAY_NAME"
+  docker exec "$RELAY_NAME" python -c \
+    'from urllib.request import urlopen; assert urlopen("http://127.0.0.1:8787/healthz", timeout=5).status == 200'
+fi
 mkdir -p "$WORKSPACE/data" "$WORKSPACE/automation" "$WORKSPACE/docs"
 ln -sfn /data/psydefdetect "$WORKSPACE/data/psydefdetect"
 cp "$CONTRACT_FILE" "$WORKSPACE/automation/psydefdetect_contract.md"
@@ -248,6 +290,9 @@ declare -a docker_cmd=(
   --ulimit stack=67108864
   "${docker_host_args[@]}"
 )
+if [[ "$FRAMEWORK_ISOLATED_RELAY" == "1" ]]; then
+  docker_cmd+=(--network "$RELAY_NETWORK")
+fi
 if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
   docker_cmd+=(--gpus all)
 fi
@@ -266,6 +311,8 @@ docker_cmd+=(
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=PsyDefDetect
   -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/psydefdetect
   -e RESEARCHCLAWEVAL_TOPIC_CONTRACT_FILE=/input/psydefdetect_contract.md
+  -e RESEARCHCLAWEVAL_RELAY_NETWORK="$RELAY_NETWORK"
+  -e FRAMEWORK_ISOLATED_RELAY="$FRAMEWORK_ISOLATED_RELAY"
   -e FRAMEWORK_NAME="$FRAMEWORK_NAME"
   -e FRAMEWORK_SLUG="$FRAMEWORK_SLUG"
   -e PSYDEFDETECT_EVAL_MODEL="$EVAL_MODEL"
@@ -284,7 +331,10 @@ if [[ -n "$FRAMEWORK_ENTRYPOINT" && ( "$FRAMEWORK_ENTRYPOINT" == "bash" || "$FRA
 else
   docker_cmd+=(bash -lc "$docker_runtime_command")
 fi
-"${docker_cmd[@]}" 2>&1 | tee -a "$LOG_FILE"
+"${docker_cmd[@]}" 2>&1 \
+  | python3 "$ROOT/real_eval/scripts/redact_env_secrets.py" \
+      --env-file "$PROVIDER_ENV" --env-file "$SEMANTIC_ENV" \
+  | tee -a "$LOG_FILE"
 run_rc=${PIPESTATUS[0]}
 set -e
 
@@ -309,6 +359,7 @@ from pathlib import Path
 workspace = Path(sys.argv[1])
 expected_model = sys.argv[2]
 required_paths = {
+    "research_idea": workspace / "research_idea.json",
     "final_report": workspace / "final_report.md",
     "score": workspace / "score.json",
     "experiment_trace": workspace / "experiment_trace.json",
@@ -323,6 +374,15 @@ if missing:
 trace = json.loads((workspace / "experiment_trace.json").read_text(encoding="utf-8"))
 if not isinstance(trace, dict):
     raise SystemExit("experiment_trace.json must be a JSON object")
+idea = json.loads((workspace / "research_idea.json").read_text(encoding="utf-8"))
+if not isinstance(idea, dict):
+    raise SystemExit("research_idea.json must be a JSON object")
+if not isinstance(idea, dict) or not idea:
+    raise SystemExit("research_idea.json must be a non-empty JSON object")
+if (workspace / "research_idea.json").stat().st_mtime_ns >= (
+    workspace / "experiment_trace.json"
+).stat().st_mtime_ns:
+    raise SystemExit("research_idea.json must be locked before experiment_trace.json")
 if trace.get("framework_native_execution") is not True:
     raise SystemExit("experiment_trace.json must set framework_native_execution=true")
 if trace.get("consumed_topic_input") is not True:
@@ -361,6 +421,7 @@ def first_existing(paths):
             return path
     return None
 report = first_existing([workspace / "final_report.md", artifacts / "final_report.md"])
+research_idea = first_existing([workspace / "research_idea.json", artifacts / "research_idea.json"])
 prediction = first_existing([workspace / "predictions.jsonl", workspace / "submission.csv", artifacts / "predictions.jsonl", artifacts / "submission.csv"])
 score = first_existing([workspace / "score.json", artifacts / "score.json"])
 experiment_trace = first_existing([workspace / "experiment_trace.json", artifacts / "experiment_trace.json"])
@@ -371,6 +432,7 @@ payload = {
     "contract_file": sys.argv[5],
     "workspace": str(workspace),
     "final_report": str(report) if report else None,
+    "research_idea": str(research_idea) if research_idea else None,
     "prediction_artifact": str(prediction) if prediction else None,
     "score_artifact": str(score) if score else None,
     "experiment_trace": str(experiment_trace) if experiment_trace else None,

@@ -11,13 +11,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "automation" / "scripts"))
 
-from arc_wbe_2026_official_adapter import materialize_official_adapter, scan_workspace_for_official_adapter
-from prepare_arc_wbe_2026_dataset import MANIFEST_NAME, baked_split_dir, default_whest_python
-
+from arc_wbe_2026_official_adapter import (  # noqa: E402
+    materialize_official_adapter,
+    scan_workspace_for_official_adapter,
+)
+from prepare_arc_wbe_2026_dataset import (  # noqa: E402
+    MANIFEST_NAME,
+    baked_split_dir,
+    default_whest_python,
+)
 
 OFFICIAL_ADAPTER_SCORE_SOURCES = {
     "official_adapter_whest_run",
@@ -312,6 +317,20 @@ def run_whest(
         prepare_script=prepare_script,
         whest_python=os.environ.get("ARC_WBE_2026_WHEST_PYTHON", default_whest_python()),
     ).resolve()
+    metadata = read_json(dataset_arg / "metadata.json")
+    if not isinstance(metadata, dict):
+        raise RuntimeError("official scorer requires a materialized labeled ARC dataset")
+    parquet_files = sorted((dataset_arg / "data").glob("*.parquet"))
+    if not parquet_files:
+        raise RuntimeError("official scorer found no materialized parquet records")
+    import pyarrow.parquet as pq
+
+    parquet_file = pq.ParquetFile(parquet_files[0])
+    if parquet_file.metadata.num_rows <= 0:
+        raise RuntimeError("official scorer found an empty ARC dataset")
+    required_labels = {"weights", "all_layer_means", "final_means"}
+    if not required_labels.issubset(set(parquet_file.schema_arrow.names)):
+        raise RuntimeError("official scorer dataset is missing target labels")
     whest_env = os.environ.copy()
     whest_env.setdefault("HF_HOME", str((output_root / ".hf_home").resolve()))
     cmd = [
@@ -348,7 +367,9 @@ def write_normalized_score(output_score: Path, artifact_path: Path, payload: dic
         "score_artifact": str(artifact_path),
     }
     output_score.parent.mkdir(parents=True, exist_ok=True)
-    output_score.write_text(json.dumps(normalized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output_score.write_text(
+        json.dumps(normalized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -356,16 +377,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--output-score", type=Path, required=True)
     parser.add_argument("--dataset-root", type=Path)
-    parser.add_argument("--estimator", type=Path)
-    parser.add_argument("--explicit-score-artifact", type=Path)
-    parser.add_argument("--search-root", type=Path)
     parser.add_argument("--framework-hint")
     parser.add_argument("--whest-bin", default="whest")
     parser.add_argument("--runner", default="local")
     parser.add_argument("--whest-output-root", type=Path)
     args = parser.parse_args(argv)
 
-    adapter_output_root = build_adapter_output_root(args.output_score.parent, args.workspace, args.framework_hint)
+    if args.output_score.exists():
+        raise RuntimeError(
+            "refusing to overwrite a framework-visible score.json; the host scorer must be the sole score owner"
+        )
+    whest_output_root = args.whest_output_root or (args.output_score.parent / "whest_official_eval")
+    if whest_output_root.exists():
+        raise RuntimeError(
+            "refusing a pre-existing official scorer output directory; stale or framework-authored score evidence is inadmissible"
+        )
+
+    adapter_output_root = build_adapter_output_root(
+        args.output_score.parent, args.workspace, args.framework_hint
+    )
     adapter_estimator, _adapter_meta = try_generate_official_adapter(
         args.workspace,
         args.framework_hint,
@@ -377,47 +407,14 @@ def main(argv: list[str] | None = None) -> int:
             estimator=adapter_estimator,
             dataset_root=args.dataset_root,
             runner=args.runner,
-            output_root=args.whest_output_root or (args.output_score.parent / "whest_official_eval"),
+            output_root=whest_output_root,
         )
         if artifact_path is not None and payload is not None:
             payload["score_source"] = "official_adapter_whest_run"
             write_normalized_score(args.output_score, artifact_path, payload)
             return 0
 
-    if args.explicit_score_artifact and args.explicit_score_artifact.exists():
-        payload = read_json(args.explicit_score_artifact)
-        normalized = extract_score_dict(payload)
-        if normalized is not None:
-            write_normalized_score(args.output_score, args.explicit_score_artifact, normalized)
-            return 0
-
-    search_root = args.search_root or args.workspace
-    if search_root.exists():
-        artifact_path, payload = extract_score_payload(search_root)
-        if artifact_path is not None and payload is not None:
-            write_normalized_score(args.output_score, artifact_path, payload)
-            return 0
-
-    estimator = args.estimator
-    if estimator is None:
-        candidates = find_estimator_candidates(args.workspace)
-        estimator = candidates[0] if candidates else None
-    if estimator is None or args.dataset_root is None:
-        return 1
-
-    whest_output_root = args.whest_output_root or (args.output_score.parent / "whest_local_eval")
-    artifact_path, payload = run_whest(
-        whest_bin=args.whest_bin,
-        estimator=estimator,
-        dataset_root=args.dataset_root,
-        runner=args.runner,
-        output_root=whest_output_root,
-    )
-    if artifact_path is None or payload is None:
-        return 1
-
-    write_normalized_score(args.output_score, artifact_path, payload)
-    return 0
+    raise RuntimeError("official adapter execution did not produce a real official score")
 
 
 if __name__ == "__main__":

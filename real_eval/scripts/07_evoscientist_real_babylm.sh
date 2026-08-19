@@ -65,8 +65,9 @@ docker_args=(
   --name "$CONTAINER_NAME"
   --gpus all
   --entrypoint bash
-  --user 1006:1007
+  --user "$(id -u):$(id -g)"
   -e EVOSCIENTIST_OPENAI_AUTH_MODE=api_key
+  -e HOME=/workspace
   -e CUDA_VISIBLE_DEVICES=0
   -e PYTHONUSERBASE=/workspace/.local
   -e PATH=/workspace/.local/bin:/usr/local/bin:/usr/bin:/bin

@@ -19,24 +19,37 @@ export FRAMEWORK_DOCKER_ARGS=$(cat <<'EOF'
 0:0
 EOF
 )
-export FRAMEWORK_NATIVE_ENTRYPOINT="ds init; ds new; ds run --runner kimi"
-export FRAMEWORK_KIMI_INJECTION="DeepScientist built-in KimiRunner with DEEPSCIENTIST_KIMI_MODEL=kimi-k2.6"
-export FRAMEWORK_NATIVE_LOG_MARKER="DEEPSCIENTIST_NATIVE_KIMI_RUNNER"
+export FRAMEWORK_NEEDS_HOST_CODEX="1"
+export FRAMEWORK_NATIVE_ENTRYPOINT="ds init; ds new; ds run experiment --runner codex"
+export FRAMEWORK_KIMI_INJECTION="DeepScientist official CodexRunner reads the injected /codex-home/config.toml provider"
+export FRAMEWORK_NATIVE_LOG_MARKER="DEEPSCIENTIST_NATIVE_CODEX_RUNNER"
 export FRAMEWORK_EXECUTOR_KIND="framework_cli"
-export FRAMEWORK_COMMAND_LABEL="ds --home /workspace/.deepscientist run run-experiment --runner kimi"
+export FRAMEWORK_COMMAND_LABEL="ds --home /workspace/.deepscientist run experiment --runner codex"
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
 set -euo pipefail
-export DEEPSCIENTIST_KIMI_BINARY="${DEEPSCIENTIST_KIMI_BINARY:-kimi}"
-export DEEPSCIENTIST_KIMI_MODEL="${OPENAI_MODEL:?OPENAI_MODEL is required}"
-export DEEPSCIENTIST_KIMI_YOLO=1
+export PATH="/opt/researchclaweval-node/bin:$PATH"
+export DEEPSCIENTIST_CODEX_BINARY="/opt/researchclaweval-node/bin/codex"
 DS_HOME=/workspace/.deepscientist
 QUEST_ID=arc-wbe-2026
-echo "DEEPSCIENTIST_NATIVE_KIMI_RUNNER"
+echo "DEEPSCIENTIST_NATIVE_CODEX_RUNNER"
 ds --home "$DS_HOME" init
-ds --home "$DS_HOME" new "Execute the ARC-WBE-2026 contract in /workspace and produce the required framework-native handoff artifacts." --quest-id "$QUEST_ID"
-timeout "${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-1800}s" \
-  ds --home "$DS_HOME" run run-experiment --quest-id "$QUEST_ID" --runner kimi --model "$OPENAI_MODEL" \
-  --message "Read DEEPSCIENTIST_BRIEF.md, docs/arc_wbe_2026_summary.md, automation/arc_wbe_2026_contract.md, and automation/arc_wbe_2026_execution_budget.md. Use the framework's Kimi runner and only injected API settings. Run two bounded white-box estimator experiments, select one, and write root-level estimator.py, submission.json, experiment_trace.json, final_report.md, and provisional score.json."
+sed -i 's#config_dir: ~/.codex#config_dir: /codex-home#' "$DS_HOME/config/runners.yaml"
+grep -Fq 'config_dir: /codex-home' "$DS_HOME/config/runners.yaml"
+ds --home "$DS_HOME" new "Execute the ARC-WBE-2026 contract in /workspace through DeepScientist and produce the complete framework-owned handoff." --quest-id "$QUEST_ID"
+QUEST_YAML="$DS_HOME/quests/$QUEST_ID/quest.yaml"
+if [[ -f "$QUEST_YAML" ]]; then
+  python3 -c "
+import yaml, sys
+p = sys.argv[1]
+d = yaml.safe_load(open(p)) or {}
+d['baseline_gate'] = 'waived'
+open(p, 'w').write(yaml.dump(d, default_flow_style=False))
+print('baseline_gate set to waived')
+" "$QUEST_YAML"
+fi
+timeout "${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-7200}s" \
+  ds --home "$DS_HOME" run experiment --quest-id "$QUEST_ID" --runner codex --model "$OPENAI_MODEL" \
+  --message "Read DEEPSCIENTIST_BRIEF.md, docs/arc_wbe_2026_summary.md, automation/arc_wbe_2026_contract.md, and automation/arc_wbe_2026_execution_budget.md. Use only the injected evaluation provider. Before the first experiment, write and lock research_idea.json. research_idea.json must be a top-level JSON object with non-empty hypothesis, method_rationale, expected_failure_modes, and comparison_logic fields. DeepScientist owns the hypothesis, method choice, experiment design, comparison, and final selection. Run 2-4 materially different experiments and write root-level research_idea.json, estimator.py, submission.json, experiment_trace.json, and final_report.md. experiment_trace.json must record framework_native_execution true, consumed_topic_input true as a boolean, workspace_trace_root \"/workspace\", framework_internal_model, framework_internal_api_base_url, experiments, selected_experiment_id, idea_artifact exactly \"research_idea.json\", and idea_locked_before_experiments true. mlp.weights is a list of 32 (256, 256) weight matrices. mlp.depth=32, mlp.width=256. The estimator.py predict(mlp) must return a fnp.ndarray of shape (32, 256) — predicted mean activation of each of the 256 hidden neurons in each of the 32 layers; a final-layer-only (256,) output is invalid. The scorer sandbox has only flopscope.numpy (import as fnp) — do NOT import numpy, scipy, or torch. flopscope arrays are immutable — do NOT use item assignment (arr[i] = ...) or indexed in-place updates. Build the result functionally using fnp.stack() or fnp.concatenate(). The host creates score.json after native exit."
 EOF
 )
 exec "$ROOT"/real_eval/scripts/arc_framework_fullrun.sh

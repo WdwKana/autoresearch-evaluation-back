@@ -1,10 +1,8 @@
 {
-  "schema_version": 1,
   "runs": [
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_real_babylm.sh",
       "validator": "ai_researcher_real",
@@ -19,7 +17,6 @@
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "02",
       "wrapper": "real_eval/scripts/02_ai_scientist_v2_real_babylm.sh",
       "validator": "ai_scientist_v2",
@@ -34,7 +31,6 @@
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
       "framework_id": "03",
       "wrapper": "real_eval/scripts/03_aris_real_babylm.sh",
       "validator": "aris",
@@ -49,11 +45,10 @@
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "04",
-      "wrapper": "real_eval/scripts/04_autoresearchclaw_real_babylm.sh",
-      "validator": "autoresearchclaw_resume",
-      "run_dir": "04_autoresearchclaw_real_babylm",
+      "wrapper": "real_eval/scripts/04_autoresearchclaw_babylm_gpt_fullrun.sh",
+      "validator": "autoresearchclaw_babylm_fullrun",
+      "run_dir": "04_autoresearchclaw_babylm_gpt_fullrun",
       "required_paths": [
         "AutoResearchClaw"
       ],
@@ -64,7 +59,6 @@
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
       "framework_id": "05",
       "wrapper": "real_eval/scripts/05_deepscientist_real_babylm.sh",
       "validator": "deepscientist",
@@ -79,7 +73,6 @@
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "06",
       "wrapper": "real_eval/scripts/06_drclaw_real_babylm.sh",
       "validator": "drclaw",
@@ -94,7 +87,6 @@
     {
       "topic_id": "babylm",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "07",
       "wrapper": "real_eval/scripts/07_evoscientist_auto_blackwell_babylm.sh",
       "validator": "evoscientist_auto",
@@ -108,117 +100,11 @@
       ]
     },
     {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "01",
-      "wrapper": "real_eval/scripts/01_ai_researcher_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "01_ai_researcher_gave2_task2_input_pack",
-      "required_paths": [
-        "AI-Researcher",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "02",
-      "wrapper": "real_eval/scripts/02_ai_scientist_v2_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "02_ai_scientist_v2_gave2_task2_input_pack",
-      "required_paths": [
-        "AI-Scientist-v2",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "03",
-      "wrapper": "real_eval/scripts/03_aris_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "03_aris_gave2_task2_input_pack",
-      "required_paths": [
-        "Auto-claude-code-research-in-sleep",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "04",
-      "wrapper": "real_eval/scripts/04_autoresearchclaw_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "04_autoresearchclaw_gave2_task2_input_pack",
-      "required_paths": [
-        "AutoResearchClaw",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "05",
-      "wrapper": "real_eval/scripts/05_deepscientist_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "05_deepscientist_gave2_task2_input_pack",
-      "required_paths": [
-        "DeepScientist",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "06",
-      "wrapper": "real_eval/scripts/06_drclaw_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "06_drclaw_gave2_task2_input_pack",
-      "required_paths": [
-        "dr-claw",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "input_pack",
-      "admission_status": "diagnostic",
-      "framework_id": "07",
-      "wrapper": "real_eval/scripts/07_evoscientist_gave2_task2_input_pack.sh",
-      "validator": "gave2_input_pack",
-      "run_dir": "07_evoscientist_gave2_task2_input_pack",
-      "required_paths": [
-        "EvoScientist",
-        "docs",
-        "automation"
-      ],
-      "required_images": []
-    },
-    {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "01_ai_researcher_arc_wbe_2026_input_pack",
       "required_paths": [
         "AI-Researcher",
@@ -230,10 +116,9 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "02",
       "wrapper": "real_eval/scripts/02_ai_scientist_v2_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "02_ai_scientist_v2_arc_wbe_2026_input_pack",
       "required_paths": [
         "AI-Scientist-v2",
@@ -245,10 +130,9 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "03",
       "wrapper": "real_eval/scripts/03_aris_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "03_aris_arc_wbe_2026_input_pack",
       "required_paths": [
         "Auto-claude-code-research-in-sleep",
@@ -260,10 +144,9 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "04",
       "wrapper": "real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "04_autoresearchclaw_arc_wbe_2026_input_pack",
       "required_paths": [
         "AutoResearchClaw",
@@ -275,10 +158,9 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "05",
       "wrapper": "real_eval/scripts/05_deepscientist_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "05_deepscientist_arc_wbe_2026_input_pack",
       "required_paths": [
         "DeepScientist",
@@ -290,10 +172,9 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "06",
       "wrapper": "real_eval/scripts/06_drclaw_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "06_drclaw_arc_wbe_2026_input_pack",
       "required_paths": [
         "dr-claw",
@@ -305,10 +186,9 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "input_pack",
-      "admission_status": "diagnostic",
       "framework_id": "07",
       "wrapper": "real_eval/scripts/07_evoscientist_arc_wbe_2026_input_pack.sh",
-      "validator": "gave2_input_pack",
+      "validator": "arc_wbe_2026_input_pack",
       "run_dir": "07_evoscientist_arc_wbe_2026_input_pack",
       "required_paths": [
         "EvoScientist",
@@ -320,7 +200,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -337,7 +216,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "02",
       "wrapper": "real_eval/scripts/02_ai_scientist_v2_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -354,7 +232,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "03",
       "wrapper": "real_eval/scripts/03_aris_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -371,7 +248,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "04",
       "wrapper": "real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -388,7 +264,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "05",
       "wrapper": "real_eval/scripts/05_deepscientist_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -405,7 +280,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "06",
       "wrapper": "real_eval/scripts/06_drclaw_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -422,7 +296,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "07",
       "wrapper": "real_eval/scripts/07_evoscientist_arc_wbe_2026_smoke.sh",
       "validator": "arc_wbe_2026_smoke",
@@ -440,7 +313,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -454,7 +326,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "02",
       "wrapper": "real_eval/scripts/02_ai_scientist_v2_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -468,7 +339,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
       "framework_id": "03",
       "wrapper": "real_eval/scripts/03_aris_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -482,7 +352,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "04",
       "wrapper": "real_eval/scripts/04_autoresearchclaw_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -496,7 +365,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "05",
       "wrapper": "real_eval/scripts/05_deepscientist_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -510,7 +378,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "06",
       "wrapper": "real_eval/scripts/06_drclaw_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -524,7 +391,6 @@
     {
       "topic_id": "arc_wbe_2026",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "07",
       "wrapper": "real_eval/scripts/07_evoscientist_arc_wbe_2026_fullrun.sh",
       "validator": "arc_wbe_2026_fullrun",
@@ -536,227 +402,8 @@
       ]
     },
     {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "01",
-      "wrapper": "real_eval/scripts/01_ai_researcher_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "01_ai_researcher_gave2_task2_smoke",
-      "required_paths": [
-        "AI-Researcher",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "ai-researcher:runtime-ready"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "02",
-      "wrapper": "real_eval/scripts/02_ai_scientist_v2_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "02_ai_scientist_v2_gave2_task2_smoke",
-      "required_paths": [
-        "AI-Scientist-v2",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "ai-scientist-v2:runtime-ready"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "03",
-      "wrapper": "real_eval/scripts/03_aris_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "03_aris_gave2_task2_smoke",
-      "required_paths": [
-        "Auto-claude-code-research-in-sleep",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "aris:runtime-ready"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "04",
-      "wrapper": "real_eval/scripts/04_autoresearchclaw_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "04_autoresearchclaw_gave2_task2_smoke",
-      "required_paths": [
-        "AutoResearchClaw",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "autoresearchclaw:runtime-ready"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "05",
-      "wrapper": "real_eval/scripts/05_deepscientist_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "05_deepscientist_gave2_task2_smoke",
-      "required_paths": [
-        "DeepScientist",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "deepscientist:runtime-ready"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "06",
-      "wrapper": "real_eval/scripts/06_drclaw_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "06_drclaw_gave2_task2_smoke",
-      "required_paths": [
-        "dr-claw",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "dr-claw:runtime-ready"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "smoke",
-      "admission_status": "diagnostic",
-      "framework_id": "07",
-      "wrapper": "real_eval/scripts/07_evoscientist_gave2_task2_smoke.sh",
-      "validator": "gave2_smoke",
-      "run_dir": "07_evoscientist_gave2_task2_smoke",
-      "required_paths": [
-        "EvoScientist",
-        "docs",
-        "automation"
-      ],
-      "required_images": [
-        "evoscientist:runtime-ready",
-        "nvcr.io/nvidia/pytorch:25.11-py3"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
-      "framework_id": "01",
-      "wrapper": "real_eval/scripts/01_ai_researcher_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "01_ai_researcher_gave2_task2_fullrun",
-      "required_paths": [
-        "AI-Researcher",
-        "docs",
-        "automation"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
-      "framework_id": "02",
-      "wrapper": "real_eval/scripts/02_ai_scientist_v2_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "02_ai_scientist_v2_gave2_task2_fullrun",
-      "required_paths": [
-        "AI-Scientist-v2",
-        "docs",
-        "automation"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
-      "framework_id": "03",
-      "wrapper": "real_eval/scripts/03_aris_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "03_aris_gave2_task2_fullrun",
-      "required_paths": [
-        "Auto-claude-code-research-in-sleep",
-        "docs",
-        "automation"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
-      "framework_id": "04",
-      "wrapper": "real_eval/scripts/04_autoresearchclaw_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "04_autoresearchclaw_gave2_task2_fullrun",
-      "required_paths": [
-        "AutoResearchClaw",
-        "docs",
-        "automation"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
-      "framework_id": "05",
-      "wrapper": "real_eval/scripts/05_deepscientist_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "05_deepscientist_gave2_task2_fullrun",
-      "required_paths": [
-        "DeepScientist",
-        "docs",
-        "automation"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
-      "framework_id": "06",
-      "wrapper": "real_eval/scripts/06_drclaw_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "06_drclaw_gave2_task2_fullrun",
-      "required_paths": [
-        "dr-claw",
-        "docs",
-        "automation"
-      ]
-    },
-    {
-      "topic_id": "gave2_task2",
-      "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
-      "framework_id": "07",
-      "wrapper": "real_eval/scripts/07_evoscientist_gave2_task2_fullrun.sh",
-      "validator": "gave2_fullrun",
-      "run_dir": "07_evoscientist_gave2_task2_fullrun",
-      "required_paths": [
-        "EvoScientist",
-        "docs",
-        "automation"
-      ]
-    },
-    {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -767,7 +414,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "02",
       "wrapper": "real_eval/scripts/02_ai_scientist_v2_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -778,7 +424,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "03",
       "wrapper": "real_eval/scripts/03_aris_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -789,7 +434,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "04",
       "wrapper": "real_eval/scripts/04_autoresearchclaw_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -800,7 +444,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "05",
       "wrapper": "real_eval/scripts/05_deepscientist_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -811,7 +454,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "06",
       "wrapper": "real_eval/scripts/06_drclaw_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -822,7 +464,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "07",
       "wrapper": "real_eval/scripts/07_evoscientist_psydefdetect_smoke.sh",
       "validator": "psydefdetect_smoke",
@@ -833,7 +474,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -844,7 +484,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "02",
       "wrapper": "real_eval/scripts/02_ai_scientist_v2_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -855,7 +494,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "unsupported_non_native",
       "framework_id": "03",
       "wrapper": "real_eval/scripts/03_aris_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -866,7 +504,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "04",
       "wrapper": "real_eval/scripts/04_autoresearchclaw_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -877,7 +514,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "05",
       "wrapper": "real_eval/scripts/05_deepscientist_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -888,7 +524,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "06",
       "wrapper": "real_eval/scripts/06_drclaw_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -899,7 +534,6 @@
     {
       "topic_id": "psydefdetect",
       "mode": "fullrun",
-      "admission_status": "candidate_requires_runtime_evidence",
       "framework_id": "07",
       "wrapper": "real_eval/scripts/07_evoscientist_psydefdetect_fullrun.sh",
       "validator": "psydefdetect_fullrun",
@@ -910,13 +544,142 @@
     {
       "topic_id": "tdc_admet_tox",
       "mode": "smoke",
-      "admission_status": "diagnostic",
       "framework_id": "01",
       "wrapper": "real_eval/scripts/01_ai_researcher_tdc_admet_tox_smoke.sh",
       "validator": "tdc_admet_tox_smoke",
       "run_dir": "01_ai_researcher_tdc_admet_tox_smoke",
       "required_paths": ["AI-Researcher", "docs", "automation"],
       "required_images": ["ai-researcher:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "smoke",
+      "framework_id": "02",
+      "wrapper": "real_eval/scripts/02_ai_scientist_v2_tdc_admet_tox_smoke.sh",
+      "validator": "tdc_admet_tox_smoke",
+      "run_dir": "02_ai_scientist_v2_tdc_admet_tox_smoke",
+      "required_paths": ["AI-Scientist-v2", "docs", "automation"],
+      "required_images": ["ai-scientist-v2:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "smoke",
+      "framework_id": "03",
+      "wrapper": "real_eval/scripts/03_aris_tdc_admet_tox_smoke.sh",
+      "validator": "tdc_admet_tox_smoke",
+      "run_dir": "03_aris_tdc_admet_tox_smoke",
+      "required_paths": ["Auto-claude-code-research-in-sleep", "docs", "automation"],
+      "required_images": ["aris:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "smoke",
+      "framework_id": "04",
+      "wrapper": "real_eval/scripts/04_autoresearchclaw_tdc_admet_tox_smoke.sh",
+      "validator": "tdc_admet_tox_smoke",
+      "run_dir": "04_autoresearchclaw_tdc_admet_tox_smoke",
+      "required_paths": ["AutoResearchClaw", "docs", "automation"],
+      "required_images": ["autoresearchclaw:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "smoke",
+      "framework_id": "05",
+      "wrapper": "real_eval/scripts/05_deepscientist_tdc_admet_tox_smoke.sh",
+      "validator": "tdc_admet_tox_smoke",
+      "run_dir": "05_deepscientist_tdc_admet_tox_smoke",
+      "required_paths": ["DeepScientist", "docs", "automation"],
+      "required_images": ["deepscientist:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "smoke",
+      "framework_id": "06",
+      "wrapper": "real_eval/scripts/06_drclaw_tdc_admet_tox_smoke.sh",
+      "validator": "tdc_admet_tox_smoke",
+      "run_dir": "06_drclaw_tdc_admet_tox_smoke",
+      "required_paths": ["dr-claw", "docs", "automation"],
+      "required_images": ["dr-claw:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "smoke",
+      "framework_id": "07",
+      "wrapper": "real_eval/scripts/07_evoscientist_tdc_admet_tox_smoke.sh",
+      "validator": "tdc_admet_tox_smoke",
+      "run_dir": "07_evoscientist_tdc_admet_tox_smoke",
+      "required_paths": ["EvoScientist", "docs", "automation"],
+      "required_images": ["evoscientist:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "01",
+      "wrapper": "real_eval/scripts/01_ai_researcher_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "01_ai_researcher_tdc_admet_tox_fullrun",
+      "required_paths": ["AI-Researcher", "docs", "automation"],
+      "required_images": ["ai-researcher:runtime-ready", "ai-researcher-exec:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "02",
+      "wrapper": "real_eval/scripts/02_ai_scientist_v2_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "02_ai_scientist_v2_tdc_admet_tox_fullrun",
+      "required_paths": ["AI-Scientist-v2", "docs", "automation"],
+      "required_images": ["ai-scientist-v2:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "03",
+      "wrapper": "real_eval/scripts/03_aris_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "03_aris_tdc_admet_tox_fullrun",
+      "required_paths": ["Auto-claude-code-research-in-sleep", "docs", "automation"],
+      "required_images": []
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "04",
+      "wrapper": "real_eval/scripts/04_autoresearchclaw_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "04_autoresearchclaw_tdc_admet_tox_fullrun",
+      "required_paths": ["AutoResearchClaw", "docs", "automation"],
+      "required_images": ["autoresearchclaw:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "05",
+      "wrapper": "real_eval/scripts/05_deepscientist_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "05_deepscientist_tdc_admet_tox_fullrun",
+      "required_paths": ["DeepScientist", "docs", "automation"],
+      "required_images": ["deepscientist:runtime-ready"]
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "06",
+      "wrapper": "real_eval/scripts/06_drclaw_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "06_drclaw_tdc_admet_tox_fullrun",
+      "required_paths": ["dr-claw", "docs", "automation"],
+      "required_images": []
+    },
+    {
+      "topic_id": "tdc_admet_tox",
+      "mode": "fullrun",
+      "framework_id": "07",
+      "wrapper": "real_eval/scripts/07_evoscientist_tdc_admet_tox_fullrun.sh",
+      "validator": "tdc_admet_tox_fullrun",
+      "run_dir": "07_evoscientist_tdc_admet_tox_fullrun",
+      "required_paths": ["EvoScientist", "docs", "automation"],
+      "required_images": ["evoscientist:runtime-ready"]
     }
   ]
 }

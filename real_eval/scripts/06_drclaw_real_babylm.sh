@@ -35,13 +35,8 @@ import sys
 
 p = Path(sys.argv[1])
 s = p.read_text()
-old = "const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';"
-new = 'const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";'
-if old not in s:
-    raise SystemExit("OPENROUTER_BASE_URL declaration not found")
-s = s.replace(old, new, 1)
-marker = "  const messages = [{ role: 'system', content: systemPrompt }];\n\n  const ask = () => {"
-insert = """  const messages = [{ role: 'system', content: systemPrompt }];\n\n  if (process.env.DR_CLAW_SINGLE_PROMPT) {\n    messages.push({ role: 'user', content: process.env.DR_CLAW_SINGLE_PROMPT });\n    await agentLoop(apiKey, model, messages, workingDir);\n    return;\n  }\n\n  const ask = () => {"""
+marker = '  const messages = [{ role: \'system\', content: systemPrompt }];\n\n  let turnInProgress = false;\n  let inputClosed = false;\n  let shuttingDown = false;\n\n  const finish = () => {'
+insert = '  const messages = [{ role: \'system\', content: systemPrompt }];\n\n  if (process.env.DR_CLAW_SINGLE_PROMPT) {\n    messages.push({ role: \'user\', content: process.env.DR_CLAW_SINGLE_PROMPT });\n    return agentLoop(baseUrl, apiKey, model, messages, workingDir);\n  }\n\n  let turnInProgress = false;\n  let inputClosed = false;\n  let shuttingDown = false;\n\n  const finish = () => {'
 if marker not in s:
     raise SystemExit("startChat prompt insertion point not found")
 s = s.replace(marker, insert, 1)
@@ -90,6 +85,7 @@ docker run --rm --name "$CONTAINER_NAME" --gpus all --user 0:0 \
 	  -e DATABASE_PATH=/home/evosci/.dr-claw/auth.db \
 	  -e DR_CLAW_E2E_PROJECT_DIR="$PROJECT_NAME" \
 	  -e DR_CLAW_SINGLE_PROMPT="Read .pipeline/docs/research_brief.json and .pipeline/tasks/tasks.json. Execute the Dr. Claw Auto Research workflow for this BabyLM-10M project: run survey, ideation, real training experiment, evaluation, and publication. Use input/contract.md and data/BabyLM-2026-Strict-Small from the project root. Do not use proxy scripts, iris, digits, old results, or placeholders." \
+	  -e DRCLAW_MAX_AGENT_TURNS=100 \
 	  -v "$REPO":/workspace/dr-claw \
 	  -v "$HOME_DIR":/home/evosci \
 	  -v "$DATASET_ROOT":"/home/evosci/dr-claw/$PROJECT_NAME/data/BabyLM-2026-Strict-Small":ro \
