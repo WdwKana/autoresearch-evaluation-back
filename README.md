@@ -11,13 +11,14 @@ tables without distributing private datasets or framework checkouts.
 
 | Topic | Maturity | Public modes |
 |---|---|---|
-| GAVE2-Task2 | stable | input pack, smoke, full run |
 | ARC-WBE-2026 | stable | input pack, smoke, full run |
 | PsyDefDetect | beta | smoke, full run |
 | BabyLM-10M | legacy | full run |
-| TDC-ADMET-Tox | experimental | smoke pilot |
+| TDC-ADMET-Tox | experimental | smoke, full run |
+| MountainCar-Continuous | experimental | smoke, full run |
+| GAVE2-Task2 | blocked | — |
 
-The registry contains seven framework adapters and 64 topic/framework/mode
+The registry contains 7 framework adapters and 56 topic/framework/mode
 mappings. A mapping is not proof of a valid native result. Full-run rows remain
 `candidate_requires_runtime_evidence` until launch, provider, trace, and output
 evidence pass validation. Generic host `codex exec` mappings are explicitly
@@ -32,37 +33,31 @@ real framework runs.
 
 ```bash
 # Clone this repository
-git clone https://github.com/YOUR_USERNAME/researchclaweval-public.git
+git clone https://github.com/betterrrrr/-researchclaweval-public.git
 cd researchclaweval-public
 
 # Run the setup script — clones 3 frameworks, applies patches, installs deps
-bash setup.sh
+bash setup.sh --quick
 
 # Set up your LLM API key
-export OPENAI_API_KEY=your_key_here
-export OPENAI_BASE_URL=https://your-provider-url/v1
-export OPENAI_MODEL=your-model-name
+cp .env.example .env
+# Edit .env with your API credentials
 
 # Verify the setup
-uv run rceval validate registry
-uv run rceval registry list
-uv run rceval registry matrix --topic gave2_task2 --mode fullrun
-uv run rceval dry-run --topic arc_wbe_2026 --mode smoke --output-dir /tmp/rceval-plan
-uv run rceval leaderboard render
+bash scripts/quickstart.sh
 ```
 
 See [SETUP.md](SETUP.md) for detailed collaboration instructions.
 
 ### Minimal validation (no frameworks needed)
 
-These commands do not launch a framework or require datasets. Framework and
-dataset locations are supplied later through registry environment overrides.
+These commands do not launch a framework or require datasets:
 
 ```bash
 uv sync --extra dev
 uv run rceval validate registry
 uv run rceval registry list
-uv run rceval registry matrix --topic gave2_task2 --mode fullrun
+uv run rceval registry matrix --topic arc_wbe_2026 --mode smoke
 uv run rceval dry-run --topic arc_wbe_2026 --mode smoke --output-dir /tmp/rceval-plan
 uv run rceval leaderboard render
 ```
@@ -77,4 +72,3 @@ local automation state, or full upstream framework sources.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for Topic, adapter, and result submission
 requirements. `framework_evaluator` is experimental in v0.1 and is not yet a
 stable Python API.
-

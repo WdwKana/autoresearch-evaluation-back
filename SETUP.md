@@ -219,17 +219,22 @@ Datasets are **not** included in this repository. They must be obtained separate
 
 | Topic | Dataset | Status | How to Obtain |
 |---|---|---|---|
-| GAVE2-Task2 | GAVE2 preliminary | Public | See [GAVE2 official site](https://gave2.webis.de/) |
-| ARC-WBE-2026 | ARC White-Box Estimation | Public | See [ARC official site](https://arc.net/) |
+| ARC-WBE-2026 | ARC White-Box Estimation | Public | [HuggingFace: aicrowd/arc-whestbench-public-2026](https://huggingface.co/datasets/aicrowd/arc-whestbench-public-2026) |
 | PsyDefDetect | PsyDefDetect | Beta | Contact maintainers |
-| BabyLM-10M | BabyLM-2026-Strict-Small | Public | See [BabyLM site](https://babylm.github.io/) |
-| TDC-ADMET-Tox | TDC ADMET | Public | See [TDC website](https://tdcommons.ai/) |
+| BabyLM-10M | BabyLM-2026-Strict-Small | Public | [BabyLM site](https://babylm.github.io/) |
+| TDC-ADMET-Tox | TDC ADMET | Public | [TDC website](https://tdcommons.ai/) |
+| MountainCar-Continuous | Gymnasium built-in | Public | Available via `gymnasium` package |
+| GAVE2-Task2 | GAVE2 preliminary | Blocked | Dataset currently unavailable |
+
+Use `bash scripts/setup_datasets.sh` for automated download of public datasets.
 
 Set dataset paths via environment variables:
 
 ```bash
 export ARC_WBE_2026_DATASET_ROOT=/path/to/ARC_WBE_2026
-export GAVE2_DATASET_ROOT=/path/to/GAVE2_preliminary
+export BABYLM_DATASET_ROOT=/path/to/BabyLM-2026-Strict-Small
+export PSYDEFDETECT_DATASET_ROOT=/path/to/PsyDefDetect
+export TDC_ADMET_TOX_DATASET_ROOT=/path/to/TDC-ADMET-Tox-public
 ```
 
 ### API Configuration
@@ -469,11 +474,12 @@ researchclaweval-public/
 
 | 主题 | 数据集 | 状态 | 获取方式 |
 |---|---|---|---|
-| GAVE2-Task2 | GAVE2 preliminary | 公开 | 参见 [GAVE2 官网](https://gave2.webis.de/) |
-| ARC-WBE-2026 | ARC White-Box Estimation | 公开 | 参见 [ARC 官网](https://arc.net/) |
+| ARC-WBE-2026 | ARC White-Box Estimation | 公开 | [HuggingFace: aicrowd/arc-whestbench-public-2026](https://huggingface.co/datasets/aicrowd/arc-whestbench-public-2026) |
 | PsyDefDetect | PsyDefDetect | Beta | 联系维护者 |
-| BabyLM-10M | BabyLM-2026-Strict-Small | 公开 | 参见 [BabyLM 官网](https://babylm.github.io/) |
-| TDC-ADMET-Tox | TDC ADMET | 公开 | 参见 [TDC 网站](https://tdcommons.ai/) |
+| BabyLM-10M | BabyLM-2026-Strict-Small | 公开 | [BabyLM 官网](https://babylm.github.io/) |
+| TDC-ADMET-Tox | TDC ADMET | 公开 | [TDC 网站](https://tdcommons.ai/) |
+| MountainCar-Continuous | Gymnasium 内置 | 公开 | 通过 `gymnasium` 包获取 |
+| GAVE2-Task2 | GAVE2 preliminary | 已阻塞 | 数据集暂时不可用 |
 
 通过环境变量设置数据集路径：
 
