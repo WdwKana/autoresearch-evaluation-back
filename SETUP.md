@@ -51,9 +51,9 @@ bash scripts/quickstart.sh
 
 | # | Framework | Topics | Smoke | Full Run |
 |---|-----------|--------|-------|----------|
-| 01 | AI-Researcher | babylm, gave2_task2, arc_wbe_2026, psydefdetect, tdc_admet_tox | ✅ | ✅ |
-| 02 | AI-Scientist-v2 | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
-| 04 | AutoResearchClaw | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+| 01 | AI-Researcher | babylm, arc_wbe_2026, psydefdetect, tdc_admet_tox | ✅ | ✅ |
+| 02 | AI-Scientist-v2 | babylm, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+| 04 | AutoResearchClaw | babylm, arc_wbe_2026, psydefdetect | ✅ | ✅ |
 
 #### Run a smoke test
 
@@ -65,7 +65,6 @@ bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh
 Other smoke tests:
 ```bash
 # Framework 01
-bash real_eval/scripts/01_ai_researcher_gave2_task2_smoke.sh
 bash real_eval/scripts/01_ai_researcher_psydefdetect_smoke.sh
 
 # Framework 02
@@ -99,19 +98,16 @@ bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 | Framework | Topic | Smoke | Full Run |
 |-----------|-------|-------|----------|
 | **01 AI-Researcher** | ARC-WBE-2026 | ✅ | ✅ |
-| | GAVE2-Task2 | ⛔ blocked | ⛔ blocked |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
 | | MountainCar-Continuous | script exists | script exists |
 | **02 AI-Scientist-v2** | ARC-WBE-2026 | ✅ | ✅ |
-| | GAVE2-Task2 | ⛔ blocked | ⛔ blocked |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
 | | MountainCar-Continuous | script exists | script exists |
 | **04 AutoResearchClaw** | ARC-WBE-2026 | ✅ | ✅ |
-| | GAVE2-Task2 | ⛔ blocked | ⛔ blocked |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
@@ -224,7 +220,6 @@ Datasets are **not** included in this repository. They must be obtained separate
 | BabyLM-10M | BabyLM-2026-Strict-Small | Public | [BabyLM site](https://babylm.github.io/) |
 | TDC-ADMET-Tox | TDC ADMET | Public | [TDC website](https://tdcommons.ai/) |
 | MountainCar-Continuous | Gymnasium built-in | Public | Available via `gymnasium` package |
-| GAVE2-Task2 | GAVE2 preliminary | Blocked | Dataset currently unavailable |
 
 Use `bash scripts/setup_datasets.sh` for automated download of public datasets.
 
@@ -315,9 +310,9 @@ bash scripts/quickstart.sh
 
 | # | 框架 | 支持的主题 | 冒烟测试 | 完整运行 |
 |---|------|-----------|---------|---------|
-| 01 | AI-Researcher | babylm, gave2_task2, arc_wbe_2026, psydefdetect, tdc_admet_tox | ✅ | ✅ |
-| 02 | AI-Scientist-v2 | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
-| 04 | AutoResearchClaw | babylm, gave2_task2, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+| 01 | AI-Researcher | babylm, arc_wbe_2026, psydefdetect, tdc_admet_tox | ✅ | ✅ |
+| 02 | AI-Scientist-v2 | babylm, arc_wbe_2026, psydefdetect | ✅ | ✅ |
+| 04 | AutoResearchClaw | babylm, arc_wbe_2026, psydefdetect | ✅ | ✅ |
 
 #### 运行冒烟测试
 
@@ -329,7 +324,6 @@ bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_smoke.sh
 其他冒烟测试：
 ```bash
 # 框架 01
-bash real_eval/scripts/01_ai_researcher_gave2_task2_smoke.sh
 bash real_eval/scripts/01_ai_researcher_psydefdetect_smoke.sh
 
 # 框架 02
@@ -363,19 +357,16 @@ bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 | 框架 | 主题 | 冒烟测试 | 完整运行 |
 |------|------|---------|---------|
 | **01 AI-Researcher** | ARC-WBE-2026 | ✅ | ✅ |
-| | GAVE2-Task2 | ⛔ 已阻塞 | ⛔ 已阻塞 |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
 | | MountainCar-Continuous | 脚本存在 | 脚本存在 |
 | **02 AI-Scientist-v2** | ARC-WBE-2026 | ✅ | ✅ |
-| | GAVE2-Task2 | ⛔ 已阻塞 | ⛔ 已阻塞 |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
 | | MountainCar-Continuous | 脚本存在 | 脚本存在 |
 | **04 AutoResearchClaw** | ARC-WBE-2026 | ✅ | ✅ |
-| | GAVE2-Task2 | ⛔ 已阻塞 | ⛔ 已阻塞 |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
@@ -479,13 +470,11 @@ researchclaweval-public/
 | BabyLM-10M | BabyLM-2026-Strict-Small | 公开 | [BabyLM 官网](https://babylm.github.io/) |
 | TDC-ADMET-Tox | TDC ADMET | 公开 | [TDC 网站](https://tdcommons.ai/) |
 | MountainCar-Continuous | Gymnasium 内置 | 公开 | 通过 `gymnasium` 包获取 |
-| GAVE2-Task2 | GAVE2 preliminary | 已阻塞 | 数据集暂时不可用 |
 
 通过环境变量设置数据集路径：
 
 ```bash
 export ARC_WBE_2026_DATASET_ROOT=/path/to/ARC_WBE_2026
-export GAVE2_DATASET_ROOT=/path/to/GAVE2_preliminary
 ```
 
 ### API 配置

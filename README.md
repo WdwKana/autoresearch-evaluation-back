@@ -16,7 +16,6 @@ tables without distributing private datasets or framework checkouts.
 | BabyLM-10M | legacy | full run |
 | TDC-ADMET-Tox | experimental | smoke, full run |
 | MountainCar-Continuous | experimental | smoke, full run |
-| GAVE2-Task2 | blocked | — |
 
 The registry contains 7 framework adapters and 56 topic/framework/mode
 mappings. A mapping is not proof of a valid native result. Full-run rows remain

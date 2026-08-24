@@ -13,7 +13,6 @@ ResearchClawEval 是面向科研 Agent 框架的公开评测控制层。它维�
 | BabyLM-10M | legacy | full run |
 | TDC-ADMET-Tox | experimental | smoke、full run |
 | MountainCar-Continuous | experimental | smoke、full run |
-| GAVE2-Task2 | blocked | — |
 
 注册表包含 7 个框架和 56 条映射。映射存在并不代表结果已通过原生执行准入；
 使用通用宿主 `codex exec` 的 fullrun 会明确标记为 `unsupported_non_native`。
