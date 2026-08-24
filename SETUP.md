@@ -103,22 +103,19 @@ bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
-| | MountainCar-Continuous | ✅ | ✅ |
-| | Topic2 | ✅ | ✅ |
+| | MountainCar-Continuous | script exists | script exists |
 | **02 AI-Scientist-v2** | ARC-WBE-2026 | ✅ | ✅ |
 | | GAVE2-Task2 | ⛔ blocked | ⛔ blocked |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
-| | MountainCar-Continuous | ✅ | ✅ |
-| | Topic2 | ✅ | ✅ |
+| | MountainCar-Continuous | script exists | script exists |
 | **04 AutoResearchClaw** | ARC-WBE-2026 | ✅ | ✅ |
 | | GAVE2-Task2 | ⛔ blocked | ⛔ blocked |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
-| | MountainCar-Continuous | ✅ | ✅ |
-| | Topic2 | ✅ | ✅ |
+| | MountainCar-Continuous | script exists | script exists |
 
 ### Prerequisites
 
@@ -365,22 +362,19 @@ bash real_eval/scripts/01_ai_researcher_arc_wbe_2026_fullrun.sh
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
-| | MountainCar-Continuous | ✅ | ✅ |
-| | Topic2 | ✅ | ✅ |
+| | MountainCar-Continuous | 脚本存在 | 脚本存在 |
 | **02 AI-Scientist-v2** | ARC-WBE-2026 | ✅ | ✅ |
 | | GAVE2-Task2 | ⛔ 已阻塞 | ⛔ 已阻塞 |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
-| | MountainCar-Continuous | ✅ | ✅ |
-| | Topic2 | ✅ | ✅ |
+| | MountainCar-Continuous | 脚本存在 | 脚本存在 |
 | **04 AutoResearchClaw** | ARC-WBE-2026 | ✅ | ✅ |
 | | GAVE2-Task2 | ⛔ 已阻塞 | ⛔ 已阻塞 |
 | | PsyDefDetect | ✅ | ✅ |
 | | BabyLM-10M | — | ✅ |
 | | TDC-ADMET-Tox | ✅ | ✅ |
-| | MountainCar-Continuous | ✅ | ✅ |
-| | Topic2 | ✅ | ✅ |
+| | MountainCar-Continuous | 脚本存在 | 脚本存在 |
 
 可选：显式指定框架源码路径（否则使用设置脚本的克隆位置）：
 
