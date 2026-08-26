@@ -441,6 +441,7 @@ fi
   exit 31
 }
 
+set +e
 python3 - "$WORKSPACE" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" "$FRAMEWORK_PROVIDER_BASE_URL" <<'PY'
 from pathlib import Path
 import json
@@ -505,6 +506,12 @@ for key in ("hypothesis", "method_rationale", "expected_failure_modes", "compari
     if not nonempty(value):
         raise SystemExit(f"AI-Researcher research_idea.json lacks {key}")
 PY
+handoff_rc=$?
+set -e
+if [[ "$handoff_rc" -ne 0 ]]; then
+  write_state "failed" "AI-Researcher ARC handoff artifacts missing or non-conformant before scoring" 42 "python run_infer_idea.py --category arc_wbe_2026"
+  exit 42
+fi
 
 if ! "$WEIGHTS_ONLY_PYTHON" "$ROOT/automation/scripts/run_arc_wbe_2026_local_score.py" \
   --workspace "$WORKSPACE" \
@@ -516,6 +523,7 @@ if ! "$WEIGHTS_ONLY_PYTHON" "$ROOT/automation/scripts/run_arc_wbe_2026_local_sco
   exit 43
 fi
 
+set +e
 python3 - "$WORKSPACE" "$TRACE_ROOT" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" <<'PY'
 from pathlib import Path
 import json
@@ -537,6 +545,12 @@ score = json.loads((workspace / "score.json").read_text(encoding="utf-8"))
 if score.get("score_source") != "official_adapter_whest_run":
     raise SystemExit("AI-Researcher score is not official_adapter_whest_run")
 PY
+postscore_rc=$?
+set -e
+if [[ "$postscore_rc" -ne 0 ]]; then
+  write_state "failed" "AI-Researcher ARC post-score validation failed; see log for the concrete violation" 44 "python run_infer_idea.py --category arc_wbe_2026"
+  exit 44
+fi
 
 python3 - "$MANIFEST_FILE" "$WORKSPACE" "$LOG_FILE" <<'PY'
 from pathlib import Path
