@@ -310,6 +310,10 @@ new = '''        gpu_cmd = ["--gpus", GPUS] if GPUS else []
         host_contract = os.getenv("RESEARCHCLAWEVAL_TOPIC_HOST_CONTRACT_FILE", "")
         if host_contract:
             extra_mounts.extend(["-v", f"{host_contract}:/input/contract.md:ro"])
+        extra_mounts.extend([
+            "-e", "OPENAI_MODEL=" + os.getenv("OPENAI_MODEL", ""),
+            "-e", "OPENAI_BASE_URL=" + os.getenv("OPENAI_BASE_URL", ""),
+        ])
         docker_command = [
             "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + ["--name", self.container_name,
             "--user", "root", "-v", f"{local_workplace}:{self.docker_workplace}",
