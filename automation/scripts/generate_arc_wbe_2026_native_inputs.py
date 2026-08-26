@@ -159,6 +159,34 @@ The dataset has a fixed validation split. Never compute val and test metrics on 
 """
 
 
+AI_RESEARCHER_TRACE_VALUE_SPEC = """
+## Exact value requirements for experiment_trace.json (host validator is strict)
+
+The host validator rejects the run unless every field below has exactly the
+required type and value semantics. Field names alone are not sufficient.
+
+- `framework_native_execution`: boolean `true`
+- `consumed_topic_input`: boolean `true` (record dataset paths in other fields
+  if desired; this field itself must be the literal boolean)
+- `workspace_trace_root`: the literal string `"/workspace"` (host-side trace
+  root; do not substitute a local experiments directory)
+- `experiments`: a list of 2-4 objects; each object must contain a unique,
+  non-empty string field named `experiment_id` (extra fields are allowed)
+- `selected_experiment_id`: string equal to one `experiments[].experiment_id`
+- `framework_internal_model`: the exact value of the injected `OPENAI_MODEL`
+  environment variable (the model driving the framework's own reasoning; NOT
+  whether experiment scripts called an LLM — never write placeholders such as
+  "not_called")
+- `framework_internal_api_base_url`: the exact value of the injected
+  `OPENAI_BASE_URL` environment variable
+- `idea_artifact`: the literal string `"research_idea.json"`
+- `idea_locked_before_experiments`: boolean `true`
+
+`research_idea.json` must contain non-empty `hypothesis`, `method_rationale`
+(or `rationale`), `expected_failure_modes`, and `comparison_logic`.
+"""
+
+
 def render_ai_researcher_metaprompt(dataset_root: Path, contract_file: Path) -> str:
     return f'''TASK = "ARC White-Box Estimation Challenge 2026 benchmark execution."
 DATASET = """
@@ -413,7 +441,8 @@ def generate_native_inputs(
         # inner execution container; paths are the inner-container mounts.
         "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md": render_framework_brief(
             Path("/data/arc_wbe_2026"), Path("/input/contract.md")
-        ),
+        )
+        + AI_RESEARCHER_TRACE_VALUE_SPEC,
         "AI-Scientist-v2/ai_scientist/ideas/arc_wbe_2026_topic.md": ai_scientist_topic,
         "AI-Scientist-v2/ai_scientist/ideas/my_research_topic.md": ai_scientist_topic,
         "Auto-claude-code-research-in-sleep/ARC_WBE_2026_BRIEF.md": framework_brief,
