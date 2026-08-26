@@ -172,7 +172,7 @@ The dataset is available at:
 BASELINE = "No host-prescribed baseline. The framework must choose and justify its own methods."
 COMPARISON = "Compare only official-format outputs or score evidence generated from the same ARC-WBE-2026 contract."
 EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, estimator.py, submission.json, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit."
-REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic submissions, zero/broadcast predictions, fallback scores, or outputs from previous topics. The mounted parquet contains real weights-only records; do not fabricate labels. The contract file is: {contract_file}"
+REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic submissions, zero/broadcast predictions, fallback scores, or outputs from previous topics. The mounted parquet contains real weights-only records; do not fabricate labels. The full topic contract is mounted at /input/contract.md. The delivery specification (required root-level artifacts, experiment_trace.json fields, and the estimator predict() interface) is in /workplace/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md."
 METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
 DATA_INSPECTION_RULES = """
 When inspecting ARC-WBE-2026 parquet or dataset rows, Do not print raw weights, all_layer_means, final_means, or other large tensor/array payloads.
@@ -407,6 +407,12 @@ def generate_native_inputs(
         ),
         "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/metaprompt.py": render_ai_researcher_metaprompt(
             dataset_root, contract_file
+        ),
+        # Same brief the file-driven frameworks (03/05/07) receive, staged where
+        # AI-Researcher's own dataset_candidate copy makes it visible inside the
+        # inner execution container; paths are the inner-container mounts.
+        "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md": render_framework_brief(
+            Path("/data/arc_wbe_2026"), Path("/input/contract.md")
         ),
         "AI-Scientist-v2/ai_scientist/ideas/arc_wbe_2026_topic.md": ai_scientist_topic,
         "AI-Scientist-v2/ai_scientist/ideas/my_research_topic.md": ai_scientist_topic,
