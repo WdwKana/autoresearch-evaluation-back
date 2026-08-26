@@ -119,6 +119,10 @@ mkdir -p \
   "$WORKSPACE/automation"
 cp "$INPUT_ROOT/$TOPIC_INSTANCE_REL" "$REPO/benchmark/final/arc_wbe_2026/arc_wbe_2026.json"
 cp "$INPUT_ROOT/$TOPIC_METAPROMPT_REL" "$REPO/benchmark/process/dataset_candidate/arc_wbe_2026/metaprompt.py"
+if [[ -f "$INPUT_ROOT/AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md" ]]; then
+  cp "$INPUT_ROOT/AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md" \
+    "$REPO/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md"
+fi
 cp "$INPUT_ROOT/$TOPIC_SUMMARY_REL" "$WORKSPACE/docs/arc_wbe_2026_summary.md"
 cp "$INPUT_ROOT/$TOPIC_CONTRACT_REL" "$WORKSPACE/automation/arc_wbe_2026_contract.md"
 cp "$INPUT_ROOT/$TOPIC_BUDGET_REL" "$WORKSPACE/automation/arc_wbe_2026_execution_budget.md"
@@ -172,6 +176,9 @@ new = '''def setup_dataset(category: str, local_workplace: str):
         try:
             os.makedirs(dataset_candidate_path, exist_ok=True)
             shutil.copy2(source_path / "metaprompt.py", os.path.join(dataset_candidate_path, "metaprompt.py"))
+            brief_source = source_path / "ARC_WBE_2026_BRIEF.md"
+            if brief_source.exists():
+                shutil.copy2(brief_source, os.path.join(dataset_candidate_path, "ARC_WBE_2026_BRIEF.md"))
             copied_dataset = os.path.join(dataset_candidate_path, "arc_wbe_2026")
             shutil.copytree(real_dataset, copied_dataset)
             project_dir = os.path.join(local_workplace, "project")
