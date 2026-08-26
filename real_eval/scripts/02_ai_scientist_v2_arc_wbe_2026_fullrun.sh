@@ -127,6 +127,28 @@ config["agent"]["expose_prediction"] = True
 for section in ("code", "feedback", "vlm_feedback"):
     config["agent"][section]["model"] = model
 config["report"]["model"] = model
+# treesearch/journal.py falls back to a hardcoded "gpt-4o" whenever
+# agent.summary / agent.select_node are absent (they are commented out in the
+# upstream bfts_config.yaml), so materialize them, then force every remaining
+# "model" key in the config onto the injected model.
+for section in ("summary", "select_node"):
+    entry = dict(config["agent"].get(section) or {})
+    entry["model"] = model
+    entry.setdefault("temp", 0.3)
+    config["agent"][section] = entry
+
+def set_all_models(node):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "model" and isinstance(value, str):
+                node[key] = model
+            else:
+                set_all_models(value)
+    elif isinstance(node, list):
+        for item in node:
+            set_all_models(item)
+
+set_all_models(config)
 path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
 PY
 timeout "${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-3600}s" python launch_scientist_bfts.py \
