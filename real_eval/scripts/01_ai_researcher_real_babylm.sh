@@ -32,6 +32,37 @@ trap cleanup_inner_container EXIT
 real_eval_require_clean_dir "$BASE"
 mkdir -p "$BASE" "$LOG_DIR"
 real_eval_rsync_repo "$SRC" "$REPO"
+
+# Upstream ships research_agent/constant.py without PLATFORM, so every tool
+# module that imports it fails during the tools package's recursive import and
+# run_infer_idea.py dies with "cannot import name 'gen_code_tree_structure'".
+# The ARC wrapper already patches this; BabyLM never did. Same minimal fix:
+# define PLATFORM and register the tool modules explicitly.
+python3 - "$REPO/research_agent/constant.py" "$REPO/research_agent/inno/tools/__init__.py" <<'PY'
+from pathlib import Path
+import sys
+
+constants = Path(sys.argv[1])
+text = constants.read_text(encoding="utf-8")
+if "PLATFORM =" not in text:
+    constants.write_text(text + "\nPLATFORM = 'linux/amd64'\n", encoding="utf-8")
+
+tools = Path(sys.argv[2])
+text = tools.read_text(encoding="utf-8")
+old = "import_tools_recursively(current_dir, 'inno.tools')"
+new = '''for module_name in (
+    "terminal_tools",
+    "inner",
+    "inno_tools.planning_tools",
+    "inno_tools.web_tools",
+):
+    importlib.import_module(f"research_agent.inno.tools.{module_name}")'''
+if old in text:
+    tools.write_text(text.replace(old, new), encoding="utf-8")
+else:
+    print("SKIP: tool registration insertion point not found")
+PY
+
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
 cp "$ROOT/api/github.env" "$GITHUB_ENV" 2>/dev/null || echo "GITHUB_AI_TOKEN=" > "$GITHUB_ENV"
