@@ -184,6 +184,24 @@ required type and value semantics. Field names alone are not sufficient.
 
 `research_idea.json` must contain non-empty `hypothesis`, `method_rationale`
 (or `rationale`), `expected_failure_modes`, and `comparison_logic`.
+
+## Official scorer runtime constraints for estimator.py (hard requirements)
+
+The host executes `estimator.py` inside the official whest evaluation
+environment after you exit. That environment provides ONLY the Python
+standard library and `numpy`. Any other import — `torch`, `scipy`,
+`sklearn`, `pandas`, etc. — makes the official scoring fail closed with no
+score.
+
+- implement `predict(mlp)` using numpy and the standard library only
+- if your selected method has learned parameters, export them to plain
+  `.npz` / `.json` files next to `estimator.py` and load them with numpy;
+  never ship pickle/torch checkpoints
+- `estimator.py` must be importable standalone: only import your own helper
+  modules if they are also numpy/stdlib-only and shipped alongside it
+- you may still use any library (torch included) DURING experiments to find
+  the method; only the final delivered `estimator.py` must satisfy these
+  constraints
 """
 
 
