@@ -38,9 +38,16 @@ real_eval_rsync_repo "$SRC" "$REPO"
 # run_infer_idea.py dies with "cannot import name 'gen_code_tree_structure'".
 # The ARC wrapper already patches this; BabyLM never did. Same minimal fix:
 # define PLATFORM and register the tool modules explicitly.
-python3 - "$REPO/research_agent/constant.py" "$REPO/research_agent/inno/tools/__init__.py" <<'PY'
+python3 - "$REPO/research_agent/constant.py" "$REPO/research_agent/inno/tools/__init__.py" "$REPO/research_agent/run_infer_idea.py" <<'PY'
 from pathlib import Path
 import sys
+
+entrypoint = Path(sys.argv[3])
+text = entrypoint.read_text(encoding="utf-8")
+# Upstream's main() takes (args, references); the module-level call passes only
+# args. The ARC wrapper already patches this; BabyLM never did.
+if '    main(args)\n' in text:
+    entrypoint.write_text(text.replace('    main(args)\n', '    main(args, references="")\n', 1), encoding="utf-8")
 
 constants = Path(sys.argv[1])
 text = constants.read_text(encoding="utf-8")
