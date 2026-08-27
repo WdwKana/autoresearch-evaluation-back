@@ -14,6 +14,7 @@
 | [2026-08-26-01-arc-bug-analysis.md](dawei/2026-08-26-01-arc-bug-analysis.md) | 框架 01 × ARC "跑不出分数" 的完整 bug 链分析与可复现证据 |
 | [2026-08-26-01-arc-fix-log.md](dawei/2026-08-26-01-arc-fix-log.md) | 对应修复的分步实施日志（分支 `fix/01-arc-delivery`,每步一 commit + 独立测试） |
 | [2026-08-26-02-arc-blockers.md](dawei/2026-08-26-02-arc-blockers.md) | 框架 02 × ARC 阻塞项：发布遗漏的适配文件（已重建待校对）、S2 key 硬依赖 |
+| [2026-08-27-tdc-blockers.md](dawei/2026-08-27-tdc-blockers.md) | 框架 01 × TDC 进展快照:数据集已物化校验通过,阻塞于 Codex CLI 版本错配 |
 | [collaborator-checklist.md](dawei/collaborator-checklist.md) | 需要与其他协作者对齐/索取的事项清单（持续更新） |
 
 ## 记录约定

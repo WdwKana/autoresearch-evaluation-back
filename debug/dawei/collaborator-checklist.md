@@ -4,7 +4,9 @@
 
 1. **`real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py` 原件**——公开发布遗漏;我方已按 wrapper 上下文重建最小版（见 02 阻塞记录）,需 diff 校对。
 2. **Semantic Scholar API key**——02 的 ideation 硬依赖;无 key 必然 429 超时。
-3. （可选）`api/_semantic_scholar_api_usage.md`、其他 `api/` 私有配置的清单,确认还有哪些脱敏遗漏。
+3. **`real_eval/codex_relay/relay.py` 正本**——公开仓引用但未发布;我方已从常驻 relay 容器回收一份（1046 行,已加 provenance 头）,需 diff 校对。
+4. **Codex CLI 版本号**——TDC/PsyDef 的 smoke 依赖宿主 codex;新版 0.150.1 已移除 relay 依赖的 `wire_api="chat"`,需知道你们钉的版本。
+5. （可选）`api/_semantic_scholar_api_usage.md`、其他 `api/` 私有配置的清单,确认还有哪些脱敏遗漏。
 
 ## 需要同步给协作者的发现
 
