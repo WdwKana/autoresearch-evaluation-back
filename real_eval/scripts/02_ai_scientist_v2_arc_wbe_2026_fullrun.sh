@@ -113,6 +113,7 @@ print("AI_SCIENTIST_V2_ARC_IDEA_OK")
 PY
 python3 - bfts_config.yaml "$OPENAI_MODEL" <<'PY'
 from pathlib import Path
+import os
 import sys
 import yaml
 
@@ -124,6 +125,20 @@ config["generate_report"] = False
 config["agent"]["num_workers"] = 1
 config["agent"]["steps"] = 2
 config["agent"]["expose_prediction"] = True
+# `steps` alone does not bound the run: the four BFTS stages carry their own
+# stage*_max_iters (upstream 20/12/12/18 = 62 iterations) and ignore `steps`
+# when set. Two runs died at the wrapper timeout mid-stage-2/3 with nothing
+# delivered. Bound every stage so the tree search converges and finalizes
+# inside the topic's execution budget.
+stages = dict(config["agent"].get("stages") or {})
+for key, value in (
+    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "4"))),
+    ("stage2_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE2_ITERS", "3"))),
+    ("stage3_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE3_ITERS", "3"))),
+    ("stage4_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE4_ITERS", "3"))),
+):
+    stages[key] = value
+config["agent"]["stages"] = stages
 for section in ("code", "feedback", "vlm_feedback"):
     config["agent"][section]["model"] = model
 config["report"]["model"] = model
