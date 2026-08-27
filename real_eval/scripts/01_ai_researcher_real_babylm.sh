@@ -188,6 +188,9 @@ new = '''        extra_mounts = []
         host_contract = os.getenv("RESEARCHCLAWEVAL_TOPIC_HOST_CONTRACT_FILE", "")
         if host_contract:
             extra_mounts.extend(["-v", f"{host_contract}:/input/contract.md:ro"])
+        extra_mounts.extend([
+            "-e", "HF_ENDPOINT=" + os.getenv("HF_ENDPOINT", "https://hf-mirror.com"),
+        ])
         docker_command = [
             "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + ["--name", self.container_name, 
             "--user", "root", "-v", f"{local_workplace}:{self.docker_workplace}",
@@ -537,6 +540,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -e BASE_IMAGES=${AI_RESEARCHER_EXEC_RUNTIME_IMAGE:-ai-researcher-exec:blackwell-25.11} \
   -e GPUS=all \
   -e PYTHONPATH=/workspace/AI-Researcher:/workspace/AI-Researcher/research_agent/inno/tools \
+  -e HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}" \
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=BabyLM-10M \
   -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/BabyLM-2026-Strict-Small \
   -e RESEARCHCLAWEVAL_TOPIC_HOST_DATASET_ROOT="$DATASET_ROOT" \
