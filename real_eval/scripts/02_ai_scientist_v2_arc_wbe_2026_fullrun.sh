@@ -132,8 +132,14 @@ config["agent"]["expose_prediction"] = True
 # inside the topic's execution budget.
 stages = dict(config["agent"].get("stages") or {})
 for key, value in (
-    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "4"))),
-    ("stage2_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE2_ITERS", "3"))),
+    # Stage 1 must be generous enough to reach a working implementation --
+    # agent_manager aborts the whole run when it does not ("did not find a
+    # working implementation after N iterations"); later stages only refine.
+    # NOTE: the generic ARC wrapper forwards only whitelisted env vars into
+    # the container, so these defaults are what actually apply unless that
+    # whitelist is extended.
+    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "12"))),
+    ("stage2_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE2_ITERS", "4"))),
     ("stage3_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE3_ITERS", "3"))),
     ("stage4_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE4_ITERS", "3"))),
 ):
