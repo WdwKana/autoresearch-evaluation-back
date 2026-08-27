@@ -43,3 +43,8 @@
 
 ## 结论
 02 比 01 健康：拓扑通、终态处理健全。剩两件事：R2 一个有界退避补丁即可解阻塞（可立即做）;R1 是"S2 修好后的下一个雷",建议趁现在按 a+b 修掉,再用一次 fullrun 集成验证。
+
+## 追记（2026-08-26/27 实测进展）
+- R2 补丁实施为独立适配文件 `real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py`（框架级封装模式）,实测 429 下 0.6 秒降级;run 141150：**02 首次穿过 ideation 并启动 BFTS**——R1 的"流程推不进 BFTS"部分被证伪。
+- 新雷并修复：`treesearch/journal.py` 在 `agent.summary/select_node` 缺失时回退硬编码 gpt-4o(403);wrapper 的 bfts_config 改写扩展为物化两段 + 递归统一全部 model 键（commit +22,仅 02×ARC wrapper）。
+- run 142010：BFTS 健康跑满 60 分钟预算被超时杀（Stage 2 Step 6/12）——预算问题非 bug;重跑用环境旋钮 `ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS=7200` 放宽,零代码改动。R1（根产物交付）仍待首个完整跑完的 run 实证。
