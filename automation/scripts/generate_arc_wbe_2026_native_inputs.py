@@ -202,6 +202,17 @@ score.
 - you may still use any library (torch included) DURING experiments to find
   the method; only the final delivered `estimator.py` must satisfy these
   constraints
+
+The official adapter statically scans `estimator.py` and accepts ONLY these
+exact symbols — any other naming is rejected without execution:
+
+- define `class Estimator` (this exact class name) with a method
+  `predict(self, mlp)`, OR a factory function `def build_estimator()`
+  returning such an object; do not use a project-specific class name
+- the prediction must never be produced by `zeros`/`ones`/`full`/`empty`
+  constant constructors, and the words "placeholder", "synthetic
+  prediction", or "fallback prediction" must not appear anywhere in the
+  file (fail-closed static checks reject the whole run)
 """
 
 
