@@ -89,6 +89,27 @@ if marker not in text:
     raise SystemExit("AI-Scientist-v2 ARC handoff prompt insertion point not found")
 path.write_text(text.replace(marker, addition, 1), encoding="utf-8")
 PY
+python3 - launch_scientist_bfts.py <<'PY'
+from pathlib import Path
+import sys
+
+# Upstream copies experiment_results only "if os.path.exists(...)" but then
+# removes it unconditionally, so a run whose stages produced no aggregated
+# results directory crashes at the very end -- after all BFTS work is done
+# (observed in runs fullrun_arc_02_bounded_20260827_{081051,082742_b,084434}).
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = '    shutil.rmtree(osp.join(idea_dir, "experiment_results"))'
+new = (
+    '    _arc_results_dir = osp.join(idea_dir, "experiment_results")\n'
+    '    if osp.exists(_arc_results_dir):\n'
+    '        shutil.rmtree(_arc_results_dir)'
+)
+if old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+else:
+    print("SKIP: experiment_results cleanup insertion point not found")
+PY
 rm -f ai_scientist/ideas/arc_wbe_2026_topic.json
 timeout "${AI_SCIENTIST_V2_ARC_IDEATION_TIMEOUT_SECONDS:-1800}s" python ai_scientist/perform_ideation_temp_free.py \
   --workshop-file ai_scientist/ideas/arc_wbe_2026_topic.md \
