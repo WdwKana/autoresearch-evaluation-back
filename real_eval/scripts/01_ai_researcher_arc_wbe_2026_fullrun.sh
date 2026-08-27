@@ -384,10 +384,23 @@ else:
     else:
         for name in required:
             shutil.copy2(src / name, ws / name)
+        # estimator.py must be runnable at the workspace root: also carry its
+        # data sidecars (the brief mandates numpy-loadable .npz/.json params
+        # shipped next to estimator.py).
+        sidecars = []
+        for path in sorted(src.iterdir()):
+            if not path.is_file() or path.name in required:
+                continue
+            if path.suffix == ".npz" or (
+                path.name.startswith("estimator") and path.suffix in {".json", ".npz"}
+            ):
+                shutil.copy2(path, ws / path.name)
+                sidecars.append(path.name)
         (ws / "handoff_relocation.json").write_text(
             json.dumps(
                 {
                     "relocated_verbatim": required,
+                    "estimator_sidecars": sidecars,
                     "source": str(src),
                     "note": (
                         "framework-authored files copied unchanged from the framework's "
