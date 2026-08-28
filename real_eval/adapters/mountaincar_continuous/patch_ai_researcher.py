@@ -104,7 +104,18 @@ def main() -> None:
 
     def init_container(self):
         # MountainCar runs experiments in this container; no nested docker, no socket.
+        # Without a nested container docker_workplace ("/project") is an ordinary
+        # directory on this filesystem rather than a mount of local_workplace, so
+        # everything the agent writes there dies with the container -- run
+        # fullrun_mcar_01_20260828_142606 lost its experiment_trace.json that way.
+        # Link the two so the agent's own paths land in the host-visible workplace.
         os.makedirs(self.local_workplace, exist_ok=True)
+        _docker_ws = self.docker_workplace
+        if _docker_ws not in ("", "/", "/.") and not os.path.exists(_docker_ws):
+            try:
+                os.symlink(self.local_workplace, _docker_ws)
+            except OSError as exc:
+                print(f"[mcar-adapter] could not link {_docker_ws} -> {self.local_workplace}: {exc}")
         return
 
     def _mcar_unused_init_container(self):"""

@@ -77,24 +77,43 @@ from pathlib import Path
 target = Path("/workspace/checkpoints")
 target.mkdir(parents=True, exist_ok=True)
 existing = sorted(p.name for p in target.glob("config-42-*.pkl"))
+moved = []
 if len(existing) >= 5:
     print(f"[mcar-handoff] checkpoints already at workspace root: {existing}")
 else:
     found = sorted(
         Path("/workspace").glob("**/workplace/**/checkpoints/config-42-*.pkl")
     ) or sorted(Path("/workspace").glob("**/checkpoints/config-42-*.pkl"))
-    moved = []
     for source in found:
         if source.parent == target:
             continue
         shutil.copy2(source, target / source.name)
         moved.append(str(source))
     print(f"[mcar-handoff] relocated {len(moved)} checkpoint(s)")
-    if moved:
-        Path("/workspace/handoff_relocation.json").write_text(
-            json.dumps({"topic": "mountaincar_continuous", "relocated": moved}, indent=2) + "\n",
-            encoding="utf-8",
-        )
+
+# The gate also requires research_idea.json, experiment_trace.json and
+# final_report.md at the workspace root; the agent writes them inside its own
+# workplace (run fullrun_mcar_01_20260828_142606 had a complete PPO trace there
+# while the root had none). Relocate verbatim, newest wins, never author.
+ws = Path("/workspace")
+for name in ("research_idea.json", "experiment_trace.json", "final_report.md"):
+    target = ws / name
+    if target.is_file() and target.stat().st_size:
+        continue
+    candidates = [c for c in ws.rglob(name) if c != target and c.is_file() and c.stat().st_size]
+    if not candidates:
+        print(f"[mcar-handoff] no framework-authored {name} found")
+        continue
+    newest = max(candidates, key=lambda c: c.stat().st_mtime)
+    shutil.copy2(newest, target)
+    moved.append(str(newest))
+    print(f"[mcar-handoff] relocated {name} from {newest}")
+
+if moved:
+    Path("/workspace/handoff_relocation.json").write_text(
+        json.dumps({"topic": "mountaincar_continuous", "relocated": moved}, indent=2) + "\n",
+        encoding="utf-8",
+    )
 PYRELOC
 EOF
 )
