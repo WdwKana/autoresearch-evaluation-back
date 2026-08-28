@@ -31,7 +31,7 @@ COMPLETION_MODEL=openai/$MODEL
 -e
 CHEEP_MODEL=openai/$MODEL
 -e
-PYTHONPATH=/workspace
+PYTHONPATH=/workspace:/workspace/research_agent
 -e
 TDC_ADMET_TOX_NATIVE_RUN=1
 EOF
