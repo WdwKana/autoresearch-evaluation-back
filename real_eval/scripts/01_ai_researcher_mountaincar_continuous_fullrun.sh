@@ -21,6 +21,29 @@ export FRAMEWORK_NATIVE_LOG_MARKER="AI_RESEARCHER_NATIVE_INFER_IDEA"
 export FRAMEWORK_EXECUTOR_KIND="framework_cli"
 export FRAMEWORK_COMMAND_LABEL="python research_agent/run_infer_idea.py"
 # NOTE: refine this per-framework native launch command during smoke testing.
+# The image caches the sentence-transformers model the tools package loads at
+# import time, but under HOME=/workspace huggingface_hub looks in
+# /workspace/.cache and fails closed with HF_HUB_OFFLINE=1 -- run
+# fullrun_mcar_01_20260828_142007 (retained) died there before reaching any
+# research work. Point HF at the cache the image actually ships, exactly as the
+# TDC wrapper does.
+MC_MODEL="${MOUNTAINCAR_CONTINUOUS_MODEL:-${REAL_EVAL_FRAMEWORK_MODEL:-${REAL_EVAL_MODEL:-}}}"
+export FRAMEWORK_DOCKER_ARGS=$(cat <<EOF
+-e
+HF_HOME=/root/.cache/huggingface
+-e
+HF_HUB_OFFLINE=1
+-e
+TRANSFORMERS_OFFLINE=1
+-e
+OPENAI_MODEL=$MC_MODEL
+-e
+COMPLETION_MODEL=openai/$MC_MODEL
+-e
+CHEEP_MODEL=openai/$MC_MODEL
+EOF
+)
+
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
 set -euo pipefail
 echo "AI_RESEARCHER_NATIVE_INFER_IDEA"
