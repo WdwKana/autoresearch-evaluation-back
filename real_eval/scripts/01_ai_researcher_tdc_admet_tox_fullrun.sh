@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="${RESEARCHCLAWEVAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 source "$ROOT/real_eval/scripts/lib_real_eval.sh"
-MODEL="${TDC_ADMET_TOX_EVAL_MODEL:-gpt-5.4}"
+MODEL="${TDC_ADMET_TOX_EVAL_MODEL:-${REAL_EVAL_FRAMEWORK_MODEL:-${REAL_EVAL_MODEL:-gpt-5.4}}}"
 export FRAMEWORK_NAME="AI-Researcher"
 export FRAMEWORK_SLUG="01_ai_researcher_tdc_admet_tox_fullrun"
 export FRAMEWORK_SRC="$(real_eval_resolve_framework_source "$ROOT" 01)"
