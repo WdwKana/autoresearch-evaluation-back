@@ -96,12 +96,44 @@ SPECS: dict[str, dict[str, str]] = {
             "selected one was chosen, and the observed results -- all grounded in the material."
         ),
         "research_idea.json": (
-            "A JSON object with the hypothesis, method rationale, expected failure modes, and the "
-            "discriminating experiments, as recorded by this run."
+            "A JSON object with exactly these non-empty top-level keys: hypothesis, "
+            "method_rationale, expected_failure_modes (a list), comparison_logic. Carry over the "
+            "wording this run already recorded -- the framework's own idea fields (Short "
+            "Hypothesis, Abstract, Related Work, Risk Factors and Limitations, selection_rule) "
+            "hold this content under different names; re-key them, do not invent new claims. "
+            "Keep the original fields alongside if useful."
         ),
         "estimator.py": (
             "The selected implementation as a runnable module exposing the topic's adapter symbols."
         ),
+    },
+}
+
+# JSON deliverables that are only valid with these keys present and non-empty.
+# A file can be present and still fail the gate: run
+# fullrun_arc_02_exitchk_20260828_143755 delivered a research_idea.json carrying
+# the framework's own schema (Name / Short Hypothesis / Risk Factors and
+# Limitations), copied verbatim by the handoff bridge, and the gate rejected it
+# for an empty `hypothesis`. The content was there under different key names.
+REQUIRED_KEYS: dict[str, dict[str, list[str]]] = {
+    "arc_wbe_2026": {
+        "research_idea.json": [
+            "hypothesis",
+            "method_rationale",
+            "expected_failure_modes",
+            "comparison_logic",
+        ],
+        "experiment_trace.json": [
+            "framework_native_execution",
+            "consumed_topic_input",
+            "workspace_trace_root",
+            "experiments",
+            "selected_experiment_id",
+            "framework_internal_model",
+            "framework_internal_api_base_url",
+            "idea_artifact",
+            "idea_locked_before_experiments",
+        ],
     },
 }
 
@@ -111,6 +143,26 @@ MAX_SOURCE_FILES = 12
 
 def missing_files(workspace: Path, names: list[str]) -> list[str]:
     return [n for n in names if not (workspace / n).is_file() or not (workspace / n).stat().st_size]
+
+
+def nonconforming_files(workspace: Path, topic: str, present: list[str]) -> list[str]:
+    """Present files whose declared required keys are absent or empty."""
+    rules = REQUIRED_KEYS.get(topic, {})
+    bad = []
+    for name in present:
+        keys = rules.get(name)
+        if not keys:
+            continue
+        try:
+            payload = json.loads((workspace / name).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            bad.append(name)
+            continue
+        if not isinstance(payload, dict) or any(
+            key not in payload or payload[key] in (None, "", [], {}) for key in keys
+        ):
+            bad.append(name)
+    return bad
 
 
 def gather_context(workspace: Path) -> str:
@@ -181,11 +233,14 @@ def main() -> int:
     workspace = Path(args.workspace)
     required = REQUIRED[args.topic]
     missing = missing_files(workspace, required)
+    present = [n for n in required if n not in missing]
+    nonconforming = nonconforming_files(workspace, args.topic, present)
     record: dict[str, object] = {
         "topic": args.topic,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "required": required,
         "missing_at_exit": missing,
+        "nonconforming_at_exit": nonconforming,
         "written": [],
         "failed": [],
         "note": (
@@ -194,24 +249,39 @@ def main() -> int:
         ),
     }
 
-    if not missing:
-        print("[exit-delivery] all contract artifacts present; nothing to do")
+    if not missing and not nonconforming:
+        print("[exit-delivery] all contract artifacts present and conforming; nothing to do")
         (workspace / "exit_delivery_check.json").write_text(
             json.dumps(record, indent=2) + "\n", encoding="utf-8"
         )
         return 0
 
-    print(f"[exit-delivery] missing at exit: {', '.join(missing)}")
+    if missing:
+        print(f"[exit-delivery] missing at exit: {', '.join(missing)}")
+    if nonconforming:
+        print(f"[exit-delivery] present but non-conforming: {', '.join(nonconforming)}")
     context = gather_context(workspace)
 
-    for name in missing:
+    for name in missing + nonconforming:
         spec = SPECS.get(args.topic, {}).get(name)
+        current = ""
+        if name in nonconforming:
+            try:
+                current = (workspace / name).read_text(encoding="utf-8")[:2500]
+            except OSError:
+                current = ""
+        task = (
+            f"already wrote '{name}', but it does not carry the required keys. Rewrite it, "
+            "preserving every claim it already makes and re-keying rather than inventing, "
+            if name in nonconforming
+            else f"did not write the required deliverable '{name}'. Write that file now, "
+        )
         prompt = (
             "You are the AI-Scientist-v2 research pipeline finishing its own run for "
-            f"topic '{args.topic}'. Your run produced the material below but did not "
-            f"write the required deliverable '{name}'. Write that file now, using only "
-            "facts present in your material -- never invent measurements, scores or "
-            "results. If a value is genuinely unavailable, say so explicitly inside the "
+            f"topic '{args.topic}'. Your run produced the material below but "
+            + task
+            + "using only facts present in your material -- never invent measurements, scores "
+            "or results. If a value is genuinely unavailable, say so explicitly inside the "
             "file rather than fabricating it.\n\n"
             + (f"=== required structure of {name} ===\n{spec}\n\n" if spec else "")
             # Runtime facts the host injected into this very process: they are
@@ -224,6 +294,7 @@ def main() -> int:
                 f"framework_internal_api_base_url: {os.environ.get('OPENAI_BASE_URL', 'unknown')}\n"
                 f"workspace_trace_root: {workspace}\n\n"
             )
+            + (f"=== the file you already wrote ===\n{current}\n\n" if current else "")
             + f"=== material produced by this run ===\n{context}\n\n"
             + f"Output ONLY the complete contents of {name}, with no commentary and no "
             "code fences."
