@@ -79,6 +79,25 @@ else:
     print("SKIP: tool registration insertion point not found")
 PY
 
+python3 - "$REPO/benchmark_collection/utils/openai_utils.py" <<'PYTT'
+from pathlib import Path
+import sys
+
+# count_tokens() calls tiktoken encode() with default args, which raises on any
+# text containing a special token such as <|endoftext|>. BabyLM corpora are
+# GPT-2-style text and contain that literal, so paper composition dies after the
+# research work is already done (run fullrun_babylm_01_20260827_092535 lost 8.5
+# hours of completed training to this). Count them as ordinary text.
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = "    return len(encoding.encode(text))"
+new = "    return len(encoding.encode(text, disallowed_special=()))"
+if old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+else:
+    print("SKIP: count_tokens insertion point not found")
+PYTT
+
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
 cp "$ROOT/api/github.env" "$GITHUB_ENV" 2>/dev/null || echo "GITHUB_AI_TOKEN=" > "$GITHUB_ENV"
