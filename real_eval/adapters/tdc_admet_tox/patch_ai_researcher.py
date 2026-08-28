@@ -72,7 +72,7 @@ def main() -> None:
         old_src = '    source_path = f"../benchmark/process/dataset_candidate/{category}"'
         new_src = (
             "    _TDC_DATASET_SETUP = True\n"
-            "    _repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
+            "    _repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))\n"
             "    source_path = os.path.join(_repo_root, 'benchmark', 'process', 'dataset_candidate', category)\n"
             "    if not os.path.exists(source_path):\n"
             + old_src.replace("    source_path", "        source_path")
