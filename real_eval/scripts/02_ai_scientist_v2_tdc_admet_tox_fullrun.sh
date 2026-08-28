@@ -10,6 +10,7 @@ export FRAMEWORK_ENTRY_PREFIX="AI-Scientist-v2"
 export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 AI-Scientist-v2/ai_scientist/ideas/tdc_admet_tox_topic.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
+real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py
 automation/tdc_admet_tox_contract.md
 automation/tdc_admet_tox_execution_budget.md
@@ -39,6 +40,7 @@ export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
 set -euo pipefail
 echo "AI_SCIENTIST_V2_NATIVE_BFTS_TDC"
 python3 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
+python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 echo "[tdc-wrapper] shared adapter applied"
 python3 real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py
 echo "[tdc-wrapper] preflight relay check"
