@@ -69,6 +69,42 @@ REQUIRED: dict[str, list[str]] = {
     ],
 }
 
+# What each deliverable must contain. The host may define the output schema
+# (AGENTS.md); it may not supply the content. Without this, the model writes a
+# structurally reasonable file with entirely wrong field names -- run
+# fullrun_arc_02_exitchk_20260828_131435 produced a trace keyed
+# topic/status/trace_note/... and the gate rejected it for not proving native
+# execution.
+SPECS: dict[str, dict[str, str]] = {
+    "arc_wbe_2026": {
+        "experiment_trace.json": (
+            "A JSON object with exactly these top-level keys: "
+            "framework_native_execution (true), consumed_topic_input (true), "
+            "workspace_trace_root ('/workspace'), experiments (a list of 2-4 objects, each with "
+            "experiment_id and a description of what was tried and what it produced), "
+            "selected_experiment_id (one of those experiment_ids), framework_internal_model "
+            "(the OPENAI_MODEL value), framework_internal_api_base_url (the OPENAI_BASE_URL value), "
+            "idea_artifact ('research_idea.json'), idea_locked_before_experiments (true)."
+        ),
+        "submission.json": (
+            "The estimator's predictions in the topic's submission format, taken from what the "
+            "run actually produced. Never invent numbers: if no predictions exist in the material, "
+            "state that explicitly in a 'note' field instead of fabricating values."
+        ),
+        "final_report.md": (
+            "A markdown report covering the hypothesis, the 2-4 experiments compared, why the "
+            "selected one was chosen, and the observed results -- all grounded in the material."
+        ),
+        "research_idea.json": (
+            "A JSON object with the hypothesis, method rationale, expected failure modes, and the "
+            "discriminating experiments, as recorded by this run."
+        ),
+        "estimator.py": (
+            "The selected implementation as a runnable module exposing the topic's adapter symbols."
+        ),
+    },
+}
+
 MAX_CONTEXT_CHARS = 6000
 MAX_SOURCE_FILES = 12
 
@@ -169,6 +205,7 @@ def main() -> int:
     context = gather_context(workspace)
 
     for name in missing:
+        spec = SPECS.get(args.topic, {}).get(name)
         prompt = (
             "You are the AI-Scientist-v2 research pipeline finishing its own run for "
             f"topic '{args.topic}'. Your run produced the material below but did not "
@@ -176,8 +213,19 @@ def main() -> int:
             "facts present in your material -- never invent measurements, scores or "
             "results. If a value is genuinely unavailable, say so explicitly inside the "
             "file rather than fabricating it.\n\n"
-            f"=== material produced by this run ===\n{context}\n\n"
-            f"Output ONLY the complete contents of {name}, with no commentary and no "
+            + (f"=== required structure of {name} ===\n{spec}\n\n" if spec else "")
+            # Runtime facts the host injected into this very process: they are
+            # provably true and are not research content, so stating them is not
+            # fabrication. Without them the model honestly writes "unavailable"
+            # for framework_internal_model and the gate rejects the trace.
+            + (
+                "=== runtime facts of this run ===\n"
+                f"framework_internal_model: {os.environ.get('OPENAI_MODEL', 'unknown')}\n"
+                f"framework_internal_api_base_url: {os.environ.get('OPENAI_BASE_URL', 'unknown')}\n"
+                f"workspace_trace_root: {workspace}\n\n"
+            )
+            + f"=== material produced by this run ===\n{context}\n\n"
+            + f"Output ONLY the complete contents of {name}, with no commentary and no "
             "code fences."
         )
         body = ask_framework_model(prompt)
