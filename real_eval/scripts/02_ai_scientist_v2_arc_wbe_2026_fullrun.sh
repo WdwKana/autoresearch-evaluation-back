@@ -106,9 +106,23 @@ new = (
     '        shutil.rmtree(_arc_results_dir)'
 )
 if old in text:
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    text = text.replace(old, new, 1)
 else:
     print("SKIP: experiment_results cleanup insertion point not found")
+old_kw = 'keywords = ["python", "torch", "mp", "bfts", "experiment"]'
+new_kw = ('keywords = ["python", "torch", "mp", "bfts", "experiment"]\n'
+          '    _arc_self_pids = {current_process.pid, current_process.ppid()}')
+if old_kw in text and "_arc_self_pids" not in text:
+    text = text.replace(old_kw, new_kw, 1)
+old_sig = """            if any(keyword in cmdline for keyword in keywords):
+                proc.send_signal(signal.SIGTERM)"""
+new_sig = """            if any(keyword in cmdline for keyword in keywords) and proc.pid not in _arc_self_pids:
+                proc.send_signal(signal.SIGTERM)"""
+if old_sig in text:
+    text = text.replace(old_sig, new_sig, 1)
+else:
+    print("SKIP: orphan-cleanup insertion point not found")
+path.write_text(text, encoding="utf-8")
 PY
 rm -f ai_scientist/ideas/arc_wbe_2026_topic.json
 timeout "${AI_SCIENTIST_V2_ARC_IDEATION_TIMEOUT_SECONDS:-1800}s" python ai_scientist/perform_ideation_temp_free.py \
