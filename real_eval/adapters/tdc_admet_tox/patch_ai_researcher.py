@@ -19,7 +19,10 @@ them for TDC:
 2. register the tool modules explicitly instead of the recursive walk;
 3. pass the `references` argument in run_infer_idea.py's module-level main()
    call (upstream's signature takes two arguments);
-4. run experiments inside this container instead of spawning a nested one.
+4. resolve the dataset_candidate source with an absolute path and project the
+   real TDC dataset into the workplace (upstream's relative "../benchmark/..."
+   path does not exist under the TDC workdir);
+5. run experiments inside this container instead of spawning a nested one.
    The TDC wrapper states its contract explicitly -- "experiments execute inside
    the framework container without a host Docker socket" -- and mounts no
    /var/run/docker.sock, but DockerEnv.init_container() always shells out to
@@ -62,6 +65,35 @@ def main() -> None:
         TOOLS_INIT.write_text(text.replace(OLD_REGISTRATION, NEW_REGISTRATION), encoding="utf-8")
     elif "importlib.import_module(f\"research_agent.inno.tools." not in text:
         raise SystemExit("tool registration anchor not found in research_agent/inno/tools/__init__.py")
+
+    utils = Path("research_agent/inno/environment/utils.py")
+    text = utils.read_text(encoding="utf-8")
+    if "_TDC_DATASET_SETUP" not in text:
+        old_src = '    source_path = f"../benchmark/process/dataset_candidate/{category}"'
+        new_src = (
+            "    _TDC_DATASET_SETUP = True\n"
+            "    _repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n"
+            "    source_path = os.path.join(_repo_root, 'benchmark', 'process', 'dataset_candidate', category)\n"
+            "    if not os.path.exists(source_path):\n"
+            + old_src.replace("    source_path", "        source_path")
+        )
+        if old_src not in text:
+            raise SystemExit("setup_dataset source_path anchor not found")
+        text = text.replace(old_src, new_src, 1)
+        old_copy = "        shutil.copytree(source_path, dataset_candidate_path)"
+        new_copy = (
+            old_copy + "\n"
+            "        _real = os.getenv('RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT', '')\n"
+            "        if category == 'tdc_admet_tox' and _real and os.path.isdir(_real):\n"
+            "            for _rel in ('data/tdc_admet_tox', 'project/data/tdc_admet_tox'):\n"
+            "                _t = os.path.join(local_workplace, _rel)\n"
+            "                os.makedirs(os.path.dirname(_t), exist_ok=True)\n"
+            "                if not os.path.exists(_t):\n"
+            "                    shutil.copytree(_real, _t)\n"
+        )
+        if old_copy in text:
+            text = text.replace(old_copy, new_copy, 1)
+        utils.write_text(text, encoding="utf-8")
 
     docker_env = Path("research_agent/inno/environment/docker_env.py")
     text = docker_env.read_text(encoding="utf-8")
