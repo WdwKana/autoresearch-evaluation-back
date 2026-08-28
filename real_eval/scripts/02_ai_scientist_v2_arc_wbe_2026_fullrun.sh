@@ -13,6 +13,7 @@ automation/arc_wbe_2026_contract.md
 automation/arc_wbe_2026_execution_budget.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
+real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -310,6 +311,9 @@ else:
         }, indent=2) + "\n", encoding="utf-8")
         print("[arc-handoff] relocated framework artifacts verbatim from " + str(src))
 PYRELOC
+# Optional exit delivery check (standalone adapter; delete this line to disable)
+python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic arc_wbe_2026 || true
+
 EOF
 )
 exec "$ROOT"/real_eval/scripts/arc_framework_fullrun.sh
