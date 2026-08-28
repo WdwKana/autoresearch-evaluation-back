@@ -98,6 +98,35 @@ else:
     print("SKIP: count_tokens insertion point not found")
 PYTT
 
+python3 - "$REPO/paper_agent/methodology_composing_using_template.py" <<'PYCACHE'
+from pathlib import Path
+import sys
+
+# compose_section() opens a hardcoded list of agent cache files, but the research
+# phase writes paper_survey_agent.json / code_survey_agent.json -- there is no
+# survey_agent.json -- so paper composition dies with FileNotFoundError after the
+# research work is finished (run fullrun_babylm_01_20260828_051721). Resolve known
+# aliases and skip cache entries this run did not produce.
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = """                for idx, agent_file in enumerate(tqdm(agent_files, desc="Processing agent files")):
+                    with open(os.path.join(agent_dir, agent_file), 'r') as f:
+                        content = json.load(f) """
+new = """                for idx, agent_file in enumerate(tqdm(agent_files, desc="Processing agent files")):
+                    _candidates = [agent_file]
+                    if agent_file == 'survey_agent.json':
+                        _candidates = ['survey_agent.json', 'paper_survey_agent.json', 'code_survey_agent.json']
+                    _resolved = next((c for c in _candidates if os.path.isfile(os.path.join(agent_dir, c))), None)
+                    if _resolved is None:
+                        logging.warning(f"skipping absent agent cache file: {agent_file}")
+                        continue
+                    with open(os.path.join(agent_dir, _resolved), 'r') as f:
+                        content = json.load(f) """
+if old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+else:
+    print("SKIP: agent cache loop insertion point not found")
+PYCACHE
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
 cp "$ROOT/api/github.env" "$GITHUB_ENV" 2>/dev/null || echo "GITHUB_AI_TOKEN=" > "$GITHUB_ENV"
