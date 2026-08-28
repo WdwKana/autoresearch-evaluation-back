@@ -33,6 +33,12 @@ CHEEP_MODEL=openai/$MODEL
 -e
 PYTHONPATH=/workspace:/workspace/research_agent
 -e
+HF_HOME=/root/.cache/huggingface
+-e
+HF_HUB_OFFLINE=1
+-e
+TRANSFORMERS_OFFLINE=1
+-e
 TDC_ADMET_TOX_NATIVE_RUN=1
 EOF
 )
