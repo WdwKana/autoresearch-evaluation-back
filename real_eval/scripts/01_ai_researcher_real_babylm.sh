@@ -573,7 +573,8 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -e COMPLETION_MODEL=openai/$AI_RESEARCHER_MODEL \
   -e CHEEP_MODEL=openai/$AI_RESEARCHER_MODEL \
   -e BASE_IMAGES=${AI_RESEARCHER_EXEC_RUNTIME_IMAGE:-ai-researcher-exec:blackwell-25.11} \
-  -e GPUS="${REAL_EVAL_ALLOWED_GPUS:-device=0,1,2,3}" \
+  -e GPUS=all \
+  -e CUDA_VISIBLE_DEVICES="${REAL_EVAL_ALLOWED_GPUS:-0,1,2,3}" \
   -e PYTHONPATH=/workspace/AI-Researcher:/workspace/AI-Researcher/research_agent/inno/tools \
   -e HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}" \
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=BabyLM-10M \
