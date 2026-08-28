@@ -355,8 +355,14 @@ config = yaml.safe_load(path.read_text(encoding="utf-8"))
 config["exp_name"] = "psydefdetect"
 config["generate_report"] = False
 config["agent"]["num_workers"] = 1
-config["agent"]["steps"] = 3
-config["agent"]["stages"]["stage1_max_iters"] = 3
+import os
+# Two identical runs (fullrun_psydef_02_20260828_070449_p / _071419_p2) ended
+# with the framework completing its 3 stage-1 iterations and never reaching a
+# complete root handoff -- the budget the author tuned (presumably for
+# kimi-k2.6) is too tight for the injected model. Same remedy as 02xARC
+# (stage1 4 -> 12): give stage 1 room, overridable via env.
+config["agent"]["steps"] = int(os.environ.get("PSYDEFDETECT_BFTS_STEPS", "3"))
+config["agent"]["stages"]["stage1_max_iters"] = int(os.environ.get("PSYDEFDETECT_BFTS_STAGE1_ITERS", "8"))
 config["agent"]["search"]["num_drafts"] = 1
 config["agent"]["search"]["debug_prob"] = 1.0
 config["agent"]["search"]["max_debug_depth"] = 2
