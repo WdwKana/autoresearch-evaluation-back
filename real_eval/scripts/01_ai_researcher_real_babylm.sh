@@ -158,30 +158,52 @@ python3 - "$REPO/paper_agent/methodology_composing_using_template.py" <<'PYCACHE
 from pathlib import Path
 import sys
 
-# compose_section() opens a hardcoded list of agent cache files, but the research
-# phase writes paper_survey_agent.json / code_survey_agent.json -- there is no
+# compose_section() hardcodes a list of agent cache files, but the research phase
+# writes paper_survey_agent.json / code_survey_agent.json -- there is no
 # survey_agent.json -- so paper composition dies with FileNotFoundError after the
-# research work is finished (run fullrun_babylm_01_20260828_051721). Resolve known
-# aliases and skip cache entries this run did not produce.
+# research work is finished. Two separate loops consume this list (runs
+# fullrun_babylm_01_20260828_051721 and _144108 died at one each), so resolve the
+# list once where it is built instead of guarding each consumer in turn.
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
-old = """                for idx, agent_file in enumerate(tqdm(agent_files, desc="Processing agent files")):
-                    with open(os.path.join(agent_dir, agent_file), 'r') as f:
-                        content = json.load(f) """
-new = """                for idx, agent_file in enumerate(tqdm(agent_files, desc="Processing agent files")):
-                    _candidates = [agent_file]
-                    if agent_file == 'survey_agent.json':
-                        _candidates = ['survey_agent.json', 'paper_survey_agent.json', 'code_survey_agent.json']
-                    _resolved = next((c for c in _candidates if os.path.isfile(os.path.join(agent_dir, c))), None)
-                    if _resolved is None:
-                        logging.warning(f"skipping absent agent cache file: {agent_file}")
-                        continue
-                    with open(os.path.join(agent_dir, _resolved), 'r') as f:
-                        content = json.load(f) """
+old = """        agent_files = [
+            'prepare_agent.json',
+            'survey_agent.json',
+            'coding_plan_agent.json',
+            'machine_learning_agent.json',
+            'judge_agent.json',
+            'machine_learning_agent_iter_submit.json',
+            'experiment_analysis_agent_iter_refine_1.json',
+            'machine_learning_agent_iter_refine_1.json',
+        ]"""
+new = """        _requested_agent_files = [
+            'prepare_agent.json',
+            'survey_agent.json',
+            'coding_plan_agent.json',
+            'machine_learning_agent.json',
+            'judge_agent.json',
+            'machine_learning_agent_iter_submit.json',
+            'experiment_analysis_agent_iter_refine_1.json',
+            'machine_learning_agent_iter_refine_1.json',
+        ]
+        _agent_aliases = {
+            'survey_agent.json': ['survey_agent.json', 'paper_survey_agent.json', 'code_survey_agent.json'],
+        }
+        agent_files = []
+        for _requested in _requested_agent_files:
+            _resolved = next(
+                (c for c in _agent_aliases.get(_requested, [_requested])
+                 if os.path.isfile(os.path.join(agent_dir, c))),
+                None,
+            )
+            if _resolved is None:
+                logging.warning(f"skipping absent agent cache file: {_requested}")
+                continue
+            agent_files.append(_resolved)"""
 if old in text:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
-else:
-    print("SKIP: agent cache loop insertion point not found")
+elif "_requested_agent_files" not in text:
+    print("SKIP: agent_files definition not found")
 PYCACHE
 python3 - "$REPO/paper_agent/section_composer.py" <<'PYNONE'
 from pathlib import Path
