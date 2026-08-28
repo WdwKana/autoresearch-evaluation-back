@@ -57,9 +57,44 @@ def chat_create(client, **kwargs):
 '''
 
 
+
+
+INTERPRETER = Path("ai_scientist/treesearch/interpreter.py")
+
+INTERPRETER_OLD = """        # don't wait for gc, clean up immediately
+        self.process.close()"""
+
+INTERPRETER_NEW = """        # don't wait for gc, clean up immediately
+        try:
+            self.process.close()
+        except ValueError:
+            # kill() + join(timeout=2) above can race a child that has not
+            # exited yet; close() then raises and takes the whole worker down
+            # mid-run. Escalate and, failing that, abandon the handle.
+            self.process.terminate()
+            self.process.join(timeout=5)
+            try:
+                self.process.close()
+            except ValueError:
+                logger.warning("Child process still running after kill; abandoning handle")"""
+
+
+def patch_interpreter() -> None:
+    if not INTERPRETER.is_file():
+        return
+    text = INTERPRETER.read_text(encoding="utf-8")
+    if "abandoning handle" in text:
+        return
+    if INTERPRETER_OLD not in text:
+        print("SKIP: interpreter cleanup anchor not found")
+        return
+    INTERPRETER.write_text(text.replace(INTERPRETER_OLD, INTERPRETER_NEW, 1), encoding="utf-8")
+
+
 def main() -> None:
     if not Path("ai_scientist").is_dir():
         raise SystemExit("run from the AI-Scientist-v2 source root: ai_scientist/ not found")
+    patch_interpreter()
     existing = COMPAT_MODULE.read_text(encoding="utf-8") if COMPAT_MODULE.is_file() else ""
     if existing != COMPAT_SOURCE:
         COMPAT_MODULE.write_text(COMPAT_SOURCE, encoding="utf-8")
