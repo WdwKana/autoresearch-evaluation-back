@@ -127,6 +127,23 @@ if old in text:
 else:
     print("SKIP: agent cache loop insertion point not found")
 PYCACHE
+python3 - "$REPO/paper_agent/section_composer.py" <<'PYNONE'
+from pathlib import Path
+import sys
+
+# write_temp_log() writes whatever the structure generator returned; when an LLM
+# call yields nothing it is None and the writeup dies with
+# "write() argument must be str, not None" after the research is complete
+# (run fullrun_babylm_01_20260828_055119). Coerce to text.
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = "        with open(filename, 'w', encoding='utf-8') as f:\n            f.write(content)"
+new = "        with open(filename, 'w', encoding='utf-8') as f:\n            f.write(content if isinstance(content, str) else ('' if content is None else str(content)))"
+if old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+else:
+    print("SKIP: write_temp_log insertion point not found")
+PYNONE
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
 cp "$ROOT/api/github.env" "$GITHUB_ENV" 2>/dev/null || echo "GITHUB_AI_TOKEN=" > "$GITHUB_ENV"

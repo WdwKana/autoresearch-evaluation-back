@@ -138,6 +138,11 @@ def main() -> None:
         docker_env.write_text(text, encoding="utf-8")
 
     text = ENTRYPOINT.read_text(encoding="utf-8")
+    old_gh = '        github_result = self.git_search({"metadata": metadata})'
+    new_gh = '        github_result = "" if category == "tdc_admet_tox" else self.git_search({"metadata": metadata})'
+    if old_gh in text:
+        text = text.replace(old_gh, new_gh, 1)
+
     if "    main(args)\n" in text:
         ENTRYPOINT.write_text(
             text.replace("    main(args)\n", '    main(args, references="")\n', 1),
