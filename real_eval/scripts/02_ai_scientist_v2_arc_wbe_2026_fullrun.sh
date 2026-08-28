@@ -162,7 +162,9 @@ path = Path(sys.argv[1])
 model, base_url = sys.argv[2], sys.argv[3]
 ideas = json.loads(path.read_text(encoding="utf-8"))
 spec = (
-    "\n\nARC delivery contract (host output schema; the method remains yours):\n"
+    "\n\nARC delivery contract (host output schema; the method remains yours). "
+    "ALL FIVE files below are mandatory; a run missing ANY of them is scored as a "
+    "total failure, so write submission.json and final_report.md even if brief:\n"
     "- write these five files at the workspace root /workspace: research_idea.json, "
     "estimator.py, submission.json, experiment_trace.json, final_report.md;\n"
     "- estimator.py must define `class Estimator` with `predict(self, mlp)` returning "
