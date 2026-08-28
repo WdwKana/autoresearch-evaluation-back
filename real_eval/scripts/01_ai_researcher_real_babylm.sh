@@ -624,7 +624,12 @@ def copytree_or_replace(src: Path, dst: Path) -> None:
             dst.unlink()
         else:
             shutil.rmtree(dst)
-    shutil.copytree(src, dst)
+    # The agent clones third-party repos into its workplace; fairseq ships
+    # dangling symlinks (kaldi_self_train/st/{utils,steps} point at a Kaldi tree
+    # that is not there), and copytree follows symlinks by default, so staging
+    # died with "No such file or directory" after the research had finished
+    # (run fullrun_babylm_01_20260828_140032). Copy links as links.
+    shutil.copytree(src, dst, symlinks=True, ignore_dangling_symlinks=True)
 
 
 def main() -> None:
