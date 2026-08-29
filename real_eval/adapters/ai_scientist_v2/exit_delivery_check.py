@@ -104,7 +104,10 @@ SPECS: dict[str, dict[str, str]] = {
             "Keep the original fields alongside if useful."
         ),
         "estimator.py": (
-            "The selected implementation as a runnable module exposing the topic's adapter symbols."
+            "The selected implementation as a runnable module defining `class Estimator` with "
+            "`predict(self, mlp)` returning a (32, 256) numpy array. The mlp argument is an "
+            "object, never an array: read mlp.weights (ordered list of per-layer (width, width) "
+            "numpy matrices), mlp.width, mlp.depth, mlp.seed. numpy and the standard library only."
         ),
     },
 }
