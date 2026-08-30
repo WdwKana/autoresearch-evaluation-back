@@ -264,59 +264,14 @@ timeout "${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-3600}s" python launch_scienti
   --skip_writeup \
   --skip_review \
   --model_agg_plots "$OPENAI_MODEL"
-python3 - <<'PYRELOC'
-import json
-import shutil
-from pathlib import Path
-
-# Framework-side delivery bridge (mirrors the 01xARC one). BFTS writes its work
-# under experiments/<run>/ with its own names (idea.json, best_solution_<hash>.py);
-# the handoff gate, official scorer and shared validator all look at /workspace.
-# Relocate the framework-authored files verbatim -- never generate or repair
-# content -- and record provenance. No-op when the root files already exist or
-# when the framework produced nothing.
-ws = Path("/workspace")
-required = ["research_idea.json", "estimator.py", "submission.json",
-            "experiment_trace.json", "final_report.md"]
-if all((ws / n).is_file() and (ws / n).stat().st_size for n in required):
-    print("[arc-handoff] root-level artifacts already present; nothing to relocate")
-else:
-    runs = sorted((ws / "experiments").glob("*_attempt_*")) if (ws / "experiments").is_dir() else []
-    src = runs[-1] if runs else None
-    if src is None:
-        print("[arc-handoff] no framework experiment directory found; nothing relocated")
-    else:
-        moved = []
-        # framework-authored idea record -> contract name
-        idea = src / "idea.json"
-        if idea.is_file() and not (ws / "research_idea.json").is_file():
-            shutil.copy2(idea, ws / "research_idea.json")
-            moved.append("research_idea.json<-idea.json")
-        # framework-selected implementation -> contract name
-        if not (ws / "estimator.py").is_file():
-            sols = sorted(src.glob("logs/**/best_solution_*.py"))
-            if sols:
-                shutil.copy2(sols[-1], ws / "estimator.py")
-                moved.append("estimator.py<-" + sols[-1].name)
-        # any framework-written contract files sitting in the run dir
-        for name in required:
-            cand = src / name
-            if cand.is_file() and not (ws / name).is_file():
-                shutil.copy2(cand, ws / name)
-                moved.append(name)
-        for extra in list(src.glob("*.npz")) + list(src.glob("estimator_*.json")):
-            if not (ws / extra.name).exists():
-                shutil.copy2(extra, ws / extra.name)
-                moved.append(extra.name)
-        (ws / "handoff_relocation.json").write_text(json.dumps({
-            "relocated_verbatim": moved,
-            "source": str(src),
-            "note": ("framework-authored files copied unchanged from the BFTS run "
-                     "directory to the wrapper-checked workspace root by the "
-                     "framework runtime command"),
-        }, indent=2) + "\n", encoding="utf-8")
-        print("[arc-handoff] relocated framework artifacts verbatim from " + str(src))
-PYRELOC
+# The delivery bridge that stood here was removed. Its relocation records show
+# the only paths it ever exercised were renaming idea.json to research_idea.json
+# (schema still rejected: runs _075822/_131435/_143755) and promoting an
+# alphabetically-last best_solution_*.py to estimator.py -- a host-side
+# selection the contract reserves for the framework, biased toward stage-4
+# ablation variants. The location-only relocation a bridge is legitimate for
+# never occurred in any 02 run. Delivery is owned by the framework itself
+# (spec in the idea record) with the exit delivery check as the backstop.
 # Optional exit delivery check (standalone adapter; delete this line to disable)
 python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic arc_wbe_2026 || true
 
