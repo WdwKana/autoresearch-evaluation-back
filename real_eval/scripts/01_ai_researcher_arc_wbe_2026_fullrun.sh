@@ -332,6 +332,33 @@ s = s.replace(
     "hostname = 'localhost'",
     "hostname = os.getenv('RESEARCHCLAWEVAL_DOCKER_HOST', 'localhost')",
 )
+# The inner sandbox's tcp server can die during long idle gaps between tool
+# calls; the client is a bare socket with no recovery, so every later command
+# returns "[Errno 111] Connection refused" until the run times out (observed in
+# fullrun_arc_01_ds_20260828_161347: 14 consecutive refusals after an 11-minute
+# idle gap killed the whole run). Infrastructure-level recovery only: restart
+# the framework's own container exactly as its init created it and retry the
+# command. No research content is touched.
+old_run = "    def run_command(self, command, stream_callback=None):"
+new_run = """    def run_command(self, command, stream_callback=None):
+        import subprocess as _arc_sp
+        import time as _arc_time
+        for _arc_attempt in range(3):
+            try:
+                return self._arc_raw_run_command(command, stream_callback)
+            except (ConnectionRefusedError, ConnectionResetError, BrokenPipeError) as exc:
+                if _arc_attempt == 2:
+                    raise
+                print(f"[arc-keepalive] inner channel dead ({exc}); restarting sandbox container")
+                _arc_sp.run(["docker", "restart", self.container_name], capture_output=True)
+                _arc_time.sleep(10)
+                self.wait_for_container_ready()
+
+    def _arc_raw_run_command(self, command, stream_callback=None):"""
+if old_run in s and "_arc_raw_run_command" not in s:
+    s = s.replace(old_run, new_run, 1)
+else:
+    print("SKIP: run_command anchor not found for keepalive")
 p.write_text(s, encoding="utf-8")
 PY
 
