@@ -122,9 +122,16 @@ def main() -> None:
     if ANCHOR_DECL not in text:
         raise SystemExit("request-probe: declaration anchor not found in core.py")
     text = text.replace(ANCHOR_DECL, ANCHOR_DECL + "\n" + PROBE_SRC, 1)
-    if OLD_CALL not in text:
+    # core.py assembles this identical line twice: once in the synchronous
+    # get_chat_completion and once in get_chat_completion_async, which is the
+    # path the framework actually drives. Instrument both, or the probe records
+    # nothing (observed on run probe_ds_20260901_180726, which patched only the
+    # first occurrence and produced no log).
+    occurrences = text.count(OLD_CALL)
+    if occurrences == 0:
         raise SystemExit("request-probe: message assembly anchor not found in core.py")
-    text = text.replace(OLD_CALL, NEW_CALL, 1)
+    text = text.replace(OLD_CALL, NEW_CALL)
+    print(f"[request-probe] instrumented {occurrences} message-assembly site(s)")
     CORE.write_text(text, encoding="utf-8")
     print("[request-probe] instrumentation installed (observation only)")
 
