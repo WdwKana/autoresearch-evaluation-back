@@ -130,6 +130,8 @@ mkdir -p "$WORKSPACE/automation/scripts"
 cp "$INPUT_ROOT/automation/scripts/run_arc_wbe_2026_local_score.py" "$WORKSPACE/automation/scripts/"
 cp "$INPUT_ROOT/automation/scripts/arc_wbe_2026_official_adapter.py" "$WORKSPACE/automation/scripts/"
 cp "$INPUT_ROOT/automation/scripts/prepare_arc_wbe_2026_dataset.py" "$WORKSPACE/automation/scripts/"
+mkdir -p "$REPO/real_eval/adapters/ai_researcher"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_context_hygiene.py" "$REPO/real_eval/adapters/ai_researcher/"
 
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
 from pathlib import Path
@@ -365,6 +367,8 @@ PY
 RUNTIME_COMMAND=$(cat <<EOF
 set -euo pipefail
 echo "AI_RESEARCHER_NATIVE_INFER_IDEA"
+cd /workspace/AI-Researcher
+python3 real_eval/adapters/ai_researcher/patch_context_hygiene.py
 cd /workspace/AI-Researcher/research_agent
 PORT=\$(python - <<'PY'
 import socket
