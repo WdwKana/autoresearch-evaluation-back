@@ -70,10 +70,21 @@ def main() -> int:
         # the metaprompt addresses its own dataset_candidate directory by name
         if target.suffix == ".py" and "dataset_candidate" in target_rel:
             body = target.read_text(encoding="utf-8")
-            target.write_text(
-                body.replace("dataset_candidate/topic2", "dataset_candidate/mountaincar_continuous"),
-                encoding="utf-8",
+            body = body.replace("dataset_candidate/topic2", "dataset_candidate/mountaincar_continuous")
+            # Run fullrun_mcar_01_20260828_154742 (retained) delivered a root
+            # experiment_trace.json whose model field was the literal string
+            # "${OPENAI_MODEL}" -- the agent transcribed the shell placeholder
+            # instead of the resolved value, and the handoff gate rejects
+            # unexpanded provider placeholders by regex. State the requirement
+            # in the brief the agent actually reads. mountaincar-only copy;
+            # the topic2 original is not touched.
+            body += (
+                '\nTRACE_VALUE_RULE = "In experiment_trace.json and all delivered files, record the '
+                'ACTUAL resolved values of the model name and API base URL (for example the literal '
+                "model string you are running as), never shell placeholder text such as ${OPENAI_MODEL} "
+                'or ${OPENAI_BASE_URL}. Unexpanded placeholders fail the handoff audit."\n'
             )
+            target.write_text(body, encoding="utf-8")
         print(f"[mcar-inputs] {source_rel} -> {target_rel}")
     return 0
 
