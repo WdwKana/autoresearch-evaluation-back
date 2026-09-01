@@ -260,7 +260,7 @@ The baseline must train on the real BabyLM Strict-Small text files and save a
 checkpoint, training log, and evaluation JSON.
 """
 COMPARISON = "Compare the baseline with one constrained improvement under the same BabyLM data and epoch limits."
-EVALUATION = "Run BabyLM-compatible language-model evaluation and save machine-readable metrics."
+EVALUATION = "Run BabyLM-compatible language-model evaluation and save machine-readable metrics. Before your research phase finishes, write experiment_trace.json at the ROOT of your workspace (the directory you were started in) containing: task_id 'babylm', and an experiments list with one entry per experiment you ran, each carrying experiment_id and validation_perplexity as the ACTUAL measured word-level validation perplexity (a positive float you computed, never a placeholder). This file is how your results are scored; without it the run scores nothing."
 REF = "Do not use proxy scripts, sklearn toy datasets, old experiment outputs, or placeholder results."
 PY
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
@@ -741,7 +741,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -v /var/run/docker.sock:/var/run/docker.sock \
   -w /workspace/AI-Researcher/research_agent \
   ai-researcher:runtime-ready \
-	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m" \
+	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; { python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m ; } || echo BABYLM_PAPER_PHASE_NONFATAL_FAILURE" \
 	  2>&1 | tee "$LOG_DIR/e2e.log"
 rc=${PIPESTATUS[0]}
 set -e
@@ -749,6 +749,43 @@ cleanup_inner_container
 if [[ "$rc" -ne 0 ]]; then
   real_eval_write_state "$BASE/state.json" "{\"project_id\":\"01\",\"name\":\"AI-Researcher\",\"run_id\":\"$RUN_ID\",\"status\":\"failed\",\"repo\":\"$REPO\",\"log\":\"$LOG_DIR/e2e.log\",\"exit_code\":$rc}"
   exit "$rc"
+fi
+
+# ── BabyLM scoring hookup (01-scoped; run_babylm_score.py was never wired anywhere) ──
+# Relocate the framework-authored experiment_trace.json verbatim from the agent
+# workplace to the path the host scorer reads, then run the official scorer.
+# Never authors content; fail-closed when the framework wrote no scorable trace.
+mkdir -p "$BASE/workspace"
+python3 - "$REPO" "$BASE" <<'PYSCORE'
+import json, shutil, sys
+from pathlib import Path
+
+repo, base = Path(sys.argv[1]), Path(sys.argv[2])
+target = base / "workspace" / "experiment_trace.json"
+if not target.is_file():
+    candidates = sorted(
+        repo.glob("research_agent/workplace_paper/task_*/workplace_*/workplace_*/experiment_trace.json")
+    ) + sorted(repo.glob("research_agent/workplace_paper/task_*/workplace_*/workplace_*/project/experiment_trace.json"))
+    newest = max(candidates, key=lambda c: c.stat().st_mtime, default=None)
+    if newest is not None:
+        shutil.copy2(newest, target)
+        (base / "workspace" / "handoff_relocation.json").write_text(json.dumps({
+            "relocated_verbatim": ["experiment_trace.json"],
+            "source": str(newest),
+            "note": "framework-authored trace copied unchanged for host scoring",
+        }, indent=2) + "\n", encoding="utf-8")
+        print(f"[babylm-handoff] relocated trace from {newest}")
+    else:
+        print("[babylm-handoff] framework wrote no experiment_trace.json; nothing relocated")
+PYSCORE
+if [[ -s "$BASE/workspace/experiment_trace.json" ]]; then
+  if python3 "$ROOT/automation/scripts/run_babylm_score.py"       --run-root "$BASE" --output-score "$BASE/workspace/score.json"       >"$LOG_DIR/official_score.log" 2>&1; then
+    echo "[babylm-score] $(cat "$BASE/workspace/score.json" | head -c 200)"
+  else
+    echo "[babylm-score] scorer failed closed; see $LOG_DIR/official_score.log"
+  fi
+else
+  echo "[babylm-score] no framework-authored trace at workspace root; not scored"
 fi
 
 if ! real_eval_has_artifacts "$BASE"; then
