@@ -168,7 +168,7 @@ def nonconforming_files(workspace: Path, topic: str, present: list[str]) -> list
     return bad
 
 
-def gather_context(workspace: Path) -> str:
+def gather_context(workspace: Path, extra_dirs: list[Path] | None = None) -> str:
     """Summarise what the framework actually produced, for its own model."""
     chunks: list[str] = []
     seen = 0
@@ -181,6 +181,16 @@ def gather_context(workspace: Path) -> str:
             candidates.extend(sorted(run_dir.glob("*.json")))
             candidates.extend(sorted(run_dir.glob("*.md")))
             candidates.extend(sorted(run_dir.glob("logs/**/best_solution_*.py"))[-1:])
+    # Extra context roots (framework caches, the agent's real workplace) let
+    # the model format missing files from the material the run actually
+    # produced when little or nothing reached the workspace root yet.
+    for extra in (extra_dirs or []):
+        if not extra.is_dir():
+            continue
+        for pattern in ("*.json", "*.py", "*.md"):
+            candidates.extend(sorted(extra.glob(pattern)))
+            candidates.extend(sorted(extra.glob("**/agents/*.json"))[:8])
+            candidates.extend(sorted(extra.glob("project/*.py")))
     for path in candidates[:MAX_SOURCE_FILES]:
         if seen >= MAX_CONTEXT_CHARS:
             break
@@ -231,6 +241,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--workspace", default="/workspace")
     parser.add_argument("--topic", required=True, choices=sorted(REQUIRED))
+    parser.add_argument("--extra-context", action="append", default=[], help="additional dirs to scan for context (repeatable)")
     args = parser.parse_args()
 
     workspace = Path(args.workspace)
@@ -263,7 +274,7 @@ def main() -> int:
         print(f"[exit-delivery] missing at exit: {', '.join(missing)}")
     if nonconforming:
         print(f"[exit-delivery] present but non-conforming: {', '.join(nonconforming)}")
-    context = gather_context(workspace)
+    context = gather_context(workspace, [Path(d) for d in args.extra_context])
 
     for name in missing + nonconforming:
         spec = SPECS.get(args.topic, {}).get(name)
