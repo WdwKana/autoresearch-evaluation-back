@@ -133,6 +133,7 @@ cp "$INPUT_ROOT/automation/scripts/prepare_arc_wbe_2026_dataset.py" "$WORKSPACE/
 mkdir -p "$REPO/real_eval/adapters/ai_researcher"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_context_hygiene.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_request_probe.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py" "$REPO/real_eval/adapters/ai_researcher/"
 
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
 from pathlib import Path
@@ -373,6 +374,9 @@ if [ "${AI_RESEARCHER_CONTEXT_HYGIENE:-0}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_context_hygiene.py
 else
   echo "[context-hygiene] disabled (set AI_RESEARCHER_CONTEXT_HYGIENE=1 to enable)"
+fi
+if [ "${AI_RESEARCHER_IDEA_LOOP_FIXES:-1}" = 1 ]; then
+  python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 fi
 if [ "${AI_RESEARCHER_REQUEST_PROBE:-0}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_request_probe.py
