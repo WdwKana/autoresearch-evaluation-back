@@ -134,6 +134,7 @@ mkdir -p "$REPO/real_eval/adapters/ai_researcher"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_context_hygiene.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_request_probe.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_prepare_bypass.py" "$REPO/real_eval/adapters/ai_researcher/"
 
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
 from pathlib import Path
@@ -378,6 +379,7 @@ fi
 if [ "${AI_RESEARCHER_IDEA_LOOP_FIXES:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 fi
+python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 if [ "${AI_RESEARCHER_REQUEST_PROBE:-0}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 fi
@@ -536,6 +538,7 @@ timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-7200}s" docker run --rm \
   -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/arc_wbe_2026 \
   -e AI_RESEARCHER_REQUEST_PROBE="${AI_RESEARCHER_REQUEST_PROBE:-0}" \
   -e AI_RESEARCHER_CONTEXT_HYGIENE="${AI_RESEARCHER_CONTEXT_HYGIENE:-0}" \
+  -e AI_RESEARCHER_PREPARE_BYPASS="${AI_RESEARCHER_PREPARE_BYPASS:-1}" \
   -e AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl \
   -w /workspace/AI-Researcher \
   "$OUTER_IMAGE" \
