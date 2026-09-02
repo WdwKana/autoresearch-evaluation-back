@@ -137,6 +137,7 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py" "$REPO/real
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_prepare_bypass.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_empty_input_truth.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_loop_guard.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_file_browser_text.py" "$REPO/real_eval/adapters/ai_researcher/"
 
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
 from pathlib import Path
@@ -387,6 +388,9 @@ if [ "${AI_RESEARCHER_EMPTY_INPUT_TRUTH:-1}" = 1 ]; then
 fi
 if [ "${AI_RESEARCHER_LOOP_GUARD:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
+fi
+if [ "${AI_RESEARCHER_FILE_BROWSER_TEXT:-1}" = 1 ]; then
+  python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
 fi
 if [ "${AI_RESEARCHER_REQUEST_PROBE:-0}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_request_probe.py
