@@ -81,14 +81,23 @@ EXTEND_NEW = """            history.extend(partial_response.messages)
                 and history[-1].get("role") == "tool"
                 and isinstance(history[-1].get("content"), str)
             ):
-                if _lg_rep >= _LG_LIMIT:
-                    history[-1]["content"] += (
-                        "\\n\\n[loop-guard] You have now made " + str(_lg_rep)
-                        + " consecutive identical tool calls. The loop guard is ending this session:"
-                        + " summarize and produce your best final answer from the information you already have."
-                    )
+                if _lg_rep > _LG_LIMIT:
+                    # grace turn expired: the model saw the final notice and
+                    # still repeated the same call -- end the session now.
                     self.logger.info("loop-guard: ending session after " + str(_lg_rep) + " identical calls", title="Loop Guard", color="red")
                     break
+                if _lg_rep == _LG_LIMIT:
+                    # final notice + ONE grace turn, so the model can write its
+                    # summary and the phase result is model text, not a raw
+                    # tool result. One more identical call -> hard stop above.
+                    history[-1]["content"] += (
+                        "\\n\\n[loop-guard] You have now made " + str(_lg_rep)
+                        + " consecutive identical tool calls. This session is about to be ended:"
+                        + " do NOT call any more tools -- respond now with your best final answer"
+                        + " (your summary, findings, or result) from the information you already have."
+                    )
+                    self.logger.info("loop-guard: final notice at " + str(_lg_rep) + " identical calls (grace turn)", title="Loop Guard", color="yellow")
+                    continue
                 history[-1]["content"] += (
                     "\\n\\n[loop-guard] This was consecutive identical call #" + str(_lg_rep)
                     + " to the same tool with the same arguments. Its result has not changed and will not change."
