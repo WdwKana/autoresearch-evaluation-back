@@ -73,6 +73,90 @@ FIX2_NEW = '''And I have conducted the comprehensive survey on the innovative id
 {code_survey_res}'''
 
 
+
+
+# FIX 3 -- static-artifact re-materialisation inside the refinement threads
+# The judge_messages thread receives survey_res, prepare_res and plan_res IN
+# FULL in its very first query (the pre-loop evaluation request). Five later
+# sites in the SAME thread re-interpolate those identical artifacts on every
+# round: probe evidence shows a 256k ML request carrying six copies of the
+# idea document (two of them byte-identical, sha fa127f16d999) while genuine
+# work content was ~13%. The correction replaces the re-interpolations with an
+# explicit pointer to the full copy earlier in the conversation -- every
+# artifact remains present in the thread exactly once, in full; the dynamic
+# parts (latest implementation, feedback, results) are untouched; call counts
+# are unchanged. The paper's re-anchoring intent ("agents work from the
+# provided idea") is preserved through the persistent conversation history,
+# which is the framework's own chosen memory mechanism.
+POINTER = ("You are given the innovative idea, the reference codebases chosen by the "
+           "`Prepare Agent`, and the detailed coding plan -- all provided in full "
+           "earlier in this conversation.")
+
+FIX3_SITES = [
+    # (name, old, new)
+    ("loop-ml",
+     """You are given an innovative idea:
+{survey_res}
+and the reference codebases chosen by the `Prepare Agent`:
+{prepare_res}
+and the detailed coding plan:
+{plan_res}
+And your last implementation of the project:""",
+     POINTER + """
+And your last implementation of the project:"""),
+    ("loop-judge",
+     # anchored on the preceding line: the in-loop judge query follows the
+     # ml_agent call on judge_messages; the pre-loop first delivery (which
+     # must KEEP its full artifacts) follows ml_dev_messages instead and is
+     # additionally prefixed by "INPUT:".
+     """ml_dev_res = judge_messages[-1]["content"]
+            query = f\"\"\"\\
+You are given an innovative idea:
+{survey_res}
+and the reference codebases chosen by the `Prepare Agent`:
+{prepare_res}
+and the detailed coding plan:
+{plan_res}
+The implementation of the project:""",
+     """ml_dev_res = judge_messages[-1]["content"]
+            query = f\"\"\"\\
+""" + POINTER + """
+The implementation of the project:"""),
+    ("submit",
+     """ml_submit_query = f\"\"\"\\
+You are given an innovative idea:
+{survey_res}
+And your last implementation of the project:""",
+     """ml_submit_query = f\"\"\"\\
+You are given the innovative idea (provided in full earlier in this conversation).
+And your last implementation of the project:"""),
+    ("exp-planner",
+     """exp_planner_query = f\"\"\"\\
+You are given an innovative idea:
+{survey_res}
+And the reference codebases chosen by the `Prepare Agent`:
+{prepare_res}
+And the detailed coding plan:
+{plan_res}
+You have conducted the experiments""",
+     """exp_planner_query = f\"\"\"\\
+""" + POINTER + """
+You have conducted the experiments"""),
+    ("refine",
+     """refine_query = f\"\"\"\\
+You are given an innovative idea:
+{survey_res}
+And the reference codebases chosen by the `Prepare Agent`:
+{prepare_res}
+And the detailed coding plan:
+{plan_res}
+You have conducted the experiments""",
+     """refine_query = f\"\"\"\\
+""" + POINTER + """
+You have conducted the experiments"""),
+]
+
+
 def main() -> None:
     if not ENTRY.is_file():
         raise SystemExit("run from the AI-Researcher source root: research_agent/run_infer_idea.py not found")
@@ -94,6 +178,15 @@ def main() -> None:
         applied.append("fix2")
     else:
         raise SystemExit("idea-loop-fixes: FIX2 anchor (model survey notes slot) not found")
+
+    if "all provided in full " in text:
+        applied.append("fix3(already)")
+    else:
+        for name, old, new in FIX3_SITES:
+            if old not in text:
+                raise SystemExit(f"idea-loop-fixes: FIX3 anchor '{name}' not found")
+            text = text.replace(old, new, 1)
+        applied.append("fix3x5")
 
     ENTRY.write_text(text, encoding="utf-8")
     print(f"[idea-loop-fixes] applied: {', '.join(applied)}")
