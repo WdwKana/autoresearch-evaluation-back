@@ -106,6 +106,53 @@ Instead: write comprehensive theoretical notes for the given academic concepts f
         return f"""\\
 You are a `Paper Survey Agent` specialized in analyzing academic papers. Your task is to extract and analyze specific academic concepts from research papers located in `{file_env.docker_workplace}/papers/`.'''
 
+
+IDEA_AGENT = Path("research_agent/inno/agents/inno_agent/idea_agent.py")
+
+# The agent registered as name="Paper Survey Agent" in the flow is
+# get_idea_agent, whose instructions hard-code the same false premise AND
+# whose toolset has no directory-listing tool -- so "see what's available"
+# can only be attempted by guessing file paths one at a time. When the
+# papers directory is empty, emit a truthful variant that embeds a real
+# listing of the files that DO exist, so nothing needs to be guessed.
+IDEA_AGENT_OLD = '''    def instructions(context_variables):
+        return f"""\\
+You are an `Idea Generation Agent` specialized in analyzing academic papers located in `{file_env.docker_workplace}/papers/` and generating innovative ideas. Your task is to either:'''
+
+IDEA_AGENT_NEW = '''    def instructions(context_variables):
+        import glob as _glob
+        import os as _os
+        _lw = getattr(file_env, "local_workplace", "") or ""
+        _papers_local = _os.path.join(_lw, "papers")
+        _has_papers = bool(_glob.glob(_os.path.join(_papers_local, "**", "*"), recursive=True)) if _os.path.isdir(_papers_local) else False
+        if not _has_papers:
+            _listing = []
+            for _root, _dirs, _files in _os.walk(_lw):
+                _dirs[:] = [d for d in _dirs if not d.startswith(".") and d not in ("papers", "downloads", "__pycache__")]
+                for _f in _files:
+                    _rel = _os.path.relpath(_os.path.join(_root, _f), _lw)
+                    _listing.append(f"{file_env.docker_workplace}/{_rel}")
+                    if len(_listing) >= 40:
+                        break
+                if len(_listing) >= 40:
+                    break
+            _listing_text = "\\n".join(_listing) if _listing else "(the working directory has no readable files)"
+            return f"""\\
+You are an `Idea Generation Agent`. NOTE: there are NO research papers for this task -- the papers directory is empty, nothing was downloaded, and you have NO directory-listing tool. The following is the COMPLETE list of files that exist in your working directory; do NOT call `open_local_file` on any path that is not in this list, and do NOT guess filenames -- every guess will fail:
+
+{_listing_text}
+
+Your task is to either:
+1. Generate comprehensive, innovative and feasible ideas for the given task, grounded in the task description, the files listed above, and your own knowledge of the relevant literature, or
+2. If given multiple ideas: analyze them, select the most novel one, and enhance it into a comprehensive proposal (technical innovation, impact, feasibility, completeness).
+
+Provide detailed technical solutions, mathematical formulations, architectural design, algorithm specifications, evaluation metrics, and expected outcomes. After completing analysis and idea development, use `transfer_to_code_survey_agent` for implementation research.
+
+Remember: Your output will guide the implementation phase. Be thorough, innovative, and practical in your approach.
+"""
+        return f"""\\
+You are an `Idea Generation Agent` specialized in analyzing academic papers located in `{file_env.docker_workplace}/papers/` and generating innovative ideas. Your task is to either:'''
+
 TERM_OLD = '''                if res_output == "": res_output = " "'''
 TERM_NEW = '''                if res_output.strip() == "": res_output = "[no output] The command completed but produced no output on stdout/stderr (this is not an error message -- there was simply nothing printed)."'''
 
@@ -137,6 +184,14 @@ def main() -> None:
         text = _apply(SURVEY_AGENT, SURVEY_OLD, SURVEY_NEW, "paper survey instructions", text)
         SURVEY_AGENT.write_text(text, encoding="utf-8")
         print("[empty-input-truth] survey agent: truthful empty-directory instructions")
+
+    text = IDEA_AGENT.read_text(encoding="utf-8")
+    if "_has_papers" in text:
+        print("[empty-input-truth] idea agent already patched")
+    else:
+        text = _apply(IDEA_AGENT, IDEA_AGENT_OLD, IDEA_AGENT_NEW, "idea agent instructions", text)
+        IDEA_AGENT.write_text(text, encoding="utf-8")
+        print("[empty-input-truth] idea agent: truthful no-papers instructions with real file listing")
 
     text = TERMINAL_TOOLS.read_text(encoding="utf-8")
     if "[no output]" in text:
