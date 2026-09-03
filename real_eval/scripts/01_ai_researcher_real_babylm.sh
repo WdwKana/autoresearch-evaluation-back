@@ -6,7 +6,7 @@ source "$ROOT/real_eval/scripts/lib_real_eval.sh"
 RUN_ID="${REAL_EVAL_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 BASE="${REAL_EVAL_RUN_ROOT:-$ROOT/real_eval/runs/$RUN_ID/01_ai_researcher}"
 SRC="$ROOT/AI-Researcher"
-REPO="$BASE/repo"
+REPO="$BASE/workspace/AI-Researcher"   # ARC-convention layout: framework under workspace/, scorer artifacts at workspace root
 LOG_DIR="$BASE/logs"
 DATASET_ROOT="${BABYLM_DATASET_ROOT:-$ROOT/BabyLM-2026-Strict-Small}"
 CONTRACT_FILE="${BABYLM_CONTRACT_FILE:-$ROOT/BabyLM-10M_七框架任务包装与分发指南.md}"
@@ -369,11 +369,6 @@ new = '''        extra_mounts = []
         docker_command = [
             "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + ["--name", self.container_name, 
             "--user", "root", "-v", f"{local_workplace}:{self.docker_workplace}",
-            # persistence invariant: tcp_server's default command cwd is
-            # /workplace, but babylm's mount is /workplace_<run_id> -- bare
-            # relative writes would land in the container's ephemeral layer.
-            # Alias the same host dir at /workplace so both views persist.
-            "-v", f"{local_workplace}:/workplace",
         ] + extra_mounts + [
             "-w", f"{self.docker_workplace}", "-p", f"{self.communication_port}:8000", 
             "--restart", "unless-stopped", BASE_IMAGES
@@ -772,7 +767,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -v /var/run/docker.sock:/var/run/docker.sock \
   -w /workspace/AI-Researcher/research_agent \
   ai-researcher:runtime-ready \
-	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; if [ \"\${BABYLM_RUN_PAPER_AGENT:-0}\" = 1 ]; then { python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m ; } || echo BABYLM_PAPER_PHASE_NONFATAL_FAILURE ; else echo BABYLM_PAPER_PHASE_SKIPPED ; fi" \
+	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; if [ \"\${BABYLM_RUN_PAPER_AGENT:-0}\" = 1 ]; then { python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m ; } || echo BABYLM_PAPER_PHASE_NONFATAL_FAILURE ; else echo BABYLM_PAPER_PHASE_SKIPPED ; fi" \
 	  2>&1 | tee "$LOG_DIR/e2e.log"
 rc=${PIPESTATUS[0]}
 set -e
@@ -790,7 +785,6 @@ mkdir -p "$BASE/workspace"
 # Delivery map: alias natively-located artifacts to the workspace root
 # (symlinks, audited) before the score hookup looks for them.
 mkdir -p "$BASE/workspace"
-ln -sfn "$BASE/repo" "$BASE/workspace/repo" 2>/dev/null || true
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$BASE/workspace" --topic babylm || true
 python3 - "$REPO" "$BASE" <<'PYSCORE'
 import json, shutil, sys
@@ -800,8 +794,8 @@ repo, base = Path(sys.argv[1]), Path(sys.argv[2])
 target = base / "workspace" / "experiment_trace.json"
 if not target.is_file():
     candidates = sorted(
-        repo.glob("research_agent/workplace_paper/task_*/workplace_*/workplace_*/experiment_trace.json")
-    ) + sorted(repo.glob("research_agent/workplace_paper/task_*/workplace_*/workplace_*/project/experiment_trace.json"))
+        repo.glob("research_agent/workplace_paper/task_*/workplace*/workplace*/experiment_trace.json")
+    ) + sorted(repo.glob("research_agent/workplace_paper/task_*/workplace*/workplace*/project/experiment_trace.json"))
     newest = max(candidates, key=lambda c: c.stat().st_mtime, default=None)
     if newest is not None:
         shutil.copy2(newest, target)

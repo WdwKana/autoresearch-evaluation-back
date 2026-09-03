@@ -97,7 +97,7 @@ timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}s" python3 researc
   --instance_path benchmark/final/mountaincar_continuous/mountaincar_continuous.json \
   --container_name mountaincar_ai_researcher \
   --model "$OPENAI_MODEL" \
-  --workplace_name . \
+  --workplace_name workplace \
   --cache_path cache_mountaincar_continuous \
   --port 12374 \
   --max_iter_times 1 \

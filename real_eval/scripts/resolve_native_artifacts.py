@@ -55,10 +55,12 @@ MAPS: dict[str, dict] = {
         },
     },
     "babylm": {
+        # ARC-convention layout (unified 2026-09-03): resolver runs with
+        # --workspace $BASE/workspace, framework lives under AI-Researcher/.
         "roots": [
             ".",
-            "repo/research_agent/workplace_paper/task_*/workplace_*/workplace_*",
-            "repo/research_agent/workplace_paper/task_*/workplace_*/workplace_*/project",
+            "AI-Researcher/research_agent/workplace_paper/task_*/workplace*/workplace*",
+            "AI-Researcher/research_agent/workplace_paper/task_*/workplace*/workplace*/project",
         ],
         "artifacts": [
             "research_idea.json",
@@ -68,10 +70,12 @@ MAPS: dict[str, dict] = {
         "sidecars_for": {},
     },
     "mountaincar_continuous": {
+        # workplace_name unified to 'workplace' (framework itself is staged at
+        # the workspace root by the shared seven-framework runner).
         "roots": [
             ".",
-            "workspace/workplace_paper/task_*/./project",
-            "workspace/workplace_paper/task_*/.",
+            "workspace/workplace_paper/task_*/workplace/workplace",
+            "workspace/workplace_paper/task_*/workplace/workplace/project",
         ],
         "artifacts": [
             "research_idea.json",
