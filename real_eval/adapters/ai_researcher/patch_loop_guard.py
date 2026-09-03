@@ -44,6 +44,19 @@ _LG_LIMIT = max(3, int(_lg_os.getenv("AI_RESEARCHER_LOOP_GUARD_LIMIT", "8")))
 _LG_EMPTY_RETRY = max(0, int(_lg_os.getenv("AI_RESEARCHER_EMPTY_RETRY", "1")))
 _LG_EMPTY_LIMIT = max(2, int(_lg_os.getenv("AI_RESEARCHER_EMPTY_LIMIT", "6")))'''
 
+
+# per-loop finish_reason capture (sync/async response variables differ)
+SYNC_FINISH_OLD = """            message: Message = completion.choices[0].message
+            message.sender = active_agent.name"""
+SYNC_FINISH_NEW = """            message: Message = completion.choices[0].message
+            message.sender = active_agent.name
+            _lg_finish = getattr(completion.choices[0], "finish_reason", None)"""
+ASYNC_FINISH_OLD = """            message: Message = completion_response.choices[0].message
+            message.sender = active_agent.name"""
+ASYNC_FINISH_NEW = """            message: Message = completion_response.choices[0].message
+            message.sender = active_agent.name
+            _lg_finish = getattr(completion_response.choices[0], "finish_reason", None)"""
+
 WHILE_OLD = """        while len(history) - init_len < max_turns and active_agent:"""
 WHILE_NEW = """        if max_turns == float("inf") and _lg_os.getenv("AI_RESEARCHER_MAX_TURNS"):
             try:
@@ -53,6 +66,7 @@ WHILE_NEW = """        if max_turns == float("inf") and _lg_os.getenv("AI_RESEAR
         _lg_last_sig = None
         _lg_rep = 0
         _lg_empty_run = 0
+        _lg_finish = None
         while len(history) - init_len < max_turns and active_agent:"""
 
 APPEND_OLD = """            history.append(
@@ -65,6 +79,14 @@ APPEND_NEW = """            # loop-guard: an empty completion (no content, no to
             if _lg_is_empty:
                 _lg_empty_run += 1
                 if _lg_empty_run <= _LG_EMPTY_RETRY:
+                    if _lg_finish == "length":
+                        # truncated giant output: a blind retry regenerates the
+                        # same giant and burns the same tokens -- inform the
+                        # retry instead (mirrors the TDC/topic2 budget clause
+                        # against pasting long content into the conversation).
+                        history.append({"role": "user", "content": "[controller] Your previous response exceeded the provider's output limit and was discarded (finish_reason=length). Re-issue it much more concisely: keep tool arguments short, and write any long code or content into files using create_file/write_file instead of embedding it in arguments."})
+                        self.logger.info("loop-guard: length-truncated empty; guided retry (" + str(_lg_empty_run) + "/" + str(_LG_EMPTY_RETRY) + ")", title="Loop Guard", color="yellow")
+                        continue
                     self.logger.info("loop-guard: empty completion; retrying (" + str(_lg_empty_run) + "/" + str(_LG_EMPTY_RETRY) + ")", title="Loop Guard", color="yellow")
                     continue
                 if _lg_empty_run >= _LG_EMPTY_LIMIT:
@@ -143,8 +165,8 @@ def main() -> None:
     if not CORE.is_file():
         raise SystemExit("loop-guard: run from the AI-Researcher source root")
     text = CORE.read_text(encoding="utf-8")
-    if "_LG_EMPTY_LIMIT" in text:
-        print("[loop-guard] already applied (v3)")
+    if "_lg_finish" in text:
+        print("[loop-guard] already applied (v4)")
         return
     if "_LG_LIMIT" in text:
         raise SystemExit("loop-guard: an older guard version is present; refusing mixed application")
@@ -160,13 +182,18 @@ def main() -> None:
         raise SystemExit("loop-guard: import anchor not found")
     if NAG_OLD not in text:
         raise SystemExit("loop-guard: nag anchor not found")
+    for label, o in (("sync-finish", SYNC_FINISH_OLD), ("async-finish", ASYNC_FINISH_OLD)):
+        if text.count(o) != 1:
+            raise SystemExit(f"loop-guard: anchor '{label}' count != 1")
+    text = text.replace(SYNC_FINISH_OLD, SYNC_FINISH_NEW, 1)
+    text = text.replace(ASYNC_FINISH_OLD, ASYNC_FINISH_NEW, 1)
     text = text.replace(IMPORT_ANCHOR, IMPORT_ADD, 1)
     text = text.replace(WHILE_OLD, WHILE_NEW)
     text = text.replace(APPEND_OLD, APPEND_NEW)
     text = text.replace(EXTEND_OLD, EXTEND_NEW)
     text = text.replace(NAG_OLD, NAG_NEW)
     CORE.write_text(text, encoding="utf-8")
-    print("[loop-guard] applied v3: repetition brake + turn cap + empty-completion retry/stop + directive nag")
+    print("[loop-guard] applied v4: repetition brake + turn cap + empty retry/stop (length-aware guided retry) + directive nag")
 
 
 if __name__ == "__main__":
