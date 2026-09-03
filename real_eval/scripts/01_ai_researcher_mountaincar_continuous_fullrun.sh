@@ -103,7 +103,7 @@ timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}s" python3 researc
   --cache_path cache_mountaincar_continuous \
   --port 12374 \
   --max_iter_times 1 \
-  --category mountaincar_continuous
+  --category mountaincar_continuous || echo "[mcar] native infer exited non-zero (rc=$?, e.g. timeout 124) -- proceeding to handoff+score"
 set +x
 # The contract asks for five checkpoints at /workspace/checkpoints, but the
 # agent produces them inside its own workplace. Relocate verbatim; never author.
