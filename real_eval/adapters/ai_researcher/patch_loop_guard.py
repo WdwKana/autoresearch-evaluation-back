@@ -84,7 +84,7 @@ APPEND_NEW = """            # loop-guard: an empty completion (no content, no to
                         # same giant and burns the same tokens -- inform the
                         # retry instead (mirrors the TDC/topic2 budget clause
                         # against pasting long content into the conversation).
-                        history.append({"role": "user", "content": "[controller] Your previous response exceeded the provider's output limit and was discarded (finish_reason=length). Re-issue it much more concisely: keep tool arguments short, and write any long code or content into files using create_file/write_file instead of embedding it in arguments."})
+                        history.append({"role": "user", "content": "[controller] Your previous response exceeded the provider's output limit and was discarded -- nothing was received. Re-issue it in a much shorter form; long code or content can be written into files instead of into the message."})
                         self.logger.info("loop-guard: length-truncated empty; guided retry (" + str(_lg_empty_run) + "/" + str(_LG_EMPTY_RETRY) + ")", title="Loop Guard", color="yellow")
                         continue
                     self.logger.info("loop-guard: empty completion; retrying (" + str(_lg_empty_run) + "/" + str(_LG_EMPTY_RETRY) + ")", title="Loop Guard", color="yellow")
