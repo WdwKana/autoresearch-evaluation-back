@@ -55,6 +55,11 @@ REQUIRED: dict[str, list[str]] = {
         "experiment_trace.json",
         "final_report.md",
     ],
+    "babylm": [
+        "research_idea.json",
+        "experiment_trace.json",
+        "final_report.md",
+    ],
     "psydefdetect": [
         "predictions.jsonl",
         "score.json",
@@ -76,6 +81,20 @@ REQUIRED: dict[str, list[str]] = {
 # topic/status/trace_note/... and the gate rejected it for not proving native
 # execution.
 SPECS: dict[str, dict[str, str]] = {
+    "babylm": {
+        "final_report.md": (
+            "A markdown report grounded ONLY in the run's material: the hypothesis, the "
+            "experiments actually run (their names and word-level validation perplexities from "
+            "experiment_trace.json / results JSONs), why the selected configuration was chosen, "
+            "and observed limitations. Never invent numbers; if a value is absent in the "
+            "material, say so explicitly."
+        ),
+        "research_idea.json": (
+            "A JSON object with non-empty keys: hypothesis, method_rationale, "
+            "expected_failure_modes (a list), comparison_logic. Re-key the wording this run "
+            "already produced in its idea/plan material; do not invent new claims."
+        ),
+    },
     "arc_wbe_2026": {
         "experiment_trace.json": (
             "A JSON object with exactly these top-level keys: "
