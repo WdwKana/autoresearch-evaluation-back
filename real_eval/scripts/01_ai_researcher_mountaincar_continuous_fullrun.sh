@@ -10,6 +10,15 @@ export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 AI-Researcher/benchmark/final/mountaincar_continuous/mountaincar_continuous.json
 AI-Researcher/benchmark/process/dataset_candidate/mountaincar_continuous/metaprompt.py
 real_eval/adapters/mountaincar_continuous/patch_ai_researcher.py
+real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+real_eval/adapters/ai_researcher/patch_prepare_bypass.py
+real_eval/adapters/ai_researcher/patch_empty_input_truth.py
+real_eval/adapters/ai_researcher/patch_loop_guard.py
+real_eval/adapters/ai_researcher/patch_file_browser_text.py
+real_eval/adapters/ai_researcher/patch_exec_env_provision.py
+real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+real_eval/adapters/ai_researcher/patch_request_probe.py
+real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -41,6 +50,20 @@ OPENAI_MODEL=$MC_MODEL
 COMPLETION_MODEL=openai/$MC_MODEL
 -e
 CHEEP_MODEL=openai/$MC_MODEL
+-e
+AI_RESEARCHER_PREPARE_BYPASS=1
+-e
+AI_RESEARCHER_ML_DELIVERY_GLOBS=networks.py,config-*.pkl,*.py
+-e
+AI_RESEARCHER_MAX_TURNS=300
+-e
+AI_RESEARCHER_LOOP_GUARD_LIMIT=8
+-e
+AI_RESEARCHER_EXEC_PIP=
+-e
+AI_RESEARCHER_REQUEST_PROBE=1
+-e
+AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
 EOF
 )
 
@@ -55,6 +78,15 @@ if [ -d /workspace/AI-Researcher/benchmark ]; then
   cp -r /workspace/AI-Researcher/benchmark/. /workspace/benchmark/
 fi
 python3 real_eval/adapters/mountaincar_continuous/patch_ai_researcher.py
+# New framework-fix stack (same adapters as ARC; mcar delivery globs).
+python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
+python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
+python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
+python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
+python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 PS4='NATIVE_CMD> '
 set -x
 timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}s" python3 research_agent/run_infer_idea.py \

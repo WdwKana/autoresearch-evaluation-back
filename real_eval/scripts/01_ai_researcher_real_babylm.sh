@@ -607,6 +607,23 @@ s = s.replace(
 1)
 p.write_text(s)
 PY
+# --- New framework-fix stack (host-side patches on $REPO) ---
+# Same framework-file-anchored adapters as ARC; delivery glob is BabyLM-
+# appropriate (*.py). Topic-agnostic loop/context fixes are pure wins.
+mkdir -p "$REPO/real_eval/adapters/ai_researcher" "$REPO/real_eval/adapters/ai_scientist_v2"
+cp "$ROOT/real_eval/adapters/ai_researcher/"patch_*.py "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" "$REPO/real_eval/adapters/ai_scientist_v2/"
+( cd "$REPO"
+  python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+  python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
+  python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
+  python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
+  python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+  python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
+  python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+  [ "${AI_RESEARCHER_REQUEST_PROBE:-1}" = 1 ] && python3 real_eval/adapters/ai_researcher/patch_request_probe.py
+) || { echo BABYLM_FIXSTACK_APPLY_FAILED; exit 1; }
+
 cat > "$REPO/benchmark/final/babylm/babylm_10m.json" <<EOF
 {
   "target": "BabyLM-10M real language-model training experiment",
@@ -720,6 +737,13 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -e BASE_IMAGES=${AI_RESEARCHER_EXEC_RUNTIME_IMAGE:-ai-researcher-exec:blackwell-25.11} \
   -e GPUS=all \
   -e CUDA_VISIBLE_DEVICES="${REAL_EVAL_ALLOWED_GPUS:-0,1,2,3}" \
+  -e AI_RESEARCHER_PREPARE_BYPASS="${AI_RESEARCHER_PREPARE_BYPASS:-1}" \
+  -e AI_RESEARCHER_ML_DELIVERY_GLOBS="${AI_RESEARCHER_ML_DELIVERY_GLOBS:-*.py}" \
+  -e AI_RESEARCHER_MAX_TURNS="${AI_RESEARCHER_MAX_TURNS:-300}" \
+  -e AI_RESEARCHER_LOOP_GUARD_LIMIT="${AI_RESEARCHER_LOOP_GUARD_LIMIT:-8}" \
+  -e AI_RESEARCHER_EXEC_PIP="${AI_RESEARCHER_EXEC_PIP:-}" \
+  -e AI_RESEARCHER_REQUEST_PROBE="${AI_RESEARCHER_REQUEST_PROBE:-1}" \
+  -e AI_RESEARCHER_PROBE_LOG="${AI_RESEARCHER_PROBE_LOG:-/workspace/AI-Researcher/request_probe.jsonl}" \
   -e PYTHONPATH=/workspace/AI-Researcher:/workspace/AI-Researcher/research_agent/inno/tools \
   -e HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}" \
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=BabyLM-10M \
@@ -741,7 +765,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -v /var/run/docker.sock:/var/run/docker.sock \
   -w /workspace/AI-Researcher/research_agent \
   ai-researcher:runtime-ready \
-	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; { python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m ; } || echo BABYLM_PAPER_PHASE_NONFATAL_FAILURE" \
+	  bash -lc "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright python -m playwright install chromium 2>&1 ; apt-get update -qq && apt-get install -y -qq libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 2>&1 || true ; python -u run_infer_idea.py --instance_path ../benchmark/final/babylm/babylm_10m.json --container_name $CONTAINER_NAME --model openai/$AI_RESEARCHER_MODEL --workplace_name workplace_$RUN_ID --cache_path cache_$RUN_ID --port $PORT --max_iter_times 0 --category babylm 2>&1 ; echo EXIT_CODE=\$? ; if [ \"\${BABYLM_RUN_PAPER_AGENT:-0}\" = 1 ]; then { python prepare_babylm_paper_agent.py --run-id $RUN_ID --model openai/$AI_RESEARCHER_MODEL --instance-id babylm_10m && python ../paper_agent/writing.py --research_field babylm --instance_id babylm_10m ; } || echo BABYLM_PAPER_PHASE_NONFATAL_FAILURE ; else echo BABYLM_PAPER_PHASE_SKIPPED ; fi" \
 	  2>&1 | tee "$LOG_DIR/e2e.log"
 rc=${PIPESTATUS[0]}
 set -e
