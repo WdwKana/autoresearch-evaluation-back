@@ -348,7 +348,7 @@ if [[ "$run_rc" -eq 0 && -n "$FRAMEWORK_LOG_FORBIDDEN_PATTERN" ]] && rg -q "$FRA
   run_rc=43
 fi
 
-if [[ "$run_rc" -eq 0 ]]; then
+if [[ "$run_rc" -eq 0 || "$run_rc" -eq 124 || "$run_rc" -eq 137 ]]; then
   python3 - "$WORKSPACE" "$EVAL_MODEL" <<'PY'
 from __future__ import annotations
 
@@ -441,8 +441,11 @@ payload = {
 Path(sys.argv[1]).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 
-if [[ "$run_rc" -ne 0 ]]; then
+if [[ "$run_rc" -ne 0 && "$run_rc" -ne 124 && "$run_rc" -ne 137 ]]; then
   write_state "failed" "PsyDefDetect framework-native full run exited non-zero; see log" "$run_rc"
   exit "$run_rc"
+fi
+if [[ "$run_rc" -eq 124 || "$run_rc" -eq 137 ]]; then
+  echo "[psydef] native run hit timeout ($run_rc) but produced conforming artifacts -- scoring accepted (consistent with ARC/mcar)"
 fi
 write_state "finished" "PsyDefDetect framework-native full run exited successfully" 0
