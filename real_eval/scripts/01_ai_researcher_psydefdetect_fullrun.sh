@@ -15,6 +15,13 @@ AI-Researcher/benchmark/process/dataset_candidate/psydefdetect/reference_candida
 AI-Researcher/benchmark/process/dataset_candidate/psydefdetect/defense_mechanism_classification_in_supportive_conversations.tex
 automation/psydefdetect_contract.md
 automation/psydefdetect_execution_budget.md
+real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+real_eval/adapters/ai_researcher/patch_loop_guard.py
+real_eval/adapters/ai_researcher/patch_file_browser_text.py
+real_eval/adapters/ai_researcher/patch_exec_env_provision.py
+real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+real_eval/adapters/ai_researcher/patch_request_probe.py
+real_eval/adapters/ai_researcher/patch_response_probe.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -52,6 +59,20 @@ AI_RESEARCHER_PSYDEFDETECT_COMPACT_JUDGEMENT=1
 AI_RESEARCHER_PSYDEFDETECT_COMPACT_EXECUTION=1
 -e
 AI_RESEARCHER_PSYDEFDETECT_LOCAL_EXPERIMENTS_ONLY=1
+-e
+AI_RESEARCHER_ML_DELIVERY_GLOBS=*.py
+-e
+AI_RESEARCHER_MAX_TURNS=300
+-e
+AI_RESEARCHER_LOOP_GUARD_LIMIT=8
+-e
+AI_RESEARCHER_EXEC_PIP=
+-e
+AI_RESEARCHER_REQUEST_PROBE=1
+-e
+AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
+-e
+AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl
 EOF
 )
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
@@ -914,6 +935,16 @@ if old not in text:
     raise SystemExit("AI-Researcher experiment-report retry insertion point not found")
 entrypoint.write_text(text.replace(old, new, 1), encoding="utf-8")
 PY
+# General fix stack (7 patches that apply cleanly over psydef's inline
+# edits; prepare_bypass/empty_input_truth skipped -- psydef already reads
+# reference_candidates.json and has real dataset/inputs, no empty premise).
+python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
+python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
+python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+python3 real_eval/adapters/ai_researcher/patch_request_probe.py
+python3 real_eval/adapters/ai_researcher/patch_response_probe.py
 inner_prefix="psydefdetect_ai_researcher_${REAL_EVAL_RUN_ID}"
 cleanup_inner() {
   docker ps -aq --filter "name=^/${inner_prefix}" | xargs -r docker rm -f >/dev/null 2>&1 || true
