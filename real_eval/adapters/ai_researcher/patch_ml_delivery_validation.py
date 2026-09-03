@@ -65,17 +65,25 @@ def case_not_resolved(failure_reason):
    return failure_reason'''
 
 NEW = '''def _ml_delivery_estimator_on_disk(env):
-   """True if estimator.py exists under the agent's real workplace (ground truth)."""
+   """True if the topic's ML deliverable exists under the agent's real workplace.
+
+   The deliverable name(s) come from AI_RESEARCHER_ML_DELIVERY_GLOBS (comma
+   separated fnmatch patterns, default 'estimator.py'). Any non-empty file
+   matching any pattern anywhere under the workplace counts as delivered."""
    try:
-      import os as _os
+      import os as _os, fnmatch as _fn
       root = getattr(env, "local_workplace", None)
       if not root or not _os.path.isdir(root):
          return None  # cannot verify
+      pats = [g.strip() for g in _os.getenv("AI_RESEARCHER_ML_DELIVERY_GLOBS", "estimator.py").split(",") if g.strip()]
+      if not pats:
+         pats = ["estimator.py"]
       for _dir, _subs, _files in _os.walk(root):
-         # do not descend into the mounted dataset or caches
          _subs[:] = [d for d in _subs if d not in ("data", "__pycache__", ".git", "downloads")]
-         if "estimator.py" in _files and _os.path.getsize(_os.path.join(_dir, "estimator.py")) > 0:
-            return True
+         for _f in _files:
+            if any(_fn.fnmatch(_f, pat) for pat in pats):
+               if _os.path.getsize(_os.path.join(_dir, _f)) > 0:
+                  return True
       return False
    except Exception:
       return None  # cannot verify
