@@ -22,11 +22,9 @@ from pathlib import Path
 
 DOCKER_ENV = Path("research_agent/inno/environment/docker_env.py")
 
-OLD = '''        if self.wait_for_container_ready(timeout=60):
-            print(f"Container '{self.container_name}' has been created and started.")'''
+OLD = '''            print(f"Container '{self.container_name}' has been created and started.")'''
 
-NEW = '''        if self.wait_for_container_ready(timeout=60):
-            print(f"Container '{self.container_name}' has been created and started.")
+NEW = '''            print(f"Container '{self.container_name}' has been created and started.")
         # The task datasets ship as parquet; the runtime image lacks the
         # readers (numpy/torch only). Provision once at container creation.
         try:
