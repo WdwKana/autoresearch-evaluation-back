@@ -622,6 +622,7 @@ cp "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" "$REPO/real
   python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
   python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
   [ "${AI_RESEARCHER_REQUEST_PROBE:-1}" = 1 ] && python3 real_eval/adapters/ai_researcher/patch_request_probe.py
+  python3 real_eval/adapters/ai_researcher/patch_response_probe.py
 ) || { echo BABYLM_FIXSTACK_APPLY_FAILED; exit 1; }
 
 cat > "$REPO/benchmark/final/babylm/babylm_10m.json" <<EOF
@@ -744,6 +745,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -e AI_RESEARCHER_EXEC_PIP="${AI_RESEARCHER_EXEC_PIP:-}" \
   -e AI_RESEARCHER_REQUEST_PROBE="${AI_RESEARCHER_REQUEST_PROBE:-1}" \
   -e AI_RESEARCHER_PROBE_LOG="${AI_RESEARCHER_PROBE_LOG:-/workspace/AI-Researcher/request_probe.jsonl}" \
+  -e AI_RESEARCHER_RESPONSE_PROBE_LOG="${AI_RESEARCHER_RESPONSE_PROBE_LOG:-/workspace/AI-Researcher/response_probe.jsonl}" \
   -e PYTHONPATH=/workspace/AI-Researcher:/workspace/AI-Researcher/research_agent/inno/tools \
   -e HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}" \
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=BabyLM-10M \

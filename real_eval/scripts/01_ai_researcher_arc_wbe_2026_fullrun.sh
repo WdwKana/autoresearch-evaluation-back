@@ -133,6 +133,7 @@ cp "$INPUT_ROOT/automation/scripts/prepare_arc_wbe_2026_dataset.py" "$WORKSPACE/
 mkdir -p "$REPO/real_eval/adapters/ai_researcher"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_context_hygiene.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_request_probe.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_response_probe.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_prepare_bypass.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_empty_input_truth.py" "$REPO/real_eval/adapters/ai_researcher/"
@@ -401,6 +402,7 @@ fi
 if [ "${AI_RESEARCHER_REQUEST_PROBE:-0}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 fi
+python3 real_eval/adapters/ai_researcher/patch_response_probe.py
 cd /workspace/AI-Researcher/research_agent
 PORT=\$(python - <<'PY'
 import socket
@@ -560,6 +562,7 @@ timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-7200}s" docker run --rm \
   -e AI_RESEARCHER_LOOP_GUARD_LIMIT="${AI_RESEARCHER_LOOP_GUARD_LIMIT:-8}" \
   -e AI_RESEARCHER_MAX_TURNS="${AI_RESEARCHER_MAX_TURNS:-300}" \
   -e AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl \
+  -e AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl \
   -w /workspace/AI-Researcher \
   "$OUTER_IMAGE" \
   bash -lc "$RUNTIME_COMMAND" 2>&1 | tee -a "$LOG_FILE"
