@@ -787,8 +787,8 @@ mkdir -p "$BASE/workspace"
 mkdir -p "$BASE/workspace"
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$BASE/workspace" --topic babylm || true
 if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1}" = 1 ]; then
-  BB_WP="$(find "$REPO/research_agent/workplace_paper" -type d -path '*/workplace*/workplace*' 2>/dev/null | head -1)"
-  BB_CACHE="$(find "$REPO/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1)"
+  BB_WP="$(find "$REPO/research_agent/workplace_paper" -type d -path '*/workplace*/workplace*' 2>/dev/null | head -1 || true)"
+  BB_CACHE="$(find "$REPO/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1 || true)"
   python3 "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" \
     --workspace "$BASE/workspace" --topic babylm \
     ${BB_WP:+--extra-context "$BB_WP"} \
