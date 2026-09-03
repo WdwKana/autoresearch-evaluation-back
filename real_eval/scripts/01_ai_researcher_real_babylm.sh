@@ -369,6 +369,11 @@ new = '''        extra_mounts = []
         docker_command = [
             "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + ["--name", self.container_name, 
             "--user", "root", "-v", f"{local_workplace}:{self.docker_workplace}",
+            # persistence invariant: tcp_server's default command cwd is
+            # /workplace, but babylm's mount is /workplace_<run_id> -- bare
+            # relative writes would land in the container's ephemeral layer.
+            # Alias the same host dir at /workplace so both views persist.
+            "-v", f"{local_workplace}:/workplace",
         ] + extra_mounts + [
             "-w", f"{self.docker_workplace}", "-p", f"{self.communication_port}:8000", 
             "--restart", "unless-stopped", BASE_IMAGES
@@ -782,6 +787,11 @@ fi
 # workplace to the path the host scorer reads, then run the official scorer.
 # Never authors content; fail-closed when the framework wrote no scorable trace.
 mkdir -p "$BASE/workspace"
+# Delivery map: alias natively-located artifacts to the workspace root
+# (symlinks, audited) before the score hookup looks for them.
+mkdir -p "$BASE/workspace"
+ln -sfn "$BASE/repo" "$BASE/workspace/repo" 2>/dev/null || true
+python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$BASE/workspace" --topic babylm || true
 python3 - "$REPO" "$BASE" <<'PYSCORE'
 import json, shutil, sys
 from pathlib import Path

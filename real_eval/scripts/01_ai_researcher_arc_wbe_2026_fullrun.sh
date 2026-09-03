@@ -590,30 +590,11 @@ fi
 # deliverables from the material the run produced. No host-authored content;
 # no fabrication (the scorer fails closed on trivial predictions => a run with
 # no real result still scores 0). Fully audited in exit_delivery_check.json.
-python3 - "$WORKSPACE" <<'PARTIAL'
-import shutil, sys
-from pathlib import Path
-ws = Path(sys.argv[1])
-required = ["research_idea.json", "estimator.py", "submission.json", "experiment_trace.json", "final_report.md"]
-bases = []
-for b in sorted(ws.glob("AI-Researcher/research_agent/workplace_paper/task_*/workplace/workplace")):
-    bases.append(b); bases.append(b / "project")
-moved = []
-for name in required:
-    if (ws / name).is_file() and (ws / name).stat().st_size:
-        continue
-    for b in bases:
-        cand = b / name
-        if cand.is_file() and cand.stat().st_size:
-            shutil.copy2(cand, ws / name); moved.append(name)
-            if name == "estimator.py":
-                for sc in b.iterdir():
-                    if sc.is_file() and (sc.suffix == ".npz" or (sc.name.startswith("estimator") and sc.suffix in {".json", ".npz"})):
-                        if not (ws / sc.name).exists():
-                            shutil.copy2(sc, ws / sc.name)
-            break
-print("[arc-partial-reloc] brought to root: " + (", ".join(moved) if moved else "nothing new"))
-PARTIAL
+# Delivery map: find artifacts where the framework's worldview natively put
+# them and alias (symlink) to the workspace root -- declared ordered roots,
+# first match wins, audited in delivery_map_resolution.json. Replaces the
+# ad-hoc partial-relocation copies; no content is authored or copied.
+python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$WORKSPACE" --topic arc_wbe_2026
 if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1}" = 1 ]; then
   ARC_CACHE_DIR="$(find "$WORKSPACE/AI-Researcher/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1)"
   ARC_TASK_WP="$(find "$WORKSPACE/AI-Researcher/research_agent/workplace_paper" -type d -path '*/workplace/workplace' 2>/dev/null | head -1)"
