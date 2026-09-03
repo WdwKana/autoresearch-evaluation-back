@@ -116,6 +116,19 @@ def main() -> None:
                 os.symlink(self.local_workplace, _docker_ws)
             except OSError as exc:
                 print(f"[mcar-adapter] could not link {_docker_ws} -> {self.local_workplace}: {exc}")
+        # workplace_name="." renders the prompt template's /{workplace_name}/project
+        # as "/project", which the guard above never links (docker_workplace is
+        # "/."): run fullrun_mcar_01_luna_20260903_090852 finished the whole task
+        # and wrote all five checkpoints under /project, which died with the
+        # container. Link /project explicitly so those paths persist.
+        _proj = os.path.join(self.local_workplace, "project")
+        os.makedirs(_proj, exist_ok=True)
+        if not os.path.exists("/project"):
+            try:
+                os.symlink(_proj, "/project")
+                print(f"[mcar-adapter] linked /project -> {_proj}")
+            except OSError as exc:
+                print(f"[mcar-adapter] could not link /project -> {_proj}: {exc}")
         return
 
     def _mcar_unused_init_container(self):"""
