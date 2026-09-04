@@ -893,8 +893,26 @@ if old not in text:
 text = text.replace(old, new, 1)
 old = '        judge_messages.append({"role": "user", "content": ml_submit_query})'
 new = '''        if category == "psydefdetect":
-            ml_submit_query = f"""\\
-The framework has already executed exactly two PsyDefDetect experiments and produced the selected valid four-file handoff. Do not inspect files, run commands, modify code, or start another experiment. Call case_resolved now using the two observed scores and selected_experiment_id already present in the conversation.
+            # Conditional truth (2026-09-04): the old text asserted success
+            # unconditionally and named a tool (case_resolved) absent from the
+            # submit-step function map. When the dev session had NOT produced
+            # the handoff, the false premise + missing tool + "do not run
+            # commands" made the step unsolvable (observed: kimi churned, DS
+            # emitted empty-arg complete calls -- it was told to use "observed
+            # scores already present" that did not exist).
+            import os as _sub_os
+            _sub_wp = "/workspace"  # psydef fixed three-in-one layout; workplace_name is "." here
+            _sub_req = ["score.json", "experiment_trace.json", "final_report.md"]
+            _sub_missing = [_f for _f in _sub_req if not (_sub_os.path.isfile(_sub_os.path.join(_sub_wp, _f)) and _sub_os.path.getsize(_sub_os.path.join(_sub_wp, _f)) > 0)]
+            if not any(_sub_os.path.isfile(_sub_os.path.join(_sub_wp, _f)) and _sub_os.path.getsize(_sub_os.path.join(_sub_wp, _f)) > 0 for _f in ("predictions.jsonl", "submission.csv")):
+                _sub_missing.append("predictions.jsonl or submission.csv")
+            if not _sub_missing:
+                ml_submit_query = f"""\\
+The framework has already executed its PsyDefDetect experiments and the four-file handoff exists at /workspace. Do not inspect files, run commands, modify code, or start another experiment. Call complete_psydefdetect now with the two observed scores and the selected_experiment_id already present in the conversation.
+"""
+            else:
+                ml_submit_query = f"""\\
+The run has ended without a valid handoff: missing at /workspace: {", ".join(_sub_missing)}. Do not fabricate scores or files. If complete scored experiment results already exist in this conversation, call write_psydefdetect_handoff with them now and then complete_psydefdetect. Otherwise state the concrete blocker honestly in a plain message; the run will be recorded as not delivering.
 """
         judge_messages.append({"role": "user", "content": ml_submit_query})'''
 if old not in text:
