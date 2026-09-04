@@ -618,6 +618,7 @@ cp "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" "$REPO/real
   python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
   python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
   python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
+  python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
   python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
   python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
   python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
@@ -741,6 +742,7 @@ docker run --rm --name "$OUTER_CONTAINER_NAME" --ipc=host --ulimit memlock=-1 --
   -e AI_RESEARCHER_PREPARE_BYPASS="${AI_RESEARCHER_PREPARE_BYPASS:-1}" \
   -e AI_RESEARCHER_ML_DELIVERY_GLOBS="${AI_RESEARCHER_ML_DELIVERY_GLOBS:-*.py}" \
   -e AI_RESEARCHER_MAX_TURNS="${AI_RESEARCHER_MAX_TURNS:-300}" \
+  -e AI_RESEARCHER_COMMAND_TIMEOUT_SECONDS="${AI_RESEARCHER_COMMAND_TIMEOUT_SECONDS:-3600}" \
   -e AI_RESEARCHER_LOOP_GUARD_LIMIT="${AI_RESEARCHER_LOOP_GUARD_LIMIT:-8}" \
   -e AI_RESEARCHER_EXEC_PIP="${AI_RESEARCHER_EXEC_PIP:-}" \
   -e AI_RESEARCHER_REQUEST_PROBE="${AI_RESEARCHER_REQUEST_PROBE:-1}" \

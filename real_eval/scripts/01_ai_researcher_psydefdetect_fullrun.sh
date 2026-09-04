@@ -22,6 +22,7 @@ real_eval/adapters/ai_researcher/patch_exec_env_provision.py
 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
+real_eval/adapters/ai_researcher/patch_budget_clock.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -63,6 +64,10 @@ AI_RESEARCHER_PSYDEFDETECT_LOCAL_EXPERIMENTS_ONLY=1
 AI_RESEARCHER_ML_DELIVERY_GLOBS=*.py
 -e
 AI_RESEARCHER_MAX_TURNS=300
+-e
+AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}
+-e
+AI_RESEARCHER_COMMAND_TIMEOUT_SECONDS=${AI_RESEARCHER_COMMAND_TIMEOUT_SECONDS:-1800}
 -e
 AI_RESEARCHER_LOOP_GUARD_LIMIT=8
 -e
@@ -963,6 +968,7 @@ python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
 python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 python3 real_eval/adapters/ai_researcher/patch_response_probe.py
+python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 inner_prefix="psydefdetect_ai_researcher_${REAL_EVAL_RUN_ID}"
 cleanup_inner() {
   docker ps -aq --filter "name=^/${inner_prefix}" | xargs -r docker rm -f >/dev/null 2>&1 || true
