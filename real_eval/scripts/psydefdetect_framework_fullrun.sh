@@ -64,13 +64,13 @@ check_template_clean() {
   fi
 }
 cleanup_relay() {
-  local rc=$?
+  local rc=${1:-$?}
   set +e
   [[ "$RELAY_STARTED" == "1" ]] && docker rm -f "$RELAY_NAME" >/dev/null 2>&1
   [[ "$NETWORK_CREATED" == "1" ]] && docker network rm "$RELAY_NETWORK" >/dev/null 2>&1
   exit "$rc"
 }
-trap 'check_template_clean; cleanup_relay' EXIT
+trap '_exit_rc=$?; check_template_clean || _exit_rc=$?; cleanup_relay "$_exit_rc"' EXIT
 
 write_state() {
   local status="$1"
@@ -349,7 +349,7 @@ if [[ "$run_rc" -eq 0 && -n "$FRAMEWORK_LOG_FORBIDDEN_PATTERN" ]] && rg -q "$FRA
 fi
 
 if [[ "$run_rc" -eq 0 || "$run_rc" -eq 124 || "$run_rc" -eq 137 ]]; then
-  python3 - "$WORKSPACE" "$EVAL_MODEL" <<'PY'
+  if ! python3 - "$WORKSPACE" "$EVAL_MODEL" <<'PY'
 from __future__ import annotations
 
 import json
@@ -406,6 +406,10 @@ if (
 if not isinstance(trace.get("workspace_trace_root"), str) or not trace["workspace_trace_root"].strip():
     raise SystemExit("experiment_trace.json must include workspace_trace_root")
 PY
+  then
+    write_state "failed" "PsyDefDetect handoff validation failed (non-conforming or missing artifacts); see log" 44
+    exit 44
+  fi
 fi
 
 mkdir -p "$BASE/artifacts"
