@@ -17,7 +17,7 @@ WHY (2026-09-04)
          bash -c ...` so enforcement happens inside the exec container. On
          rc=124 the result is PREFIXED with an instructive notice (split long
          training into resumable stages, checkpoint), not silently killed.
-      2. Live clock: every command result is PREFIXED (pagination-safe) with
+      2. Live clock: execute_command/run_python results are PREFIXED with
          one line: `[clock] elapsed 42m / budget 180m, remaining ~138m`.
          Without a declared budget only elapsed is shown (babylm stays
          unbounded by prior decision).
@@ -86,18 +86,42 @@ FINAL_OLD = """                            elif response['type'] == 'final':
                                     'result': response['result']
                                 }"""
 FINAL_NEW = """                            elif response['type'] == 'final':
-                                # budget-clock: prefix (pagination-safe) the live
-                                # clock; on a cap kill (124) prefix the guidance.
+                                # budget-clock: on a cap kill (124) prefix the
+                                # instructive notice (clock itself is added only
+                                # by execute_command/run_python -- see
+                                # terminal_tools patch -- to avoid noise on
+                                # file-op results).
                                 _bc_res = response['result']
                                 if not isinstance(_bc_res, str):
                                     _bc_res = str(_bc_res)
-                                _bc_prefix = _bc_clock_line() + "\\n"
                                 if str(response.get('status')) == '124' or 'Exit code: 124' in _bc_res:
-                                    _bc_prefix += _bc_timeout_notice(_bc_res)
+                                    _bc_res = _bc_timeout_notice(_bc_res) + _bc_res
                                 return {
                                     'status': response['status'],
-                                    'result': _bc_prefix + _bc_res
+                                    'result': _bc_res
                                 }"""
+
+# ------------------------------------------------------- terminal_tools
+TOOLS = Path("research_agent/inno/tools/terminal_tools.py")
+
+TOOLS_IMPORT_OLD = "from research_agent.inno.environment.docker_env import DockerEnv, DockerConfig"
+TOOLS_IMPORT_NEW = "from research_agent.inno.environment.docker_env import DockerEnv, DockerConfig, _bc_clock_line as _bc_clock"
+
+EXEC_OLD = """        response = env.run_command(command, print_stream)
+        return response"""
+EXEC_NEW = """        response = env.run_command(command, print_stream)
+        # budget-clock: experiment-pacing tools carry the live clock
+        if isinstance(response, dict) and isinstance(response.get('result'), str):
+            response['result'] = _bc_clock() + "\\n" + response['result']
+        return response"""
+
+RUNPY_OLD = """        result = env.run_command(command, print_stream)
+        return result"""
+RUNPY_NEW = """        result = env.run_command(command, print_stream)
+        # budget-clock: experiment-pacing tools carry the live clock
+        if isinstance(result, dict) and isinstance(result.get('result'), str):
+            result['result'] = _bc_clock() + "\\n" + result['result']
+        return result"""
 
 # ------------------------------------------------------------ run_infer_idea
 QUERY_ANCHOR = '        messages = [{"role": "user", "content": ml_dev_query}]'
@@ -106,7 +130,7 @@ QUERY_NEW = '''        _bc_total = int(__import__("os").getenv("AI_RESEARCHER_TO
         _bc_rules = "[budget] "
         _bc_rules += (f"Total wall-clock budget for this run: {_bc_total // 60} minutes. " if _bc_total > 0 else "This run has no declared total wall-clock cap. ")
         _bc_rules += (f"Single-command cap: {_bc_cap // 60} minutes -- a command exceeding it is terminated with exit 124. " if _bc_cap > 0 else "")
-        _bc_rules += ("Every command result begins with a [clock] line showing elapsed and remaining time. "
+        _bc_rules += ("Every execute_command/run_python result begins with a [clock] line showing elapsed and remaining time. "
                       "Plan experiments to fit the remaining budget, split long training into resumable stages with checkpoints, "
                       "and reserve time at the end to write and deliver every required artifact.\\n\\n")
         ml_dev_query = _bc_rules + ml_dev_query
@@ -129,6 +153,7 @@ def patch(path: Path, pairs: list[tuple[str, str]]) -> None:
 
 def main() -> None:
     patch(DOCKER_ENV, [(IMPORT_ANCHOR, IMPORT_ADD), (SEND_OLD, SEND_NEW), (FINAL_OLD, FINAL_NEW)])
+    patch(TOOLS, [(TOOLS_IMPORT_OLD, TOOLS_IMPORT_NEW), (EXEC_OLD, EXEC_NEW), (RUNPY_OLD, RUNPY_NEW)])
     patch(ENTRY, [(QUERY_ANCHOR, QUERY_NEW)])
     print(f"[{MARK}] applied: single-command cap (wrapped, instructive 124 notice) + live clock prefix + upfront declaration")
 
