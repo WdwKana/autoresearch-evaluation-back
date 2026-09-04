@@ -115,7 +115,7 @@ if [[ "$EVAL_MODEL" == kimi-* ]]; then
     write_state "blocked" "Kimi PsyDefDetect evaluation model must be kimi-k2.6, got: $EVAL_MODEL" 27
     exit 27
   fi
-  if [[ "$FRAMEWORK_ISOLATED_RELAY" != "1" && ( "$PROVIDER_CONFIG" != "$ROOT/api/codex_kimi_k27_code_relay_container.toml" || "$PROVIDER_BASE_URL" != "http://host.docker.internal:8787/v1" ) ]]; then
+  if [[ "${PSYDEFDETECT_KIMI_ALLOW_DIRECT:-0}" != "1" && "$FRAMEWORK_ISOLATED_RELAY" != "1" && ( "$PROVIDER_CONFIG" != "$ROOT/api/codex_kimi_k27_code_relay_container.toml" || "$PROVIDER_BASE_URL" != "http://host.docker.internal:8787/v1" ) ]]; then
     write_state "blocked" "Kimi PsyDefDetect requires the canonical Docker-bridge relay provider config" 28
     exit 28
   fi
