@@ -17,6 +17,7 @@ real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
 real_eval/adapters/ai_researcher/patch_loop_guard.py
 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+real_eval/adapters/ai_researcher/patch_file_browser_paging.py
 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
@@ -90,6 +91,7 @@ python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
 python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
 python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+python3 real_eval/adapters/ai_researcher/patch_file_browser_paging.py
 python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 python3 real_eval/adapters/ai_researcher/patch_response_probe.py

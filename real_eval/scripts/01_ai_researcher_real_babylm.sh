@@ -625,6 +625,7 @@ cp "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" "$REPO/real
   python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py
   python3 real_eval/adapters/ai_researcher/patch_logger_resilience.py
   python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+  python3 real_eval/adapters/ai_researcher/patch_file_browser_paging.py
   python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
   python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
   [ "${AI_RESEARCHER_REQUEST_PROBE:-1}" = 1 ] && python3 real_eval/adapters/ai_researcher/patch_request_probe.py
