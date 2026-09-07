@@ -88,6 +88,29 @@ NEW = '''def _ml_delivery_estimator_on_disk(env):
    except Exception:
       return None  # cannot verify
 
+def _ml_delivery_run_validator(env):
+   """Optional official-validator hook (AI_RESEARCHER_ML_DELIVERY_VALIDATOR).
+
+   When the env var holds a shell command, run it; a clean nonzero exit means
+   the artifacts fail the SAME validator the host will apply, and its own
+   output is returned so the agent can fix and retry (psydef-style bounce).
+   Returns None when unset, passing, or when the hook itself crashes -- the
+   gate must never wedge a run on its own tooling (fail-open for tool faults
+   only, never for validation verdicts)."""
+   import os as _os
+   import subprocess as _sp
+   cmd = _os.getenv("AI_RESEARCHER_ML_DELIVERY_VALIDATOR", "").strip()
+   if not cmd:
+      return None
+   try:
+      r = _sp.run(cmd, shell=True, capture_output=True, text=True, timeout=180)
+      if r.returncode == 0:
+         return None
+      out = ((r.stdout or "") + "\\n" + (r.stderr or "")).strip()
+      return out[-800:] if out else "validator exited nonzero without output"
+   except Exception:
+      return None
+
 def case_resolved(task_response, env=None):
    """
    The task response is the result of the task. Use this function only after you have successfully completed the task, which means estimator.py has been written and run.
@@ -97,6 +120,11 @@ def case_resolved(task_response, env=None):
    """
    _present = _ml_delivery_estimator_on_disk(env)
    if _present is True:
+      _v = _ml_delivery_run_validator(env)
+      if _v:
+         return ("[Tool Call Error] case_resolved rejected: the official artifact validator failed:\\n"
+                 + _v +
+                 "\\nFix your artifacts so the validator passes, then call case_resolved again.")
       return task_response
    if _present is None:
       # cannot verify on disk -> degrade to the self-report check
@@ -106,6 +134,11 @@ def case_resolved(task_response, env=None):
                  "Complete the implementation -- write estimator.py, run it, verify the outputs -- "
                  "then call case_resolved again with a substantive description; "
                  "or, if you are genuinely blocked, call case_not_resolved with a concrete reason.")
+      _v = _ml_delivery_run_validator(env)
+      if _v:
+         return ("[Tool Call Error] case_resolved rejected: the official artifact validator failed:\\n"
+                 + _v +
+                 "\\nFix your artifacts so the validator passes, then call case_resolved again.")
       return task_response
    # verified absent on disk
    return ("[Tool Call Error] case_resolved rejected: estimator.py was not found in your workplace. "

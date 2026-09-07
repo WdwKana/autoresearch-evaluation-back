@@ -75,6 +75,8 @@ AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl
 AI_RESEARCHER_WIRE_TAP_LOG=/workspace/wire_tap.jsonl
 -e
 AI_RESEARCHER_EXEC_CPUS=4
+-e
+AI_RESEARCHER_ML_DELIVERY_VALIDATOR=python3 /workspace/automation/scripts/validate_tdc_admet_tox_run.py --workspace /workspace --stage framework --public-dataset-root /workspace/data/tdc_admet_tox
 EOF
 )
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
