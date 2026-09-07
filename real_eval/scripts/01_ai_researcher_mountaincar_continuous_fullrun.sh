@@ -20,6 +20,7 @@ real_eval/adapters/ai_researcher/patch_nested_gpu_isolation.py
 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
 real_eval/adapters/ai_researcher/patch_resource_visibility.py
 real_eval/adapters/ai_researcher/patch_logger_resilience.py
+real_eval/adapters/ai_researcher/patch_tool_args_resilience.py
 real_eval/adapters/ai_researcher/patch_file_browser_text.py
 real_eval/adapters/ai_researcher/patch_file_browser_paging.py
 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
@@ -103,6 +104,7 @@ python3 real_eval/adapters/ai_researcher/patch_nested_gpu_isolation.py
 python3 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
 python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py
 python3 real_eval/adapters/ai_researcher/patch_logger_resilience.py
+python3 real_eval/adapters/ai_researcher/patch_tool_args_resilience.py
 python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
 python3 real_eval/adapters/ai_researcher/patch_file_browser_paging.py
 python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
