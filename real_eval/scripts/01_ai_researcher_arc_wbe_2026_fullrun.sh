@@ -141,6 +141,7 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_loop_guard.py" "$REPO/real_eval
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_budget_clock.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_wire_tap.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_file_browser_text.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_exec_env_provision.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py" "$REPO/real_eval/adapters/ai_researcher/"
@@ -397,6 +398,7 @@ if [ "${AI_RESEARCHER_LOOP_GUARD:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
   python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
   python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
+  python3 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
 fi
 if [ "${AI_RESEARCHER_FILE_BROWSER_TEXT:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
