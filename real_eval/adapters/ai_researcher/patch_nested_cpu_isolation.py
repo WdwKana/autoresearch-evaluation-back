@@ -3,32 +3,25 @@
 
 WHY (2026-09-07)
     The nested experiment container is created with NO cpu limit of any kind
-    (verified empirically on an identically-created container: NanoCpus=0
-    CpuQuota=0 CpusetCpus empty, nproc=384 inside, zero OMP/MKL/THREADS env,
-    torch.get_num_threads()=192 by default). Observed live: kimi's ordinary
-    torch training grabbed ~190 host cores (19151% CPU) for 2h on the shared
-    384-core machine -- a cross-tenant CPU grab, usually slower than a bounded
-    run due to thread thrash. Same hazard class as the nested GPU leak fixed
-    in patch_nested_gpu_isolation.
+    (verified: NanoCpus=0 CpuQuota=0 CpusetCpus empty, nproc=384 inside, zero
+    OMP/MKL/THREADS env, torch.get_num_threads()=192 by default). Observed
+    live: kimi's ordinary torch training grabbed ~190 host cores (19151% CPU)
+    for 2h on the shared machine -- cross-tenant CPU grab plus thread-thrash,
+    same hazard class as the nested GPU leak (cf7229d).
 
 FIX
-    At the nested `docker run`:
-      --cpus <N>   hard cgroup ceiling (kernel-enforced; kills nothing --
-                   sandbox boundary, same pattern the TDC runner already uses
-                   with --cpus 4)
-      -e OMP_NUM_THREADS / MKL_NUM_THREADS / OPENBLAS_NUM_THREADS /
-         NUMEXPR_NUM_THREADS / TORCH_NUM_THREADS = <N>
-                   so numeric stacks default to N threads instead of spawning
-                   192 and thrashing against the ceiling.
-    N from AI_RESEARCHER_EXEC_CPUS (default 8; <=0 disables the layer). The
-    same env will feed the visibility layer's declaration text, keeping
-    enforcement and disclosure from drifting.
+    At the nested `docker run`: --cpus N (AI_RESEARCHER_EXEC_CPUS, default 8,
+    <=0 disables) + OMP/MKL/OPENBLAS/NUMEXPR/TORCH thread env = N. Kernel
+    cgroup boundary; kills nothing, same pattern the TDC runner already uses.
 
-TWO ANCHOR VARIANTS
-    A: pristine docker_env.py docker_command block (ARC/babylm/mcar flows).
-    B: the block as rewritten by psydef's inline wrapper patch (--add-host
-       variant). Apply order in wrappers: topic inline first, gpu_isolation,
-       then this. Idempotent; loud when neither anchor matches.
+ANCHORS (whitespace-robust)
+    Two edits, both keyed on substrings that carry NO trailing whitespace and
+    are identical across source variants (the docker_command block differs by
+    a trailing space and by psydef's --add-host rewrite between checkouts):
+      1. insert the _nci_cmd computation right before `docker_command = [`
+      2. splice `_nci_cmd` into the arg list at `] + gpu_cmd + [`
+    Both `] + gpu_cmd + [` (pristine and psydef-inline share it) are matched.
+    Idempotent; loud when either anchor is missing.
 """
 from __future__ import annotations
 
@@ -49,21 +42,11 @@ COMPUTE = '''        # nested-cpu-isolation: hard CPU ceiling + sane thread defa
                              "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS",
                              "TORCH_NUM_THREADS"):
                 _nci_cmd += ["-e", _nci_var + "=" + str(_nci_n)]
-'''
+        docker_command = ['''
 
-VAR_A_OLD = '''        docker_command = [
-            "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + ["--name", self.container_name, '''
-VAR_A_NEW = COMPUTE + '''        docker_command = [
-            "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",] + gpu_cmd + _nci_cmd + ["--name", self.container_name, '''
-
-VAR_B_OLD = '''        docker_command = [
-            "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",
-            "--add-host", "host.docker.internal:host-gateway",
-        ] + gpu_cmd + ['''
-VAR_B_NEW = COMPUTE + '''        docker_command = [
-            "docker", "run", "-d", "--platform", PLATFORM, "--userns=host",
-            "--add-host", "host.docker.internal:host-gateway",
-        ] + gpu_cmd + _nci_cmd + ['''
+INSERT_ANCHOR = "        docker_command = ["
+SPLICE_OLD = "] + gpu_cmd + ["
+SPLICE_NEW = "] + gpu_cmd + _nci_cmd + ["
 
 
 def main() -> None:
@@ -71,16 +54,16 @@ def main() -> None:
     if MARK in text:
         print(f"[{MARK}] already applied")
         return
-    if VAR_A_OLD in text:
-        text = text.replace(VAR_A_OLD, VAR_A_NEW, 1)
-        variant = "A/pristine"
-    elif VAR_B_OLD in text:
-        text = text.replace(VAR_B_OLD, VAR_B_NEW, 1)
-        variant = "B/psydef-inline"
-    else:
-        raise SystemExit(f"[{MARK}] neither docker_command anchor variant found")
+    if INSERT_ANCHOR not in text:
+        raise SystemExit(f"[{MARK}] insert anchor 'docker_command = [' not found")
+    if SPLICE_OLD not in text:
+        raise SystemExit(f"[{MARK}] splice anchor '] + gpu_cmd + [' not found")
+    # order matters: splice first (INSERT_ANCHOR is a prefix of COMPUTE's tail),
+    # then prepend the computation before the (first) docker_command assembly.
+    text = text.replace(SPLICE_OLD, SPLICE_NEW, 1)
+    text = text.replace(INSERT_ANCHOR, COMPUTE, 1)
     DOCKER_ENV.write_text(text, encoding="utf-8")
-    print(f"[{MARK}] applied ({variant}): --cpus via AI_RESEARCHER_EXEC_CPUS (default 8) + thread env defaults")
+    print(f"[{MARK}] applied: --cpus via AI_RESEARCHER_EXEC_CPUS (default 8) + thread env defaults")
 
 
 if __name__ == "__main__":
