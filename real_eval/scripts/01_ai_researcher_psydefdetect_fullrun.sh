@@ -236,7 +236,7 @@ agent_turn_budgets = {
     'await self.idea_agent(messages, context_variables, iter_times="select")': 'await self.idea_agent(messages, context_variables, iter_times="select", max_turns=4)',
     'await self.code_survey_agent(messages, context_variables)': 'await self.code_survey_agent(messages, context_variables, max_turns=4)',
     'await self.coding_plan_agent(messages, context_variables)': 'await self.coding_plan_agent(messages, context_variables, max_turns=30)',
-    'await self.ml_agent(messages, context_variables)': 'await self.ml_agent(messages, context_variables, max_turns=48)',
+    'await self.ml_agent(messages, context_variables)': 'await self.ml_agent(messages, context_variables, max_turns=int(os.getenv("AI_RESEARCHER_PSYDEFDETECT_DEV_MAX_TURNS", "100")))',
     'await self.judge_agent(input_messages, context_variables)': 'await self.judge_agent(input_messages, context_variables, max_turns=4)',
     'await self.ml_agent(judge_messages, context_variables, iter_times=i+1)': 'await self.ml_agent(judge_messages, context_variables, iter_times=i+1, max_turns=40)',
     'await self.judge_agent(judge_messages, context_variables, iter_times=i+1)': 'await self.judge_agent(judge_messages, context_variables, iter_times=i+1, max_turns=4)',
