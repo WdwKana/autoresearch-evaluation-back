@@ -23,6 +23,7 @@ real_eval/adapters/ai_researcher/patch_response_probe.py
 real_eval/adapters/ai_researcher/patch_budget_clock.py
 real_eval/adapters/ai_researcher/patch_wire_tap.py
 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
+real_eval/adapters/ai_researcher/patch_resource_visibility.py
 automation/tdc_admet_tox_contract.md
 automation/tdc_admet_tox_execution_budget.md
 EOF
@@ -71,6 +72,8 @@ AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
 AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl
 -e
 AI_RESEARCHER_WIRE_TAP_LOG=/workspace/wire_tap.jsonl
+-e
+AI_RESEARCHER_EXEC_CPUS=4
 EOF
 )
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
@@ -90,6 +93,7 @@ python3 real_eval/adapters/ai_researcher/patch_response_probe.py
 python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
 python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
+python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py
 python3 - <<'PY'
 from research_agent.inno.tools import (
     execute_command,

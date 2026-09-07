@@ -26,6 +26,7 @@ real_eval/adapters/ai_researcher/patch_budget_clock.py
 real_eval/adapters/ai_researcher/patch_wire_tap.py
 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
+real_eval/adapters/ai_researcher/patch_resource_visibility.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -975,6 +976,7 @@ python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
 python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 python3 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
+python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py
 inner_prefix="psydefdetect_ai_researcher_${REAL_EVAL_RUN_ID}"
 cleanup_inner() {
   docker ps -aq --filter "name=^/${inner_prefix}" | xargs -r docker rm -f >/dev/null 2>&1 || true
