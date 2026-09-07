@@ -23,6 +23,7 @@ real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
 real_eval/adapters/ai_researcher/patch_budget_clock.py
+real_eval/adapters/ai_researcher/patch_wire_tap.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -76,6 +77,8 @@ AI_RESEARCHER_REQUEST_PROBE=1
 AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
 -e
 AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl
+-e
+AI_RESEARCHER_WIRE_TAP_LOG=/workspace/wire_tap.jsonl
 EOF
 )
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
@@ -967,6 +970,7 @@ python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 python3 real_eval/adapters/ai_researcher/patch_response_probe.py
 python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
+python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
 inner_prefix="psydefdetect_ai_researcher_${REAL_EVAL_RUN_ID}"
 cleanup_inner() {
   docker ps -aq --filter "name=^/${inner_prefix}" | xargs -r docker rm -f >/dev/null 2>&1 || true
