@@ -146,7 +146,7 @@ Your task is to either:
 1. Generate comprehensive, innovative and feasible ideas for the given task, grounded in the task description, the files listed above, and your own knowledge of the relevant literature, or
 2. If given multiple ideas: analyze them, select the most novel one, and enhance it into a comprehensive proposal (technical innovation, impact, feasibility, completeness).
 
-Provide detailed technical solutions, mathematical formulations, architectural design, algorithm specifications, evaluation metrics, and expected outcomes. After completing analysis and idea development, use `transfer_to_code_survey_agent` for implementation research.
+Provide detailed technical solutions, mathematical formulations, architectural design, algorithm specifications, evaluation metrics, and expected outcomes. When your proposal is ready, use `transfer_to_code_survey_agent` for implementation research.
 
 Remember: Your output will guide the implementation phase. Be thorough, innovative, and practical in your approach.
 """
