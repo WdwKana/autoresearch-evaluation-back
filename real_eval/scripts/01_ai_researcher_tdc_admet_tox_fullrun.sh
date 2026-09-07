@@ -12,6 +12,16 @@ export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 AI-Researcher/benchmark/final/tdc_admet_tox/tdc_admet_tox.json
 AI-Researcher/benchmark/process/dataset_candidate/tdc_admet_tox/metaprompt.py
 real_eval/adapters/tdc_admet_tox/patch_ai_researcher.py
+real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+real_eval/adapters/ai_researcher/patch_prepare_bypass.py
+real_eval/adapters/ai_researcher/patch_empty_input_truth.py
+real_eval/adapters/ai_researcher/patch_loop_guard.py
+real_eval/adapters/ai_researcher/patch_file_browser_text.py
+real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+real_eval/adapters/ai_researcher/patch_request_probe.py
+real_eval/adapters/ai_researcher/patch_response_probe.py
+real_eval/adapters/ai_researcher/patch_budget_clock.py
+real_eval/adapters/ai_researcher/patch_wire_tap.py
 automation/tdc_admet_tox_contract.md
 automation/tdc_admet_tox_execution_budget.md
 EOF
@@ -42,12 +52,42 @@ TRANSFORMERS_OFFLINE=1
 TDC_ADMET_TOX_NATIVE_RUN=1
 -e
 GPUS=
+-e
+AI_RESEARCHER_MAX_TURNS=300
+-e
+AI_RESEARCHER_LOOP_GUARD_LIMIT=8
+-e
+AI_RESEARCHER_PREPARE_BYPASS=1
+-e
+AI_RESEARCHER_ML_DELIVERY_GLOBS=*.py
+-e
+AI_RESEARCHER_TOTAL_BUDGET_SECONDS=7000
+-e
+AI_RESEARCHER_REQUEST_PROBE=1
+-e
+AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
+-e
+AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl
+-e
+AI_RESEARCHER_WIRE_TAP_LOG=/workspace/wire_tap.jsonl
 EOF
 )
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
 set -euo pipefail
 echo "AI_RESEARCHER_NATIVE_INFER_IDEA_TDC"
 python3 real_eval/adapters/tdc_admet_tox/patch_ai_researcher.py
+# General fix stack (10/11, conflict-verified 2026-09-07; exec_env_provision
+# skipped: TDC runs experiments locally, no nested exec container -- dead code).
+python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
+python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
+python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
+python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
+python3 real_eval/adapters/ai_researcher/patch_file_browser_text.py
+python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
+python3 real_eval/adapters/ai_researcher/patch_request_probe.py
+python3 real_eval/adapters/ai_researcher/patch_response_probe.py
+python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
+python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
 python3 - <<'PY'
 from research_agent.inno.tools import (
     execute_command,
