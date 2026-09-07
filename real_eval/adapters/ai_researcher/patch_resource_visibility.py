@@ -99,53 +99,45 @@ class _RvSampler:
         return _rv_format(avg, peak, wall_s)
 '''
 
-# ---- variant A: pristine socket-loop run_command (nested container path) ----
-A_OLD = '''    def run_command(self, command, stream_callback=None):
-        """
-        communicate with docker container and execute command, support stream output
-'''
-A_NEW = '''    def run_command(self, command, stream_callback=None):
-        # resource-visibility: measure the nested container's CPU while the
-        # command runs; prefix a usage line to long commands' results.
-        _rv_t0 = _rv_time.time()
-        with _RvSampler(self.container_name) as _rv_s:
-            _rv_r = self._rv_run_command_impl(command, stream_callback)
-        try:
-            _rv_line = _rv_s.line(_rv_time.time() - _rv_t0)
-            if _rv_line and isinstance(_rv_r, dict) and isinstance(_rv_r.get("result"), str):
-                _rv_r["result"] = _rv_line + _rv_r["result"]
-        except Exception:
-            pass
-        return _rv_r
-
-    def _rv_run_command_impl(self, command, stream_callback=None):
-        """
-        communicate with docker container and execute command, support stream output
-'''
-
-# ---- variant T: TDC topic patch's local subprocess run_command ----
-T_OLD = '''    def run_command(self, command, stream_callback=None):
-        # Local execution path for TDC (no nested container / socket).
-'''
-T_NEW = '''    def run_command(self, command, stream_callback=None):
-        # resource-visibility: exact CPU seconds via children rusage delta.
+# ---- single signature anchor: every run_command variant (pristine socket /
+# ARC-mcar keepalive-retry / TDC local subprocess) starts with this exact
+# signature line, so we rename the original to _impl and insert one measuring
+# wrapper. Measurement is path-adaptive at runtime: the docker-stats sampler
+# yields data for nested containers, the os.times() children delta for the
+# local (TDC) path -- whichever produced a signal is reported.
+SIG = "    def run_command(self, command, stream_callback=None):"
+WRAPPER = '''    def run_command(self, command, stream_callback=None):
+        # resource-visibility: measure wall + CPU around the real command and
+        # prefix a usage line to long results. Path-adaptive: nested -> docker
+        # stats sampler; local (TDC) -> os.times() children delta.
         _rv_t0 = _rv_time.time()
         _rv_c0 = _rv_os.times()
-        _rv_r = self._rv_run_command_impl(command, stream_callback)
+        _rv_name = getattr(self, "container_name", None)
+        _rv_s = _RvSampler(_rv_name) if _rv_name else None
+        if _rv_s is not None:
+            _rv_s.__enter__()
+        try:
+            _rv_r = self._rv_run_command_impl(command, stream_callback)
+        finally:
+            if _rv_s is not None:
+                _rv_s.__exit__()
         try:
             _rv_wall = _rv_time.time() - _rv_t0
-            _rv_c1 = _rv_os.times()
-            _rv_cpu = (_rv_c1.children_user - _rv_c0.children_user) + (_rv_c1.children_system - _rv_c0.children_system)
-            if _rv_wall >= _rv_min_seconds() and _rv_wall > 0 and isinstance(_rv_r, dict) and isinstance(_rv_r.get("result"), str):
-                _rv_avg = _rv_cpu / _rv_wall
-                _rv_r["result"] = _rv_format(_rv_avg, _rv_avg, _rv_wall) + _rv_r["result"]
+            if _rv_wall >= _rv_min_seconds() and isinstance(_rv_r, dict) and isinstance(_rv_r.get("result"), str):
+                _rv_line = _rv_s.line(_rv_wall) if _rv_s is not None else ""
+                if not _rv_line:
+                    _rv_c1 = _rv_os.times()
+                    _rv_cpu = (_rv_c1.children_user - _rv_c0.children_user) + (_rv_c1.children_system - _rv_c0.children_system)
+                    if _rv_cpu > 0 and _rv_wall > 0:
+                        _rv_avg = _rv_cpu / _rv_wall
+                        _rv_line = _rv_format(_rv_avg, _rv_avg, _rv_wall)
+                if _rv_line:
+                    _rv_r["result"] = _rv_line + _rv_r["result"]
         except Exception:
             pass
         return _rv_r
 
-    def _rv_run_command_impl(self, command, stream_callback=None):
-        # Local execution path for TDC (no nested container / socket).
-'''
+    def _rv_run_command_impl(self, command, stream_callback=None):'''
 
 # ---- declaration in run_infer_idea (after budget clock's rules) ----
 QUERY_ANCHOR = '        messages = [{"role": "user", "content": ml_dev_query}]'
@@ -190,17 +182,12 @@ def main() -> None:
     else:
         if "import socket" not in text:
             raise SystemExit(f"[{MARK}] docker_env import anchor missing")
+        if SIG not in text:
+            raise SystemExit(f"[{MARK}] run_command signature anchor not found")
         text = text.replace("import socket", "import socket\n" + HELPERS, 1)
-        if T_OLD in text:
-            text = text.replace(T_OLD, T_NEW, 1)
-            variant = "T/tdc-local"
-        elif A_OLD in text:
-            text = text.replace(A_OLD, A_NEW, 1)
-            variant = "A/socket"
-        else:
-            raise SystemExit(f"[{MARK}] no run_command variant matched")
+        text = text.replace(SIG, WRAPPER, 1)  # rename original -> _impl, insert measuring wrapper
         DOCKER_ENV.write_text(text, encoding="utf-8")
-        print(f"[{MARK}] docker_env patched ({variant})")
+        print(f"[{MARK}] docker_env patched (signature-anchored, all variants)")
     patch(ENTRY, [(QUERY_ANCHOR, QUERY_NEW)])
     print(f"[{MARK}] applied: upfront declaration + [resources] usage line "
           "(AI_RESEARCHER_RESOURCE_LINE_MIN_SECONDS, default 30s)")
