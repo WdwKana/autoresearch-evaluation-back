@@ -14,6 +14,7 @@ automation/arc_wbe_2026_execution_budget.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
+real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -125,6 +126,7 @@ else:
     print("SKIP: orphan-cleanup insertion point not found")
 path.write_text(text, encoding="utf-8")
 PY
+python3 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
 rm -f ai_scientist/ideas/arc_wbe_2026_topic.json
 timeout "${AI_SCIENTIST_V2_ARC_IDEATION_TIMEOUT_SECONDS:-1800}s" python ai_scientist/perform_ideation_temp_free.py \
   --workshop-file ai_scientist/ideas/arc_wbe_2026_topic.md \
