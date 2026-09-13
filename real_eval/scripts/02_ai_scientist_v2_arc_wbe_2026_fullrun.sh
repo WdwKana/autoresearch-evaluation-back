@@ -276,8 +276,12 @@ timeout "${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-3600}s" python launch_scienti
 # ablation variants. The location-only relocation a bridge is legitimate for
 # never occurred in any 02 run. Delivery is owned by the framework itself
 # (spec in the idea record) with the exit delivery check as the backstop.
-# Optional exit delivery check (standalone adapter; delete this line to disable)
-python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic arc_wbe_2026 || true
+# Exit delivery check REMOVED (2026-09-07): it backfills framework artifacts
+# via the framework model, which the contract forbids (arc_wbe_2026_contract.md
+# line 43: "The host must not generate, repair, promote, or backfill
+# framework-authored research artifacts"). Delivery is now owned entirely by
+# the framework: the BFTS delivery-contract patch makes the agent produce the
+# files itself in-run; anything it fails to produce is left honestly missing.
 
 EOF
 )
