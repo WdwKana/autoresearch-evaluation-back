@@ -15,6 +15,7 @@ real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
+real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -30,6 +31,7 @@ echo "AI_SCIENTIST_V2_NATIVE_BFTS"
 python3 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 echo "[arc-wrapper] shared adapter applied"
 python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
+python3 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 python3 - ai_scientist/llm.py "$OPENAI_MODEL" <<'PY'
 from pathlib import Path
 import sys
