@@ -61,6 +61,15 @@ PA_NEW = '''        # bfts-delivery-contract: ride BFTS's own per-node output fl
                 "/data/arc_wbe_2026 (load them), not synthetic or toy data, so the "
                 "reported results reflect the actual task."
             )
+            impl_guideline.append(
+                "Real-data format (factual): the data is a single parquet file at "
+                "/data/arc_wbe_2026/data/arc_wbe_2026_weights-00000-of-00001.parquet "
+                "(100 records; columns mlp_id, mlp_name, mlp_seed, weights; each "
+                "weights entry is a (32, 256, 256) float32 array of per-layer weight "
+                "matrices; readable with pandas or pyarrow). The dataset contains "
+                "weights only -- no labels, activations, or targets are provided. "
+                "A metadata.json describing the dataset sits beside it."
+            )
         return {"Implementation guideline": impl_guideline}'''
 
 # ---- B: final export, only in the closing (4_) stage ----

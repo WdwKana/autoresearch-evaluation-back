@@ -27,6 +27,16 @@ WHAT (per user decision 2026-09-07: minimal, factual only)
     How the task is understood is left to the model; the blueprint only states
     what the deliverable is.
 
+SECOND edit (2026-09-14, same factual-only principle): dataset documentation.
+    Run fullrun_arc_02_luna_20260914_034336 showed the blueprint names only the
+    dataset ROOT; with zero format information, the coding agent blind-guessed
+    npy/pkl/json record files and a targets file, found nothing in the real
+    parquet-only mount, and every real-data node died ("No valid ARC-WBE MLP
+    records were found") -- so BFTS routed around to synthetic data. Describing
+    the host-provided input's format is dataset documentation (host's own
+    input, not a framework artifact) and states facts only: file, columns,
+    shape, and that no labels are provided. No method is suggested.
+
 Idempotent; loud on anchor drift. Run from the AI-Scientist-v2 source root.
 """
 from __future__ import annotations
@@ -37,13 +47,26 @@ TOPIC = Path("ai_scientist/ideas/arc_wbe_2026_topic.md")
 MARK = "<!-- ideation-task-framing -->"
 
 EDITS = [
-    # Only edit: estimator.py is a required deliverable, not "when possible".
+    # Edit 1: estimator.py is a required deliverable, not "when possible".
     # This is a factual correction of the deliverable status (and names the
     # scorer interface + real data location); it does NOT tell the model how to
     # frame the task or forbid research -- that framing is left to the model.
     (
         "3. emits a runnable `estimator.py` when possible so the official local scorer can be replayed,",
         "3. writes a runnable `estimator.py` implementing the scorer's `predict(mlp) -> (32, 256)` interface over the real MLP weights in /data/arc_wbe_2026, so the official local scorer can be replayed,",
+    ),
+    # Edit 2: dataset documentation (facts only -- file, columns, shape, no
+    # labels). Without it the coding agent blind-guesses the on-disk format
+    # (observed: npy/pkl guesses + an imagined targets file; every real-data
+    # node died on "No valid ARC-WBE MLP records were found").
+    (
+        "- standardized local dataset root: /data/arc_wbe_2026",
+        "- standardized local dataset root: /data/arc_wbe_2026\n"
+        "- contents: a single parquet file at data/arc_wbe_2026_weights-00000-of-00001.parquet"
+        " (100 records; columns mlp_id, mlp_name, mlp_seed, weights; each weights entry is a"
+        " (32, 256, 256) float32 array of per-layer weight matrices; readable with pandas or"
+        " pyarrow), plus a metadata.json describing the dataset\n"
+        "- the dataset contains weights only: no labels, activations, or targets are provided",
     ),
 ]
 
@@ -61,7 +84,7 @@ def main() -> None:
         text = text.replace(old, new, 1)
     text = text.rstrip("\n") + "\n" + MARK + "\n"
     TOPIC.write_text(text, encoding="utf-8")
-    print("[ideation-task-framing] applied: estimator.py stated as a runnable deliverable (predict interface + real data)")
+    print("[ideation-task-framing] applied: estimator deliverable status + dataset format documentation")
 
 
 if __name__ == "__main__":
