@@ -274,6 +274,18 @@ case "$FRAMEWORK_RUNTIME_KIND" in
       -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/arc_wbe_2026
       -e RESEARCHCLAWEVAL_TOPIC_CONTRACT_FILE=$FRAMEWORK_CONTAINER_WORKDIR/automation/arc_wbe_2026_contract.md
       -e ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS="${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-3600}"
+      # ARC-WBE-2026 is a fully local task: its only data is the mounted parquet
+      # at /data/arc_wbe_2026 and the official scorer is numpy-only -- no topic
+      # code legitimately needs HuggingFace. Framework agents nonetheless
+      # sometimes emit a stray load_dataset()/from_pretrained() (observed: a
+      # BFTS node hanging ~10 min on load_dataset("ag_news") against the default
+      # hub before its own try/except timed out). Default the container to HF
+      # offline so such strays fail instantly instead of hanging on the network;
+      # this matches 01's TDC/mountaincar wrappers, which are also non-HF topics.
+      # Overridable per framework (export HF_HUB_OFFLINE=0) in the unlikely case
+      # one needs the hub for ARC.
+      -e HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+      -e HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
       -e FRAMEWORK_NAME="$FRAMEWORK_NAME"
       -e FRAMEWORK_SLUG="$FRAMEWORK_SLUG"
       -e REAL_EVAL_RUN_ID="$RUN_ID"
