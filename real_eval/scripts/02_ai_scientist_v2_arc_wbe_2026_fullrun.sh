@@ -225,10 +225,15 @@ for key, value in (
     # Stage 1 must be generous enough to reach a working implementation --
     # agent_manager aborts the whole run when it does not ("did not find a
     # working implementation after N iterations"); later stages only refine.
+    # Upstream default is 20; 12 proved too tight: run 20260914_051027 burned
+    # all 12 stage-1 iters (judge kept rejecting the permutation-consistency
+    # methodology) and the whole run aborted before stage 2. 18 rebalances
+    # toward upstream while still bounding the stage (fits the 9000s budget:
+    # ~4min/iter + ~40min stages 2-4).
     # NOTE: the generic ARC wrapper forwards only whitelisted env vars into
     # the container, so these defaults are what actually apply unless that
     # whitelist is extended.
-    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "12"))),
+    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "18"))),
     ("stage2_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE2_ITERS", "4"))),
     ("stage3_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE3_ITERS", "3"))),
     ("stage4_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE4_ITERS", "3"))),
