@@ -286,6 +286,17 @@ case "$FRAMEWORK_RUNTIME_KIND" in
       # one needs the hub for ARC.
       -e HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
       -e HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
+    )
+    # Optional GPU confinement: when the caller declares its allowed GPUs
+    # (REAL_EVAL_ALLOWED_GPUS, e.g. "6" or "5,6"), narrow CUDA visibility to
+    # them so multi-worker frameworks queue on our cards instead of grabbing
+    # other tenants' GPUs (02 workers acquire GPUs round-robin from whatever
+    # torch can see). Additive and opt-in: unset keeps today's behavior for
+    # every other framework using this runner.
+    if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
+      docker_cmd+=(-e CUDA_VISIBLE_DEVICES="${REAL_EVAL_ALLOWED_GPUS}")
+    fi
+    docker_cmd+=(
       -e FRAMEWORK_NAME="$FRAMEWORK_NAME"
       -e FRAMEWORK_SLUG="$FRAMEWORK_SLUG"
       -e REAL_EVAL_RUN_ID="$RUN_ID"

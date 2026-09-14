@@ -212,7 +212,14 @@ model = sys.argv[2]
 config = yaml.safe_load(path.read_text(encoding="utf-8"))
 config["exp_name"] = "arc_wbe_2026"
 config["generate_report"] = False
-config["agent"]["num_workers"] = 1
+# Upstream default is 4 parallel workers (4 independent drafts/debugs per
+# step). Our earlier cut to 1 slashed stage 1's native attempt density by 75%
+# (upstream 20 iters x 4 workers = 80 tries; ours was 18 x 1): runs
+# 20260914_{051027,065524} burned 30/30 stage-1 nodes with zero judged
+# non-buggy and aborted. Restore the native density; GPU usage is confined
+# via CUDA_VISIBLE_DEVICES (see arc_framework_fullrun.sh) so workers queue
+# on our allowed GPU instead of grabbing other tenants' cards.
+config["agent"]["num_workers"] = int(os.environ.get("ARC_WBE_2026_BFTS_NUM_WORKERS", "4"))
 config["agent"]["steps"] = 2
 config["agent"]["expose_prediction"] = True
 # `steps` alone does not bound the run: the four BFTS stages carry their own
