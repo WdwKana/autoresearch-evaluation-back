@@ -27,15 +27,19 @@ WHAT (per user decision 2026-09-07: minimal, factual only)
     How the task is understood is left to the model; the blueprint only states
     what the deliverable is.
 
-SECOND edit (2026-09-14, same factual-only principle): dataset documentation.
-    Run fullrun_arc_02_luna_20260914_034336 showed the blueprint names only the
-    dataset ROOT; with zero format information, the coding agent blind-guessed
-    npy/pkl/json record files and a targets file, found nothing in the real
-    parquet-only mount, and every real-data node died ("No valid ARC-WBE MLP
-    records were found") -- so BFTS routed around to synthetic data. Describing
-    the host-provided input's format is dataset documentation (host's own
-    input, not a framework artifact) and states facts only: file, columns,
-    shape, and that no labels are provided. No method is suggested.
+SECOND edit RETRACTED (2026-09-14, same day it was added): dataset docs moved
+    out of the blueprint entirely. Adding the format facts here (visible to
+    ideation) steered every subsequent idea into "label-free" spectral/
+    transport geometry -- mathematically treacherous themes whose stage-1
+    implementations the framework's own judge wiped out three runs straight
+    (051027/065524/081118: 50+ nodes, 0 non-buggy), while the docs-free run
+    034336 passed stage 1 with 5/13 non-buggy nodes. The blind-guessing
+    problem the docs were meant to fix lives at the CODING layer (stage 2+
+    find_records guessing npy/pkl + an imagined targets file), and its fix
+    stays exactly there: the format facts remain in
+    patch_bfts_delivery_contract's stage-2+ implementation guideline. Each
+    fix at the layer where its disease was observed; ideation reads only what
+    034336 proved sufficient.
 
 Idempotent; loud on anchor drift. Run from the AI-Scientist-v2 source root.
 """
@@ -55,19 +59,8 @@ EDITS = [
         "3. emits a runnable `estimator.py` when possible so the official local scorer can be replayed,",
         "3. writes a runnable `estimator.py` implementing the scorer's `predict(mlp) -> (32, 256)` interface over the real MLP weights in /data/arc_wbe_2026, so the official local scorer can be replayed,",
     ),
-    # Edit 2: dataset documentation (facts only -- file, columns, shape, no
-    # labels). Without it the coding agent blind-guesses the on-disk format
-    # (observed: npy/pkl guesses + an imagined targets file; every real-data
-    # node died on "No valid ARC-WBE MLP records were found").
-    (
-        "- standardized local dataset root: /data/arc_wbe_2026",
-        "- standardized local dataset root: /data/arc_wbe_2026\n"
-        "- contents: a single parquet file at data/arc_wbe_2026_weights-00000-of-00001.parquet"
-        " (100 records; columns mlp_id, mlp_name, mlp_seed, weights; each weights entry is a"
-        " (32, 256, 256) float32 array of per-layer weight matrices; readable with pandas or"
-        " pyarrow), plus a metadata.json describing the dataset\n"
-        "- the dataset contains weights only: no labels, activations, or targets are provided",
-    ),
+    # (Edit 2 -- blueprint dataset docs -- RETRACTED; see docstring. The
+    # format facts live in the stage-2+ implementation guideline instead.)
 ]
 
 
