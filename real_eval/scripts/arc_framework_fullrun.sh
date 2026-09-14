@@ -297,10 +297,6 @@ case "$FRAMEWORK_RUNTIME_KIND" in
       # one needs the hub for ARC.
       -e HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
       -e HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
-      # Opt-in gate for the provisional task-definition restore (see
-      # real_eval/adapters/ai_scientist_v2/patch_task_definition_restore.py).
-      # Default 0 = canonical behavior for every framework.
-      -e ARC_WBE_2026_RESTORE_DEFINITION="${ARC_WBE_2026_RESTORE_DEFINITION:-0}"
     )
     # (env-level CUDA_VISIBLE_DEVICES confinement removed: 02's GPU manager
     # overrides it per worker; superseded by --gpus device= above. It would

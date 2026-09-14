@@ -15,7 +15,6 @@ real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
-real_eval/adapters/ai_scientist_v2/patch_task_definition_restore.py
 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 EOF
 )
@@ -130,10 +129,6 @@ else:
 path.write_text(text, encoding="utf-8")
 PY
 python3 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
-# PROVISIONAL (team ratification pending): restore the official task definition
-# to the WORKSPACE blueprint copy only; canonical files untouched. No-op unless
-# ARC_WBE_2026_RESTORE_DEFINITION=1 (forwarded by the runner, default 0).
-python3 real_eval/adapters/ai_scientist_v2/patch_task_definition_restore.py
 rm -f ai_scientist/ideas/arc_wbe_2026_topic.json
 timeout "${AI_SCIENTIST_V2_ARC_IDEATION_TIMEOUT_SECONDS:-1800}s" python ai_scientist/perform_ideation_temp_free.py \
   --workshop-file ai_scientist/ideas/arc_wbe_2026_topic.md \
