@@ -103,7 +103,7 @@ MANDATORY PSYDEFDETECT EXECUTION CONTRACT:
 - PsyDefConv.json is a top-level list whose rows use id, dialogue_id, dialogue, current_text, and integer label. Join train_record_ids/eval_record_ids from the split manifest to row['id']; use current_text as the target text and never assume conversation_id, defense_mechanism, or pre-split top-level objects.
 - Preserve the complete target text and any context used by the framework's chosen representation; do not silently discard valid signal.
 - Never import or use sentence_transformers, transformers, torch, Hugging Face, pretrained models, embeddings, external datasets, downloads, package installation, or remote calls.
-- Score both configurations with /workspace/automation/scripts/run_psydefdetect_local_score.py, select the higher observed macro-F1, and have the generated program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.
+- Score both configurations with the official scorer, invoked exactly as: python /workspace/automation/scripts/run_psydefdetect_local_score.py --dataset-root /data/psydefdetect --split-manifest /workspace/automation/psydefdetect_split.json --predictions <prediction file> --output-score <score json path> (all four arguments are required). Select the higher observed macro-F1, and have the generated program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.
 - experiment_trace.json must contain exactly two unique experiment ids, the correct selected_experiment_id, framework_native_execution=true, consumed_topic_input=true, workspace_trace_root='/workspace', framework_internal_model='{os.getenv("OPENAI_MODEL", "")}', and framework_internal_api_base_url='{os.getenv("OPENAI_BASE_URL", "")}'.
 """
         return task_desc
@@ -183,7 +183,8 @@ new = '''    def _prompt_impl_guideline(self):
                     "PsyDefConv.json is a top-level list with row keys id, dialogue_id, dialogue, current_text, and integer label; select rows by matching split train_record_ids/eval_record_ids to row['id'].",
                     "Use current_text as the target text, optionally prepend dialogue turn text, and do not assume conversation_id/defense_mechanism fields.",
                     "Run exactly two materially different configurations selected by the framework's research idea; do not use a host-prescribed algorithm.",
-                    "Invoke /workspace/automation/scripts/run_psydefdetect_local_score.py for each prediction file with complete CLI arguments.",
+                    "Invoke the official scorer for each prediction file exactly as: python /workspace/automation/scripts/run_psydefdetect_local_score.py --dataset-root /data/psydefdetect --split-manifest /workspace/automation/psydefdetect_split.json --predictions <that prediction file> --output-score <a per-experiment score json path>. All four arguments are required.",
+                    "Run the scorer via subprocess with captured output, check its return code, and print its stdout and stderr so any scorer failure is visible in the execution log.",
                     "Select the higher observed psydefdetect_score and have the program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.",
                     "Print `psydefdetect_score: <selected numeric score>` after the four root artifacts are written so the native metric parser can evaluate the implementation.",
                     "Do not create plots, synthetic datasets, background jobs, or runtime installations.",
