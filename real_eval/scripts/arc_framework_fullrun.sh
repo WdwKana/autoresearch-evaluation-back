@@ -255,7 +255,18 @@ case "$FRAMEWORK_RUNTIME_KIND" in
       "${docker_host_args[@]}"
     )
     if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
-      docker_cmd+=(--gpus all)
+      if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
+        # Device-level GPU confinement. The env-level CUDA_VISIBLE_DEVICES
+        # attempt FAILED: 02's GPU manager enumerates devices via NVML and
+        # overrides the variable per worker process (run 20260914_075102:
+        # workers grabbed GPUs 0-3, other tenants' cards). Restricting the
+        # device set at the docker level is the only boundary worker code
+        # cannot cross; inside the container the allowed card(s) renumber
+        # from 0. Opt-in: unset keeps --gpus all for other frameworks.
+        docker_cmd+=(--gpus "device=${REAL_EVAL_ALLOWED_GPUS}")
+      else
+        docker_cmd+=(--gpus all)
+      fi
     fi
     if [[ -n "$FRAMEWORK_ENTRYPOINT" ]]; then
       docker_cmd+=(--entrypoint "$FRAMEWORK_ENTRYPOINT")
@@ -287,15 +298,9 @@ case "$FRAMEWORK_RUNTIME_KIND" in
       -e HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
       -e HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
     )
-    # Optional GPU confinement: when the caller declares its allowed GPUs
-    # (REAL_EVAL_ALLOWED_GPUS, e.g. "6" or "5,6"), narrow CUDA visibility to
-    # them so multi-worker frameworks queue on our cards instead of grabbing
-    # other tenants' GPUs (02 workers acquire GPUs round-robin from whatever
-    # torch can see). Additive and opt-in: unset keeps today's behavior for
-    # every other framework using this runner.
-    if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
-      docker_cmd+=(-e CUDA_VISIBLE_DEVICES="${REAL_EVAL_ALLOWED_GPUS}")
-    fi
+    # (env-level CUDA_VISIBLE_DEVICES confinement removed: 02's GPU manager
+    # overrides it per worker; superseded by --gpus device= above. It would
+    # also conflict with device-level renumbering.)
     docker_cmd+=(
       -e FRAMEWORK_NAME="$FRAMEWORK_NAME"
       -e FRAMEWORK_SLUG="$FRAMEWORK_SLUG"

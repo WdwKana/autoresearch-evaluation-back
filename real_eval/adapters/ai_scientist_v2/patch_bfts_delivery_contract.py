@@ -13,10 +13,14 @@ WHY
     requirement on, we make the contract ride BFTS's existing flow, without
     displacing any stage's research goal:
 
-    A. Interface kernel (ALL stages, in _prompt_impl_guideline): the node's
+    A. Interface kernel (stage 2+, in _prompt_impl_guideline): the node's
        single-file script must expose predict(mlp)->(32,256). This is the SAME
        artifact as best_solution -- keeping the interface just makes it
-       scorable. It does not conflict with any stage goal.
+       scorable. Originally injected into ALL stages; retracted from stage 1
+       on 2026-09-14 after three straight stage-1 wipeouts (50 nodes, 0
+       non-buggy) showed the extra interface surface fed the judge's
+       strictness in the one stage whose native goal is just a simple-data
+       prototype.
     A'. Real-data requirement (stage 2+ only): predict() must run over the real
        /data/arc_wbe_2026 weights, NOT synthetic/toy data. Deliberately skips
        stage 1, whose native goal is "use a simple dataset / basic functional
@@ -49,13 +53,19 @@ MARK = "ARC-WBE deliverable interface"
 # ---- A + A': impl guideline, stage-layered, appended before the return ----
 PA_OLD = '        return {"Implementation guideline": impl_guideline}'
 PA_NEW = '''        # bfts-delivery-contract: ride BFTS's own per-node output flow.
-        impl_guideline.append(
-            "ARC-WBE deliverable interface: your single-file script must define "
-            "predict(mlp) -> a numpy array of shape (32, 256) (per-layer activation "
-            "means). This is the same artifact as your best solution -- keeping this "
-            "interface makes it directly replayable by the official scorer."
-        )
+        # Stage 1 is left fully native: its goal is a simple-data preliminary
+        # prototype, and injecting the interface there only widened the
+        # judge's attack surface (runs 20260914_{051027,065524,075102}: 50
+        # stage-1 nodes, 0 judged non-buggy, several verdicts biting predict()
+        # wiring the kernel had demanded). The deliverable contract starts
+        # where real data starts: stage 2.
         if getattr(self, "stage_name", None) and not str(self.stage_name).startswith("1_"):
+            impl_guideline.append(
+                "ARC-WBE deliverable interface: your single-file script must define "
+                "predict(mlp) -> a numpy array of shape (32, 256) (per-layer activation "
+                "means). This is the same artifact as your best solution -- keeping this "
+                "interface makes it directly replayable by the official scorer."
+            )
             impl_guideline.append(
                 "From this stage on, predict() must operate on the REAL MLP weights in "
                 "/data/arc_wbe_2026 (load them), not synthetic or toy data, so the "
