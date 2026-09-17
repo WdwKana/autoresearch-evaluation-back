@@ -91,27 +91,15 @@ manager_path = Path(sys.argv[6])
 text = manager_path.read_text(encoding="utf-8")
 if "import os\n" not in text:
     text = "import os\n" + text
-old = '''        return task_desc
-
-    def _create_initial_stage(self):'''
-new = '''        if os.getenv("AI_SCIENTIST_PSYDEFDETECT_TWO_EXPERIMENTS") == "1":
-            task_desc += f"""
-
-MANDATORY PSYDEFDETECT EXECUTION CONTRACT:
-- Generate one self-contained program that synchronously runs exactly two materially different configurations chosen and justified by the framework's own idea.
-- Use only the fixed /data/psydefdetect/PsyDefConv.json dataset, /workspace/automation/psydefdetect_split.json, standard library, numpy, pandas, scipy, and scikit-learn.
-- PsyDefConv.json is a top-level list whose rows use id, dialogue_id, dialogue, current_text, and integer label. Join train_record_ids/eval_record_ids from the split manifest to row['id']; use current_text as the target text and never assume conversation_id, defense_mechanism, or pre-split top-level objects.
-- Preserve the complete target text and any context used by the framework's chosen representation; do not silently discard valid signal.
-- Never import or use sentence_transformers, transformers, torch, Hugging Face, pretrained models, embeddings, external datasets, downloads, package installation, or remote calls.
-- Score both configurations with the official scorer, invoked exactly as: python /workspace/automation/scripts/run_psydefdetect_local_score.py --dataset-root /data/psydefdetect --split-manifest /workspace/automation/psydefdetect_split.json --predictions <prediction file> --output-score <score json path> (all four arguments are required). Select the higher observed macro-F1, and have the generated program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.
-- experiment_trace.json must be a JSON object whose experiments field is a JSON array (a list, not a dict) of exactly two objects, each carrying a string experiment_id and its official psydefdetect_score; selected_experiment_id must equal one of those experiment_id values; it must also set framework_native_execution=true, consumed_topic_input=true, workspace_trace_root='/workspace', framework_internal_model='{os.getenv("OPENAI_MODEL", "")}', and framework_internal_api_base_url='{os.getenv("OPENAI_BASE_URL", "")}'.
-"""
-        return task_desc
-
-    def _create_initial_stage(self):'''
-if old not in text:
-    raise SystemExit("AI-Scientist-v2 BFTS task-contract insertion point not found")
-text = text.replace(old, new, 1)
+# The MANDATORY PSYDEFDETECT EXECUTION CONTRACT block that used to be appended
+# to task_desc here was REMOVED (2026-09-17). task_desc is the one input the
+# native judge (parse_exec_result) sees, and every one of its facts is already
+# in the coder-only implementation guideline below, so the block added nothing
+# for the coder while handing the judge a compliance checklist: across runs
+# 112949/115325 the judge flagged 16/16 executed-and-delivered nodes on
+# contract hunting, including invented requirements. Contract compliance is
+# the host validator's job (psydefdetect_framework_fullrun.sh); the judge
+# returns to its native scope (bugs visible in the execution output).
 old = '''        journal = self.journals[stage.name]
         # Terminate if max iterations reached'''
 new = '''        journal = self.journals[stage.name]
@@ -179,6 +167,7 @@ new = '''    def _prompt_impl_guideline(self):
                 "Implementation guideline": [
                     "Write one self-contained CPU-only Python program using standard library, numpy, pandas, scipy, and scikit-learn only.",
                     "Never import torch, sentence_transformers, transformers, or any package outside that allowlist.",
+                    "Do not use pretrained models, embeddings, external datasets, downloads, package installation, or remote calls from the experiment code.",
                     "Load only /data/psydefdetect/PsyDefConv.json and /workspace/automation/psydefdetect_split.json.",
                     "PsyDefConv.json is a top-level list with row keys id, dialogue_id, dialogue, current_text, and integer label; select rows by matching split train_record_ids/eval_record_ids to row['id'].",
                     "Use current_text as the target text, optionally prepend dialogue turn text, and do not assume conversation_id/defense_mechanism fields.",
