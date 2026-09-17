@@ -243,7 +243,7 @@ for key, value in (
     # NOTE: the generic ARC wrapper forwards only whitelisted env vars into
     # the container, so these defaults are what actually apply unless that
     # whitelist is extended.
-    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "18"))),
+    ("stage1_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE1_ITERS", "12"))),
     ("stage2_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE2_ITERS", "4"))),
     ("stage3_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE3_ITERS", "3"))),
     ("stage4_max_iters", int(os.environ.get("ARC_WBE_2026_BFTS_STAGE4_ITERS", "3"))),
