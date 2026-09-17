@@ -18,6 +18,7 @@ real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 real_eval/adapters/ai_scientist_v2/arc_contract_finalization.py
 real_eval/adapters/ai_scientist_v2/patch_native_finalization.py
+real_eval/adapters/ai_scientist_v2/patch_task_definition_taskdesc.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -35,6 +36,9 @@ echo "[arc-wrapper] shared adapter applied"
 python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 python3 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 python3 real_eval/adapters/ai_scientist_v2/patch_native_finalization.py
+# TRIAL (not scoreboard grade until canonical placement is decided): official
+# task definition into the BFTS task_desc (all stages; ideation untouched).
+python3 real_eval/adapters/ai_scientist_v2/patch_task_definition_taskdesc.py
 python3 - ai_scientist/llm.py "$OPENAI_MODEL" <<'PY'
 from pathlib import Path
 import sys
