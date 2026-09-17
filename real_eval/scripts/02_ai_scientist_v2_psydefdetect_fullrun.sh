@@ -187,7 +187,9 @@ new = '''    def _prompt_impl_guideline(self):
                     "Run the scorer via subprocess with captured output, check its return code, and print its stdout and stderr so any scorer failure is visible in the execution log.",
                     "Select the higher observed psydefdetect_score and have the program itself write /workspace/predictions.jsonl, /workspace/score.json, /workspace/experiment_trace.json, and /workspace/final_report.md.",
                     "Print `psydefdetect_score: <selected numeric score>` after the four root artifacts are written so the native metric parser can evaluate the implementation.",
-                    "Do not create plots, synthetic datasets, background jobs, or runtime installations.",
+                    "Important code structure requirements: do NOT place execution code behind an if __name__ == '__main__': guard -- the native interpreter runs the file via exec, where that condition is false and nothing would execute. All code must run at global scope or from functions called at global scope, so the script executes immediately when run without any special entry point.",
+                    "Data saving requirements: the code should start with import os; working_dir = os.path.join(os.getcwd(), 'working'); os.makedirs(working_dir, exist_ok=True). Save the metrics you compute (at least the official psydefdetect_score of each configuration, plus any per-class or validation metrics) as numpy arrays with np.save(os.path.join(working_dir, 'experiment_data.npy'), experiment_data), using the structure experiment_data = {'<config_name>': {'metrics': {...}, 'predictions': [...], 'ground_truth': [...]}}; the native metric parser and plotting step read this file.",
+                    "Do not create plots yourself (the native pipeline plots from experiment_data.npy), and do not create synthetic datasets, background jobs, or runtime installations.",
                 ]
             }
         impl_guideline = ['''
@@ -365,6 +367,12 @@ import os
 # (stage1 4 -> 12): give stage 1 room, overridable via env.
 config["agent"]["steps"] = int(os.environ.get("PSYDEFDETECT_BFTS_STEPS", "3"))
 config["agent"]["stages"]["stage1_max_iters"] = int(os.environ.get("PSYDEFDETECT_BFTS_STAGE1_ITERS", "8"))
+# Bound stages 2-4 as the ARC wrapper does: `steps` is ignored whenever the
+# upstream config carries stage*_max_iters (12/12/18), which would run past the
+# 7200s wall clock and turn a delivered run into a timeout failure.
+config["agent"]["stages"]["stage2_max_iters"] = int(os.environ.get("PSYDEFDETECT_BFTS_STAGE2_ITERS", "3"))
+config["agent"]["stages"]["stage3_max_iters"] = int(os.environ.get("PSYDEFDETECT_BFTS_STAGE3_ITERS", "3"))
+config["agent"]["stages"]["stage4_max_iters"] = int(os.environ.get("PSYDEFDETECT_BFTS_STAGE4_ITERS", "3"))
 config["agent"]["search"]["num_drafts"] = 1
 config["agent"]["search"]["debug_prob"] = 1.0
 config["agent"]["search"]["max_debug_depth"] = 2
@@ -382,8 +390,12 @@ timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}s" python launch_s
   --skip_writeup \
   --skip_review \
   --model_agg_plots "$OPENAI_MODEL"
-# Optional exit delivery check (standalone adapter; delete this line to disable)
-python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic psydefdetect || true
+# exit_delivery_check DISABLED (2026-09-17): it backfills framework artifacts via
+# the framework model after the native run ends, which the contract boundary
+# forbids (same reasoning as the ARC wrapper's removal). Left out so the psydef
+# control run measures native delivery only. Team decision on final disposition
+# is pending; re-enable by restoring the line below.
+# python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic psydefdetect || true
 
 EOF
 )
