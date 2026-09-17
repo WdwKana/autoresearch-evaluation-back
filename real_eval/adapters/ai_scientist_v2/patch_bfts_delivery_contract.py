@@ -53,19 +53,18 @@ MARK = "ARC-WBE deliverable interface"
 # ---- A + A': impl guideline, stage-layered, appended before the return ----
 PA_OLD = '        return {"Implementation guideline": impl_guideline}'
 PA_NEW = '''        # bfts-delivery-contract: ride BFTS's own per-node output flow.
-        # Stage 1 is left fully native: its goal is a simple-data preliminary
-        # prototype, and injecting the interface there only widened the
-        # judge's attack surface (runs 20260914_{051027,065524,075102}: 50
-        # stage-1 nodes, 0 judged non-buggy, several verdicts biting predict()
-        # wiring the kernel had demanded). The deliverable contract starts
-        # where real data starts: stage 2.
+        # Interface kernel: ALL stages. (It was retracted from stage 1 on the
+        # theory it widened the judge's attack surface; the replay experiment
+        # fullrun_arc_02_luna_replay034336_112156 overturned that -- both
+        # stage-1-passing runs carried the kernel in stage 1 (5/13, 5/10
+        # non-buggy) while all kernel-less runs wiped out. Restored.)
+        impl_guideline.append(
+            "ARC-WBE deliverable interface: your single-file script must define "
+            "predict(mlp) -> a numpy array of shape (32, 256) (per-layer activation "
+            "means). This is the same artifact as your best solution -- keeping this "
+            "interface makes it directly replayable by the official scorer."
+        )
         if getattr(self, "stage_name", None) and not str(self.stage_name).startswith("1_"):
-            impl_guideline.append(
-                "ARC-WBE deliverable interface: your single-file script must define "
-                "predict(mlp) -> a numpy array of shape (32, 256) (per-layer activation "
-                "means). This is the same artifact as your best solution -- keeping this "
-                "interface makes it directly replayable by the official scorer."
-            )
             impl_guideline.append(
                 "From this stage on, predict() must operate on the REAL MLP weights in "
                 "/data/arc_wbe_2026 (load them), not synthetic or toy data, so the "

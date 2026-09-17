@@ -16,6 +16,8 @@ real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
+real_eval/adapters/ai_scientist_v2/arc_contract_finalization.py
+real_eval/adapters/ai_scientist_v2/patch_native_finalization.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -32,6 +34,7 @@ python3 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 echo "[arc-wrapper] shared adapter applied"
 python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 python3 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
+python3 real_eval/adapters/ai_scientist_v2/patch_native_finalization.py
 python3 - ai_scientist/llm.py "$OPENAI_MODEL" <<'PY'
 from pathlib import Path
 import sys
@@ -219,7 +222,7 @@ config["generate_report"] = False
 # non-buggy and aborted. Restore the native density; GPU usage is confined
 # via CUDA_VISIBLE_DEVICES (see arc_framework_fullrun.sh) so workers queue
 # on our allowed GPU instead of grabbing other tenants' cards.
-config["agent"]["num_workers"] = int(os.environ.get("ARC_WBE_2026_BFTS_NUM_WORKERS", "4"))
+config["agent"]["num_workers"] = int(os.environ.get("ARC_WBE_2026_BFTS_NUM_WORKERS", "1"))
 config["agent"]["steps"] = 2
 config["agent"]["expose_prediction"] = True
 # `steps` alone does not bound the run: the four BFTS stages carry their own
