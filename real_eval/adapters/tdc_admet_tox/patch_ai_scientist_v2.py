@@ -94,6 +94,76 @@ def patch_bfts_config() -> None:
     path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
 
 
+HANDOFF_GUIDELINE = [
+    "TDC-ADMET-Tox native handoff (facts about the host validator; the program itself must produce everything below in-run):",
+    "Data: read only /data/tdc_admet_tox/train.csv, validation.csv and test.csv (columns sample_id, endpoint, smiles, label; test.csv has no label column). Endpoints are AMES, hERG and DILI, identified by the endpoint column. test.csv must never be used for selection. RDKit is not installed; numpy, pandas, scipy and scikit-learn are; do not install or download anything.",
+    "Budget: at most 4 CPU cores, 16 GiB memory, no GPU; cumulative experiment runtime must stay under 3600 seconds and the whole program under 7200 seconds; run 2 to 4 distinct configurations total, each with exactly one validation-evaluated candidate (candidate_count 1); never begin a fifth configuration.",
+    "Validation evidence: for each configuration write its validation-set predictions to a CSV (sample_id,endpoint,probability) and run the official validation scorer exactly as: python /workspace/automation/scripts/run_tdc_admet_tox_validation_score.py --validation /data/tdc_admet_tox/validation.csv --predictions <that csv> --output-metrics <that run's metrics.json>. The metrics.json it writes (split 'validation', macro_average_auroc, per_endpoint.AMES/hERG/DILI.auroc) is the metrics_file the trace must reference; never put test metrics in it.",
+    "Per configuration keep four files under /workspace (for example /workspace/runs/<run_id>/): config.json (its content must differ between configurations), the validation prediction CSV, the metrics.json produced by the scorer, and a log file. Also write at least one file under /workspace/logs/.",
+    "Write /workspace/research_idea.json BEFORE the first experiment: a JSON object with non-empty string fields hypothesis, method_rationale, expected_failure_modes, comparison_logic.",
+    "Write /workspace/predictions.csv from the SELECTED configuration: header exactly sample_id,endpoint,probability; exactly one row per (sample_id, endpoint) pair of test.csv and no other rows; probabilities within [0, 1]; no label column.",
+    "Write /workspace/environment.json with non-empty python_version, platform, device, seeds, packages and created_at.",
+    "Write /workspace/experiment_trace.json (strict JSON, no NaN) with: task_id 'tdc_admet_tox'; framework_native_execution true; consumed_topic_input true; framework_internal_model and framework_internal_api_base_url copied from the OPENAI_MODEL and OPENAI_BASE_URL environment variables; selection_metric 'validation_macro_average_auroc'; final_prediction_file 'predictions.csv'; environment_file 'environment.json'; resource_budget exactly {cpu_cores: 4, memory_gib: 16, gpu_count: 0, workspace_disk_gib: 10, max_experiment_runtime_seconds: 3600, max_total_wall_seconds: 7200, network_policy: 'injected_llm_relay_only'}; total_wall_seconds (a number); reproduction {entrypoint: a workspace-relative path to a saved copy of this program (for example reproduce.py), command, seed (integer)}; experiments: a JSON list (not a dict) of the 2-4 configurations, each an object with run_id (unique string), status 'complete', hypothesis, model_strategy, feature_strategy (at least two configurations must differ in both strategy and config content), runtime_seconds (number), seed (integer), candidate_count 1, config_file, prediction_file, metrics_file, log_file (workspace-relative paths that exist) and validation_metrics {macro_average_auroc, per_endpoint {AMES: {auroc}, hERG: {auroc}, DILI: {auroc}}} with values identical to that metrics_file; the third and fourth experiments additionally need parent_run_id (an earlier run_id) and change_rationale; selected_experiment_id: the run_id with the highest validation macro_average_auroc; claims: a JSON list with at least one object {claim_id (letters, digits, _ . : -), source_run_id, endpoint ('AMES', 'hERG', 'DILI' or 'macro'), metric 'auroc', value (the exact number from that run's metrics_file), prediction_file, config_file, log_file (the same paths as the source experiment)}.",
+    "Write /workspace/paper.md: a short evidence-backed paper. Every claim_id from the trace must appear in the paper as the marker <!-- claim:CLAIM_ID --> next to its number, and every number in the paper's tables must equal a claimed value (rounded display is fine). Never report hidden-test performance. Do not create score.json.",
+    "At the end print a verification block: each run_id with its validation macro_average_auroc, the selected_experiment_id, the number of rows in predictions.csv, and the byte size of experiment_trace.json, environment.json and paper.md, so the execution log evidences what was produced.",
+]
+
+
+def patch_native_handoff_guideline() -> None:
+    """Coder-only: append the host-validated handoff facts to the NATIVE
+    implementation guideline (kept intact, so upstream's no-__main__ and
+    experiment_data.npy rules stay). Gated by TDC_ADMET_TOX_NATIVE_RUN=1.
+    Runs 0828 q/q2/q3 reached stage 2 natively but 0/33 nodes wrote any root
+    handoff file: the handoff facts lived only in the ideation blueprint,
+    which BFTS nodes never see. Nothing is added to judge-visible task_desc."""
+    path = Path("ai_scientist/treesearch/parallel_agent.py")
+    text = path.read_text(encoding="utf-8")
+    mark = "tdc-native-handoff-guideline"
+    if mark in text:
+        print("[tdc] handoff guideline already applied")
+        return
+    anchor = '        return {"Implementation guideline": impl_guideline}'
+    if anchor not in text:
+        raise SystemExit("[tdc] impl_guideline return anchor not found")
+    block = (
+        "        # " + mark + ": host-validated handoff facts, coder-only.\n"
+        '        if os.getenv("TDC_ADMET_TOX_NATIVE_RUN") == "1":\n'
+        "            impl_guideline.extend(" + repr(HANDOFF_GUIDELINE) + ")\n"
+        + anchor
+    )
+    path.write_text(text.replace(anchor, block, 1), encoding="utf-8")
+
+
+def patch_stage_stop() -> None:
+    """The contract is 2-4 configurations in ONE program with a hard budget
+    (never a fifth configuration), so stage 1 is the whole experiment: stop
+    after it and skip the multi-seed replay, exactly like the psydef/babylm
+    wrappers. Stage 2's native goal (add HuggingFace datasets) would violate
+    the offline, fixed-dataset contract anyway."""
+    path = Path("ai_scientist/treesearch/agent_manager.py")
+    text = path.read_text(encoding="utf-8")
+    if "TDC_ADMET_TOX_NATIVE_RUN" in text:
+        print("[tdc] stage stop already applied")
+        return
+    if "import os\n" not in text:
+        text = "import os\n" + text
+    old1 = """        ) = self.parse_stage_names(current_substage.name)
+        if main_stage_num == 4:"""
+    new1 = """        ) = self.parse_stage_names(current_substage.name)
+        if os.getenv("TDC_ADMET_TOX_NATIVE_RUN") == "1":
+            return None
+        if main_stage_num == 4:"""
+    old2 = "                            if current_substage.stage_number in [1, 2, 3, 4]:"
+    new2 = """                            if (
+                                current_substage.stage_number in [1, 2, 3, 4]
+                                and os.getenv("TDC_ADMET_TOX_NATIVE_RUN") != "1"
+                            ):"""
+    for old in (old1, old2):
+        if old not in text:
+            raise SystemExit("[tdc] stage-stop anchor not found in agent_manager.py")
+    path.write_text(text.replace(old1, new1, 1).replace(old2, new2, 1), encoding="utf-8")
+
+
 def main() -> None:
     if not Path("ai_scientist").is_dir():
         raise SystemExit("run from the AI-Scientist-v2 source root: ai_scientist/ not found")
@@ -101,7 +171,9 @@ def main() -> None:
     patch_chat_create()
     patch_token_tracker()
     patch_bfts_config()
-    print("tdc_admet_tox AI-Scientist-v2 adapter applied")
+    patch_native_handoff_guideline()
+    patch_stage_stop()
+    print("tdc_admet_tox AI-Scientist-v2 adapter applied (+ handoff guideline, stage-1 stop)")
 
 
 if __name__ == "__main__":
