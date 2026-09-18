@@ -13,15 +13,19 @@ EOF
 export FRAMEWORK_RUNTIME_KIND="docker"
 export FRAMEWORK_RUNTIME_IMAGE="ai-scientist-v2:runtime-ready"
 export FRAMEWORK_NATIVE_ENTRYPOINT="perform_ideation_temp_free.py -> launch_scientist_bfts.py"
-export FRAMEWORK_PROVIDER_INJECTION="ai_scientist.llm OpenAI client configured from OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL. GPUs available: 4x NVIDIA RTX PRO 5000 72GB."
+export FRAMEWORK_PROVIDER_INJECTION="ai_scientist.llm OpenAI client configured from OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL. GPU visibility: the cards declared in REAL_EVAL_ALLOWED_GPUS (device-level docker confinement in the runner), renumbered from 0 inside the container."
 export FRAMEWORK_NATIVE_LOG_MARKER="AI_SCIENTIST_V2_BABYLM_GPT_NATIVE"
 export FRAMEWORK_EXECUTOR_KIND="framework_cli"
 export FRAMEWORK_COMMAND_LABEL="python ai_scientist/perform_ideation_temp_free.py; python launch_scientist_bfts.py"
+# CUDA_VISIBLE_DEVICES used to be hardcoded to 0,1,2,3 -- other tenants' cards on
+# this host. The runner now confines the container at the docker device level
+# (opt-in via REAL_EVAL_ALLOWED_GPUS), and inside a confined container the
+# allowed card is index 0.
 export FRAMEWORK_DOCKER_ARGS=$(cat <<'EOF'
 -e
 AI_SCIENTIST_BABYLM_METHOD_FREE=1
 -e
-CUDA_VISIBLE_DEVICES=0,1,2,3
+CUDA_VISIBLE_DEVICES=0
 EOF
 )
 export FRAMEWORK_RUNTIME_COMMAND=$(cat <<'EOF'
@@ -85,30 +89,34 @@ manager_path = Path(sys.argv[6])
 text = manager_path.read_text(encoding="utf-8")
 if "import os\n" not in text:
     text = "import os\n" + text
-old = '''        return task_desc
-
-    def _create_initial_stage(self):'''
-new = '''        if os.getenv("AI_SCIENTIST_BABYLM_METHOD_FREE") == "1":
-            task_desc += f"""
-
-MANDATORY BABYLM EXECUTION CONTRACT:
-- Generate one self-contained program that synchronously runs exactly 2-4 materially different configurations chosen and justified by the framework's own idea.
-- Use only the fixed /data/BabyLM-2026-Strict-Small dataset. Train with the framework-selected architecture and loss function.
-- Score all configurations with word-level perplexity, select the best by validation perplexity, and have the generated program itself write /workspace/research_idea.json, /workspace/experiment_trace.json, and /workspace/final_report.md.
-- experiment_trace.json must contain the field "experiments" (an array of objects, each with "experiment_id", "name", "validation_perplexity"), the correct selected_experiment_id, framework_native_execution=true, consumed_topic_input=true, workspace_trace_root='/workspace', framework_internal_model='{os.getenv("OPENAI_MODEL", "")}', framework_internal_api_base_url='{os.getenv("OPENAI_BASE_URL", "")}', idea_artifact='research_idea.json', and idea_locked_before_experiments=true.
-- ALL JSON output must be strict valid JSON — do NOT use NaN, Infinity, or -Infinity (convert them to null).
-- DATASET LOADING RULES:
-  * The dataset at /data/BabyLM-2026-Strict-Small has ONLY .txt files (train files with .train.txt extension). There is NO separate validation directory.
-  * Read all .txt files in the dataset directory. Filter by extension (e.g., f.endswith(".txt")).
-  * Split the loaded data into train/validation sets yourself (e.g., hold out 10% of lines).
-  * Do NOT catch file-reading exceptions silently — always print/log the error and raise.
-  * After loading, verify the data is non-empty and print the train/val token counts.
-"""
-        return task_desc
-
-    def _create_initial_stage(self):'''
+# The MANDATORY BABYLM EXECUTION CONTRACT block that used to be appended to
+# task_desc here was REMOVED (2026-09-18). task_desc is the one input the native
+# judge (parse_exec_result) sees; psydef runs 112949/115325 vs 122907 showed a
+# judge-visible contract checklist turns every executed node into a
+# "compliance bug" (0/16 -> first draft accepted once removed), while the
+# coder-only implementation guideline below already carries every fact.
+#
+# This wrapper's design is "2-4 configurations in ONE program" (the same
+# two-experiments design the psydef wrapper carries upstream), so stage 1 is
+# the whole experiment: stop after it and skip the multi-seed replay exactly
+# as the psydef wrapper does. Stage 2's native goal (add HuggingFace datasets)
+# would contradict the fixed-dataset contract anyway.
+old = '''        ) = self.parse_stage_names(current_substage.name)
+        if main_stage_num == 4:'''
+new = '''        ) = self.parse_stage_names(current_substage.name)
+        if os.getenv("AI_SCIENTIST_BABYLM_METHOD_FREE") == "1":
+            return None
+        if main_stage_num == 4:'''
 if old not in text:
-    raise SystemExit("AI-Scientist-v2 BFTS task-contract insertion point not found")
+    raise SystemExit("AI-Scientist-v2 final-stage insertion point not found")
+text = text.replace(old, new, 1)
+old = '                            if current_substage.stage_number in [1, 2, 3, 4]:'
+new = '''                            if (
+                                current_substage.stage_number in [1, 2, 3, 4]
+                                and os.getenv("AI_SCIENTIST_BABYLM_METHOD_FREE") != "1"
+                            ):'''
+if old not in text:
+    raise SystemExit("AI-Scientist-v2 multi-seed skip insertion point not found")
 text = text.replace(old, new, 1)
 manager_path.write_text(text, encoding="utf-8")
 
@@ -135,10 +143,17 @@ new = '''    def _prompt_impl_guideline(self):
             return {
                 "Implementation guideline": [
                     "Write one self-contained Python program to train a language model on the BabyLM dataset.",
-                    "Load only /data/BabyLM-2026-Strict-Small and the contract.",
+                    "Load only /data/BabyLM-2026-Strict-Small and the contract. Dataset facts: the directory contains ONLY .txt files (training files end with .train.txt); there is NO separate validation directory. Read every .txt file (filter by extension), split the loaded text into train/validation yourself (for example hold out 10% of lines), never catch file-reading exceptions silently (print and raise), and after loading verify the data is non-empty and print the train/validation token counts.",
+                    "Do not use downloads, package installation, pretrained models, external datasets, or remote calls from the experiment code.",
                     "Run exactly 2-4 materially different configurations selected by the framework's research idea; do not use a host-prescribed algorithm.",
-                    "Select the best by word-level validation perplexity and have the program itself write /workspace/research_idea.json, /workspace/experiment_trace.json, and /workspace/final_report.md.",
-                    "Do not create plots, synthetic datasets, background jobs, or runtime installations.",
+                    "The primary metric is WORD-LEVEL validation perplexity (character-level or subword-level perplexity is not accepted); print it for each configuration and select the best configuration by it.",
+                    "Have the program itself write /workspace/research_idea.json BEFORE running the experiments (a JSON object with non-empty string fields hypothesis, method_rationale, expected_failure_modes, comparison_logic), then /workspace/experiment_trace.json and /workspace/final_report.md after the experiments.",
+                    "experiment_trace.json schema (host-validated, format facts): a JSON object whose experiments field is a JSON ARRAY (a list, not a dict) of 2-4 objects, each with experiment_id (string), name, and validation_perplexity (number); selected_experiment_id must equal one of those experiment_id values; the object must also set framework_native_execution=true, consumed_topic_input=true, workspace_trace_root='/workspace', idea_artifact='research_idea.json', idea_locked_before_experiments=true, and framework_internal_model / framework_internal_api_base_url copied from the OPENAI_MODEL / OPENAI_BASE_URL environment variables. All JSON must be strict (no NaN or Infinity; use null).",
+                    "Important code structure requirements: do NOT place execution code behind an if __name__ == '__main__': guard -- the native interpreter runs the file via exec, where that condition is false and nothing would execute. All code must run at global scope or from functions called at global scope, so the script executes immediately when run without any special entry point.",
+                    "Data saving requirements: the code should start with import os; working_dir = os.path.join(os.getcwd(), 'working'); os.makedirs(working_dir, exist_ok=True). Save the metrics you compute (at least per-configuration validation perplexity per epoch plus training losses) as numpy arrays with np.save(os.path.join(working_dir, 'experiment_data.npy'), experiment_data), using the structure experiment_data = {'<config_name>': {'metrics': {'train': [], 'val': []}, 'losses': {'train': [], 'val': []}}}; the native metric parser and plotting step read this file.",
+                    "At the end of the program print a verification block: each experiment_id with its word-level validation perplexity, the selected_experiment_id, and the byte size of each of the three root files you wrote, so the execution log itself evidences what was produced.",
+                    "Be aware of the running time: the whole program must finish within 60 minutes on a single GPU; size the models and epochs accordingly.",
+                    "Do not create plots yourself (the native pipeline plots from experiment_data.npy), and do not create synthetic datasets, background jobs, or runtime installations.",
                 ]
             }
         impl_guideline = ['''
@@ -153,6 +168,7 @@ old = '''    perform_experiments_bfts(idea_config_path)
 new = '''    perform_experiments_bfts(idea_config_path)
     if os.getenv("AI_SCIENTIST_BABYLM_METHOD_FREE") == "1":
         required = (
+            "/workspace/research_idea.json",
             "/workspace/experiment_trace.json",
             "/workspace/final_report.md",
         )
@@ -162,43 +178,12 @@ new = '''    perform_experiments_bfts(idea_config_path)
                 "Native BabyLM BFTS exited without its complete root handoff: "
                 + ", ".join(missing)
             )
-        # Validate experiment_trace.json: strict JSON, no NaN, required fields
-        import json as _json
-        _trace_text = open("/workspace/experiment_trace.json").read()
-        if "NaN" in _trace_text or "Infinity" in _trace_text or "-Infinity" in _trace_text:
-            # Replace NaN/Infinity with null for strict JSON compliance
-            import re as _re
-            _trace_text = _re.sub(r"\bNaN\b", "null", _trace_text)
-            _trace_text = _re.sub(r"\bInfinity\b", "null", _trace_text)
-            _trace_text = _re.sub(r"\b-Infinity\b", "null", _trace_text)
-            open("/workspace/experiment_trace.json", "w").write(_trace_text)
-            print("[trace-fix] Replaced NaN/Infinity tokens with null in experiment_trace.json")
-        _trace = _json.loads(_trace_text)
-        _required_fields = ["experiments", "selected_experiment_id", "framework_native_execution",
-            "consumed_topic_input", "workspace_trace_root", "framework_internal_model",
-            "framework_internal_api_base_url", "idea_artifact", "idea_locked_before_experiments"]
-        _missing_fields = [f for f in _required_fields if f not in _trace]
-        if _missing_fields:
-            # Backfill missing fields with defaults
-            for _f in _missing_fields:
-                _defaults = {
-                    "framework_native_execution": True,
-                    "consumed_topic_input": True,
-                    "workspace_trace_root": "/workspace",
-                    "framework_internal_model": os.environ.get("OPENAI_MODEL", ""),
-                    "framework_internal_api_base_url": os.environ.get("OPENAI_BASE_URL", ""),
-                    "idea_artifact": "research_idea.json",
-                    "idea_locked_before_experiments": True,
-                    "experiments": _trace.get("experiment_ids", _trace.get("experiments", [])),
-                    "selected_experiment_id": _trace.get("selected_experiment_id", ""),
-                }
-                if _f in _defaults:
-                    _trace[_f] = _defaults[_f]
-            open("/workspace/experiment_trace.json", "w").write(
-                _json.dumps(_trace, ensure_ascii=False, indent=2)
-            )
-            print(f"[trace-fix] Backfilled missing trace fields: {_missing_fields}")
-        print("[trace-fix] experiment_trace.json validation passed")
+        # No host-side repair here. The NaN->null rewriting and the trace-field
+        # backfill that used to run at this point were removed (2026-09-18):
+        # they edited framework-authored artifacts after the fact, which the
+        # contract boundary forbids (same reasoning as the removed ARC/psydef
+        # exit_delivery_check). The host validator judges the files exactly as
+        # the framework left them.
         save_token_tracker(idea_dir)
         raise SystemExit(0)
     experiment_results_dir = osp.join(idea_dir, "logs/0-run/experiment_results")'''

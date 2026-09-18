@@ -233,7 +233,14 @@ declare -a docker_cmd=(
   "${docker_host_args[@]}"
 )
 if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
-  docker_cmd+=(--gpus all)
+  if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
+    # Device-level GPU confinement, same opt-in pattern as the ARC/psydef
+    # runners: callers that declare their allowed GPUs get a docker-level
+    # device boundary workers cannot cross. Unset keeps --gpus all.
+    docker_cmd+=(--gpus "device=${REAL_EVAL_ALLOWED_GPUS}")
+  else
+    docker_cmd+=(--gpus all)
+  fi
 fi
 if [[ -n "$FRAMEWORK_ENTRYPOINT" ]]; then
   docker_cmd+=(--entrypoint "$FRAMEWORK_ENTRYPOINT")
