@@ -95,8 +95,8 @@ timeout 5100s python3 launch_scientist_bfts.py \
   --skip_writeup \
   --skip_review
 # exit_delivery_check DISABLED (2026-09-18): post-exit model backfill of framework
-# artifacts is forbidden by the contract boundary (same reasoning as ARC/psydef/
-# babylm). Delivery is owned by the framework's own program in-run.
+# artifacts is forbidden by the contract boundary (same reasoning as the other
+# 02 topic wrappers). Delivery is owned by the framework's own program in-run.
 # python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic tdc_admet_tox || true
 
 EOF
