@@ -91,6 +91,13 @@ def patch_bfts_config() -> None:
                 set_models(item)
 
     set_models(config)
+    # Infrastructure: the runner grants 4 CPU cores and no GPU, and without a GPU
+    # AI-Scientist-v2 does not cap num_workers (native yaml says 4). Run 065744
+    # showed 3 parallel drafts overwriting each other's /workspace/runs/<run_id>/
+    # files and the root handoff (trace written 07:03:02, its metrics_file
+    # rewritten by a sibling node at 07:03:05 -> host validator mismatch).
+    # One worker, like the other 02 topic wrappers; search settings untouched.
+    config["agent"]["num_workers"] = int(os.environ.get("TDC_ADMET_TOX_NUM_WORKERS", "1"))
     path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
 
 
