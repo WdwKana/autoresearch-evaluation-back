@@ -50,19 +50,48 @@ NEW_USE_TOOL = """    def use_tool(self, query: str) -> Optional[str]:
             papers = None"""
 
 
+# 2. Both ``requests.get(...)`` calls to the S2 API carry no ``timeout``: a
+#    connection that is accepted but never answered blocks the ideation process
+#    forever (run fullrun_tdc_02_luna_20260918_070527 sat in a single S2 read
+#    from 07:06 with an ESTABLISHED socket and no further log line; the retry
+#    bound cannot help because the first attempt never returns). Add a socket
+#    timeout so the bounded retry/give-up path is actually reachable.
+S2_REQUEST_TIMEOUT_SECONDS = 30
+OLD_GET = 'requests.get(\n        "https://api.semanticscholar.org/graph/v1/paper/search",\n'
+NEW_GET = (
+    'requests.get(\n        "https://api.semanticscholar.org/graph/v1/paper/search",\n'
+    f"        timeout={S2_REQUEST_TIMEOUT_SECONDS},\n"
+)
+OLD_GET_METHOD = OLD_GET.replace("\n        ", "\n            ")
+NEW_GET_METHOD = NEW_GET.replace("\n        ", "\n            ")
+
+
+def _apply_request_timeout(text: str) -> str:
+    if f"timeout={S2_REQUEST_TIMEOUT_SECONDS}," in text:
+        print("semantic scholar request-timeout patch already applied")
+        return text
+    n = text.count(OLD_GET) + text.count(OLD_GET_METHOD)
+    if n != 2:
+        raise SystemExit(f"expected 2 semantic scholar requests.get anchors, found {n}")
+    text = text.replace(OLD_GET_METHOD, NEW_GET_METHOD).replace(OLD_GET, NEW_GET)
+    print("semantic scholar request-timeout patch applied")
+    return text
+
+
 def main() -> None:
     text = TARGET.read_text(encoding="utf-8")
     if "max_tries=3" in text and "continuing without papers" in text:
         print("semantic scholar bounded-retry patch already applied")
-        return
-    if OLD_DECORATOR not in text or OLD_USE_TOOL not in text:
-        raise SystemExit(
-            "semantic_scholar.py anchors not found; upstream layout changed, refusing to patch"
-        )
-    text = text.replace(OLD_DECORATOR, NEW_DECORATOR, 1)
-    text = text.replace(OLD_USE_TOOL, NEW_USE_TOOL, 1)
+    else:
+        if OLD_DECORATOR not in text or OLD_USE_TOOL not in text:
+            raise SystemExit(
+                "semantic_scholar.py anchors not found; upstream layout changed, refusing to patch"
+            )
+        text = text.replace(OLD_DECORATOR, NEW_DECORATOR, 1)
+        text = text.replace(OLD_USE_TOOL, NEW_USE_TOOL, 1)
+        print("semantic scholar bounded-retry patch applied")
+    text = _apply_request_timeout(text)
     TARGET.write_text(text, encoding="utf-8")
-    print("semantic scholar bounded-retry patch applied")
 
 
 if __name__ == "__main__":
