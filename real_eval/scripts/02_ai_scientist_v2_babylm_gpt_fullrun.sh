@@ -8,6 +8,7 @@ export FRAMEWORK_SRC="$(real_eval_resolve_framework_source "$ROOT" 02)"
 export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 automation/babylm_method_free_contract.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
+real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -223,6 +224,10 @@ interpreter_path = Path(sys.argv[10])
 # Skip the inline patch to avoid conflict.
 interpreter_path.write_text(interpreter_path.read_text(encoding="utf-8"), encoding="utf-8")
 PY
+# Bound Semantic Scholar 429 backoff (same adapter ARC/psydef/TDC wrappers use);
+# without it run 20260918_045654 sat in 400-500s backoffs and would have
+# exhausted the 1800s ideation budget.
+python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 rm -f ai_scientist/ideas/babylm_topic.json
 # Increase max_tokens to avoid truncation of long GPT responses
 python3 -c "
