@@ -12,6 +12,7 @@ automation/psydefdetect_contract.md
 automation/psydefdetect_execution_budget.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
+real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py
 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 EOF
 )
@@ -34,6 +35,9 @@ set -euo pipefail
 echo "AI_SCIENTIST_V2_NATIVE_BFTS"
 python3 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
+# Ideation parser: accept markdown-decorated ACTION/ARGUMENTS labels (run
+# fullrun_psydef_02_ds_r5_20260919_212250 lost a complete idea to "**Action**:").
+python3 real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py
 echo "[psydef-wrapper] shared adapter applied"
 python3 - ai_scientist/llm.py "$OPENAI_MODEL" ai_scientist/utils/token_tracker.py ai_scientist/perform_ideation_temp_free.py ai_scientist/tools/semantic_scholar.py ai_scientist/treesearch/agent_manager.py ai_scientist/treesearch/parallel_agent.py launch_scientist_bfts.py ai_scientist/treesearch/backend/backend_openai.py ai_scientist/treesearch/interpreter.py <<'PY'
 from pathlib import Path
