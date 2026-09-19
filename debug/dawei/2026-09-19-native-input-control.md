@@ -94,3 +94,18 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 3. 我此前"luna 自带严格"的判断得到支持，但我对臂 A"通过率过半"的预测是错的，对 psydef stripped 的估计也偏高。
 
 局限：原生臂共 2 个 idea、6 个节点；judge 只测了 luna；每格 3–5 次，噪声不小。
+
+## 更正（2026-09-19 23:2x UTC，经用户质疑后）
+
+上面"汇总"一节的结论说过头了，予以更正：
+
+1. **离线复判回答的是另一个问题**（固定节点上判定的稳定性），我却用它推出"luna 的单节点通过率在原生与契约条件下没有明显差别，差别只在尝试成本与成活率"。样本很小（每格 15–24 票），更重要的是实跑过程不是独立同分布的抽样，这个推论不成立。
+2. **原生回路是自适应收敛的，不是"小概率抽中"。** 读两个原生臂的 draft 计划可见：
+   - 臂 A：draft 1 被判"`embedding(a)+embedding(b)` 可交换"；draft 2 的计划写明"order-sensitive concatenation-based encoder, avoiding the earlier commutativity failure"，又被判"正则项只是 MSE(z, raw)"；draft 3 的计划改为"alignment penalty between the full-pair representation …" → 通过。
+   - 臂 B：draft 1 被判"把特征置 0，不是合理的反事实"；draft 3 的计划改为"sign-flipping selected symmetric features, which is plausible under the synthetic data-generating process" → 通过。
+   两发都是 败、败、过。judge 的意见经 Memory 摘要进入下一个 draft 并被采纳。
+3. **我自己的旧数据也与"通过率相同"矛盾**：ARC 有 8 发 luna 运行、每发 12–20 个节点、零通过；若单节点通过率真有 13–27%，这几乎不可能。实跑差距很大：原生 2/2 发在 3 个 draft 内收敛，契约条件下是成片的零。
+4. **契约条件下同一回路没有收敛的迹象**：TDC 073215 的 13 个 draft 计划里，几乎没有一个提到此前的失败（唯一一处是 debug 节点修崩溃）；Memory 在两种条件下都按同一代码路径每步生成。也就是说反馈送到了，但没有被采纳或无法被采纳。可能的原因（假设，未证实）：每个契约 draft 是 400–600 行的整项研究，计划的 7–10 句被交付物占满；意见又多又杂（崩溃 + 方法学），再经一次有损摘要；部分意见在构造上无法满足（psydef：契约要求在评估集上选择，idea 却承诺不这样做）；psydef 的上游搜索配置（1 个 draft、debug 概率 1.0）让绝大多数节点走 debug 路径，而 debug prompt 既收不到 Memory 也收不到 judge 的分析，反馈回路被配置切断。
+5. 因此更准确的表述是：luna 单次判定确实严（原生 3 个 draft 也被它以方法学理由否掉 2 个），但在原生流水线里这种严格是**有产出的**，它在 3 步内把 draft 引到通过；我们改造后的流水线与框架的**反馈回路**发生了冲突。用户"是我们改造的 pipeline 造成了冲突、差距比表面大"的判断，比我此前"只是成本与成活率"的说法更符合证据。
+
+局限：原生只有 2 发；"计划是否提及此前失败"是粗糙的文本启发式；Memory 摘要与 draft prompt 的原文没有被日志记录，我没有看到。
