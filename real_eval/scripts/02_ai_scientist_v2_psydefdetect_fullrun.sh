@@ -268,13 +268,25 @@ interpreter_path = Path(sys.argv[10])
 # Skip the inline patch to avoid conflict.
 interpreter_path.write_text(interpreter_path.read_text(encoding="utf-8"), encoding="utf-8")
 PY
-rm -f ai_scientist/ideas/psydefdetect_topic.json
-timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_IDEATION_TIMEOUT_SECONDS:-1800}s" \
-  python ai_scientist/perform_ideation_temp_free.py \
-  --workshop-file ai_scientist/ideas/psydefdetect_topic.md \
-  --model "$OPENAI_MODEL" \
-  --max-num-generations 1 \
-  --num-reflections 2
+# Upstream ideation aborts the whole reflection loop on ANY unparsable reply
+# (one malformed JSON -> "Stored 0 ideas": run fullrun_psydef_02_ds_r5_20260919_213122,
+# where the model dropped a closing quote in a search query). The host does not
+# repair the reply; like the maintainers' TDC wrapper it lets the framework's own
+# ideation start over, at most 3 times. A stored idea list of "[]" counts as empty.
+for ideation_attempt in 1 2 3; do
+  rm -f ai_scientist/ideas/psydefdetect_topic.json
+  timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_IDEATION_TIMEOUT_SECONDS:-1800}s" \
+    python ai_scientist/perform_ideation_temp_free.py \
+    --workshop-file ai_scientist/ideas/psydefdetect_topic.md \
+    --model "$OPENAI_MODEL" \
+    --max-num-generations 1 \
+    --num-reflections 2
+  if python3 -c "import json,sys; d=json.load(open('ai_scientist/ideas/psydefdetect_topic.json')); sys.exit(0 if isinstance(d, list) and d else 1)" 2>/dev/null; then
+    echo "[psydef-wrapper] ideation produced an idea on attempt $ideation_attempt"
+    break
+  fi
+  echo "[psydef-wrapper] ideation produced 0 ideas on attempt $ideation_attempt"
+done
 test -s ai_scientist/ideas/psydefdetect_topic.json
 python3 - ai_scientist/ideas/psydefdetect_topic.json <<'PY'
 import json
