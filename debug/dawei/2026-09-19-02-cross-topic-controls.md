@@ -85,3 +85,11 @@ DeepSeek 仍会判掉真正行序错位的那个节点（1/3 通过），不是�
 - 统一各 topic runner 对"成功"的判定（babylm runner 看退出码，TDC runner 不看），否则同一现象在不同 topic 下会被记成不同状态。
 - 统一 `research_idea.json` 的来源（建议一律来自 ideation 的 idea，符合"实验前锁定"的本意）。
 - 如果团队想评"02 的研究机制"而不是"02 的 judge 门"，需要在契约层决定 stage-1-only 的上游设计是否保留；这是维护者的设计，不是我们能单方面改的。
+
+## 补记（2026-09-19 21:30 UTC）：经批准的验证实跑 `fullrun_psydef_02_ds_r5_20260919_212250`
+
+- 结果：1 分钟内结束，状态 failed，`Stored 0 ideas`，**仍未进入 BFTS，judge 预测依旧没有得到实跑验证**。单发，未重试；容器与进程已确认全部退出。
+- 原因与前两发不同，且定位明确：这一次 DeepSeek **已经写出了完整、合规的 idea**（两个实验：话语结构特征 + 随机森林；对比词汇原型 + Complement NB），但它把动作写成 markdown 粗体的 `**Action**: FinalizeIdea` / `**Arguments**:`，而框架 ideation 解析器的正则只认字面的 `ACTION:` / `ARGUMENTS:`（`perform_ideation_temp_free.py` 第 189–200 行），抛出 `ValueError: Failed to parse the LLM response`，整个 ideation 以 0 ideas 终止。
+- 前两发（2 轮反思）的原因照旧成立：两轮都用于 `SearchSemanticScholar`，轮数用完没来得及 Finalize。
+- 含义：02×DeepSeek 在 psydef 上卡在 **ideation 的回复格式解析**，属于框架解析器对模型输出格式的容错问题，与 judge 无关。它不削弱也不加强第 4 节的离线结论；那组实验仍是目前唯一的证据。
+- 未做的事：没有修改解析器，没有追加运行。是否把"大小写/粗体不敏感的 ACTION 解析"作为基础设施修复加入共享适配器并再验证一次，需用户决定。
