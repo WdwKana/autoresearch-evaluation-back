@@ -261,3 +261,12 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 对照设计：与主题体端到端（run 213932）完全相同的流程，只把主题文件换回正式的说明书式 `psydefdetect_topic.md` 并加正式的 ideation 契约段（run `control_e2espec_rep1_psydef02_luna_20260920_215346`，并行）。指南保持原生、数据走参考代码 v2 槽位、阶段 20/6/6/2、host 组装与校验相同。
 
 判定规则（跑之前写下）：两发都通过 stage 1、后续阶段留在真实数据、组装与校验都通过 → 保留正式 meta prompt，撤回主题体改动，只采纳数据通道与组装；说明书式一发失败而主题体成功 → 主题体改动有依据；附带比较两发 judge 判定中"与 idea 承诺不符"的比例。
+
+## ARC 端到端（主题体路线；用户 2026-09-20 逐条确认：定义写进主题、参考代码只含数据/验证/打包、GPU 5、whest 官方打分、4 小时、实验 = 各阶段 best_solution）
+
+- 主题文件 `arc_wbe_2026_native.md`（challenge 说明体）：目标量定义（x~N(0,I)，x_{l+1}=max(x_l@W_l,0)，每层每神经元的平均激活，(32,256)）、官方分（末层 MSE × max(0.1, C/B)，B=2.72e11，越低越好，隐藏 MLP 上打分）、资源（约 100 条带真值的记录）、接口（`Estimator.predict(mlp)`，自包含、仅 numpy + 标准库、参数嵌入文件）、一句话计算设定与"两到四种方法对比"惯例。
+- 参考代码 `arc_reference_v1.py`（作 `hf_dataset_reference.py`）：`load_records`（100 条，float32 权重约 0.9 GB，加载约 73 s）、`split_records`（末 20 条为验证）、`make_mlp`、`ground_truth`、`local_validation(name, estimator_path)`：在只含该估计器文件的临时目录里用子进程验证（强制自包含），写 `working/<name>.estimator.py` 与 `working/<name>.validation.json`（末层/全层 MSE、耗时），打印固定行。**不含**前向模拟或任何估计方法。真实数据上验证通过（平凡估计器末层 MSE 0.804）。
+- 组装 `assemble_arc.py`：实验 = 各阶段 best_solution，复现（GPU 5）后取 `working/*.validation.json` 中末层 MSE 最低的配置，最后阶段的估计器提升为 `estimator.py`，写 `submission.json`（仅来源与本地验证数值）、trace（仅事实）、报告；`score.json` 随后由 host 用 whest 官方 adapter 生成。
+- 事实：ARC runner 默认的 whest 路径 `/tmp/whest-starterkit` 已不存在，可用的是 `/data/daweiwang/claude-home/whest-starterkit/.venv`；02 此前从未走到 host 打分；官方打分通道用平凡的权重相关估计器预检通过（score 0.0661，`official_adapter_whest_run`，98 s）。
+- 事实：docker 守护进程看不到 `/root/researchclaweval-public` 路径（挂进去是空目录），数据必须用 `/data/daweiwang/claude-home/...` 路径挂载。
+- 校验器从 ARC runner 第 437–493 行逐行抽出。契约措辞草案：`ladder/staged/arc/contract_wording_draft_arc.md`。
