@@ -284,4 +284,6 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 - 选择 = stage 4 的 best_solution（与 stage 1 同一节点），最佳配置 sgd_no_context，官方分 **0.1203**；host 重算逐位一致。
 - **host 校验通过**（从正式 runner 逐行抽出的校验块），状态 finished（assembly 0、validation 0）。
 - 原生退出码 143：BFTS 结束后框架自己的孤儿进程清理向匹配关键词的进程发 SIGTERM，把自己也杀了（上游 bug；ARC wrapper 里早有 `_arc_self_pids` 修复，此诊断未打）。不影响组装。
+- 更正（2026-09-20 晚）：`best_solution_<node>.py` 由上游 `get_best_node(only_good=False)` 写出，是框架在该阶段**全部节点**（含它自己判为 buggy 的）里选的；带入下一阶段的节点则只在通过节点里选。本次 stage 2（048fa074）和 stage 3（4ea34bb1）的 best_solution 都是 buggy 节点；stage 1 与 stage 4 的 best_solution 是同一个通过节点 8d3cb8ad（3 份不同代码）。通过节点只有 stage 1 的 2 个，stage 2/3/4 的新节点无一通过。
+- 口径决定（用户）：契约的"2–4 个实验"按框架各阶段选出的方案计数，不要求非 buggy；trace 现改为逐实验记录框架自己的判定（`framework_verdict`）和同节点标注（`same_node_as`）。最终产物（stage 4 best_solution = 8d3cb8ad）在两种原生口径下一致，host 转换、官方打分 0.1203、校验通过，这三步成立。
 - 这是 **02 第一次在真实数据上以框架自己的四阶段流程 + 确定性组装通过 host 校验并得到官方分**。分数本身低（0.12），与 psydef 早先 stage-1-only 的 0.13–0.14 同量级。
