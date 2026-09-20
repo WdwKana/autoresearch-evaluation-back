@@ -270,3 +270,18 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 - 事实：ARC runner 默认的 whest 路径 `/tmp/whest-starterkit` 已不存在，可用的是 `/data/daweiwang/claude-home/whest-starterkit/.venv`；02 此前从未走到 host 打分；官方打分通道用平凡的权重相关估计器预检通过（score 0.0661，`official_adapter_whest_run`，98 s）。
 - 事实：docker 守护进程看不到 `/root/researchclaweval-public` 路径（挂进去是空目录），数据必须用 `/data/daweiwang/claude-home/...` 路径挂载。
 - 校验器从 ARC runner 第 437–493 行逐行抽出。契约措辞草案：`ladder/staged/arc/contract_wording_draft_arc.md`。
+
+### 端到端 主题体臂 结果（`control_e2e_rep1_psydef02_luna_20260920_213932`，21:39–22:4x UTC，约 65 分钟）
+
+| 阶段 | 节点 | 崩溃 | 通过 | 真实数据 + scorer |
+|---|---|---|---|---|
+| 1 | 2 | 0 | 第 1 个（2/2） | 2/2 |
+| 2 | 7 | 1 | 带入节点 | 7/7 |
+| 3 | 7 | 4 | 带入节点 | 7/7 |
+| 4 | 3 | 1 | 带入节点 | 3/3 |
+
+- 组装：4 个阶段的 best_solution 全部复现成功（29 s / 119 s / 151 s / 23 s），每个节点内部都比较了多个配置并各自调官方 scorer（如 stage 1：sgd_no_context 0.1203、sgd_real_context 0.0880、sgd_shuffled_context 0.0937；stage 3：real_model_* 0.087–0.105）。
+- 选择 = stage 4 的 best_solution（与 stage 1 同一节点），最佳配置 sgd_no_context，官方分 **0.1203**；host 重算逐位一致。
+- **host 校验通过**（从正式 runner 逐行抽出的校验块），状态 finished（assembly 0、validation 0）。
+- 原生退出码 143：BFTS 结束后框架自己的孤儿进程清理向匹配关键词的进程发 SIGTERM，把自己也杀了（上游 bug；ARC wrapper 里早有 `_arc_self_pids` 修复，此诊断未打）。不影响组装。
+- 这是 **02 第一次在真实数据上以框架自己的四阶段流程 + 确定性组装通过 host 校验并得到官方分**。分数本身低（0.12），与 psydef 早先 stage-1-only 的 0.13–0.14 同量级。
