@@ -302,3 +302,11 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 - 组装：4 个 best_solution 中 3 个复现出官方分（0.1409 / 0.1445 / — / 0.1445）；选择 = stage 4 的 ba73ebcf，配置 routed_svm，官方分 **0.1445**，host 重算一致；**host 校验通过**（assembly 0、validation 0）；原生退出码 143 同主题臂（上游自杀式清理）。
 - 规格体特有现象：规格里"生成的程序自己必须写出 /workspace/predictions.jsonl、score.json、experiment_trace.json、final_report.md"让 stage 3 的 5 个节点都往根目录写这套文件、互相覆盖；最后留下的版本（routed_linear_margin，官方分 0.1537，host 重算一致）来自一个被 luna 判 buggy 的节点，已原样快照到 `native_root_handoff/`。luna 的 buggy 理由多为合规冲突：research_idea.json 后写、HF 数据集只冒烟、stage 3 的"三个 HF 数据集"与规格的"恰好两个实验"直接矛盾。
 - 与主题体臂对比（各 1 发）：stage 1 通过所需节点 2 vs 11；两臂 stage 3/4 都没有新通过节点；两臂都完成组装、打分、校验。按预注册规则（两发都过 stage 1、后续阶段留在真实数据、组装与校验都过），**结论是保留正式 meta prompt，主题体不是必需**；主题体的优势只体现在 stage 1 收敛速度，单发不足以定量。规格体额外暴露的"节点自己写根目录契约文件"是与 host 组装重叠的责任，需在契约里二选一。
+
+### 端到端 ARC 主题体臂 结果（`control_e2earc_rep1_arc02_luna_20260920_223702`，22:37–23:21 UTC，GPU 5）
+
+**失败于 stage 1**：20 次迭代用满，0 个通过节点（3 个崩溃、17 个跑通但被判 buggy）。随后上游 `overall_summarize` 因只有 1 个阶段而崩溃（ValueError: expected 4, got 1），原生退出 1；组装因只有 1 个阶段选择退出 3；官方打分与校验因缺产物退出 1。
+
+- 20 个节点里 **19 个自己生成小随机 MLP**（如 8×32、12×…）做合成原型，只有 1 个（n15）用参考加载器读真实记录，但因 `np.erf` 在 NumPy 2.x 不存在而崩溃。psydef 上 loader 从第 1 个节点起就被用；ARC 上"随机初始化 MLP"这一任务定义本身让"自己造数据"成为最自然的 stage 1 原型，参考加载器通道没有被采用。
+- luna 判 buggy 的理由高度集中：估计器没有可训练参数，但 02 原生 stage 1 实现指南要求逐 epoch 打印训练/验证损失，节点于是写了空转的 epoch 循环，被反复指为"假 epoch"；其次是"没有实现提供的 ARC 套件"（用合成小网络）、rank 选择用验证集或各 rank 结果相同、decay ratio 定义误导。
+- 结论：主题体 + 参考加载器这条路在 ARC 上没有复现 psydef 的结果。ARC 暴露了两个 psydef 不会触发的冲突：(a) 02 原生"训练循环/epoch 指标"硬要求 vs 无训练的估计问题；(b) 任务定义里的"随机 MLP"使合成原型比真实记录更自然，stage 1 不会自发走向参考数据。两者都是框架认知/阶段目标层面的，按当前约束不改。
