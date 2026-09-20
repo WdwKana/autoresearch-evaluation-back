@@ -242,3 +242,14 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 3. 但 stage 3 没有执行 idea 的研究议程：两个障碍占满了 6 步——(a) 代码围栏解析 bug（3/6）；(b) stage 2、3 目标硬编码的 HuggingFace 数据集要求（judge 据此判节点，coder 据此去下载并崩溃）。在正式的断网沙箱里 (b) 会更彻底。
 
 结论：分阶段注入解决了"做真实实验"与"数据管道崩溃"，stage 1 的"idea 太重"问题仍在（前 8 个节点），stage 2、3 则暴露出与阶段目标文本的硬冲突和解析器 bug。下一步的候选：修解析器对纯代码回复的回退（基础设施，非认知）；stage 目标里的 HF 条款如何处置（红线，需团队决定）；idea 的野心（主题文件是否该说明 stage 1 只需可行性原型）。
+
+## 端到端（用户 2026-09-20 批准："倾向做的都做，然后运行"）
+
+新增并离线验证的部件（快照在 `debug/dawei/ladder/staged/`）：
+- **参考代码 v2**（`psydefdetect_native_v2.py`，作 `hf_dataset_reference.py`）：官方评估只经 `official_score(name, id_to_label)`，固定写 `working/<name>.predictions.jsonl` 与 `working/<name>.official_score.json`，打印 `official psydefdetect_score (<name>): <value>`。贴合原生指南的 `working_dir` 约定，也给 evaluator 固定位置。真实数据上验证通过。
+- **确定性组装**（`assemble_psydef.py`，host 侧，无 LLM）：实验 = 各阶段的 `best_solution_<node>.py`（框架自己每阶段的选择，2–4 个）；在干净离线容器复现每个，收集官方分；选择 = 最后阶段的 best_solution；搬运其预测到根目录并由 host 重跑 scorer 写 `score.json`；trace 只填事实；报告由 journal 事实与框架原生阶段摘要（若有）渲染。在上一发原生产物上离线验证：stage 1/3 复现官方分 0.15215 与运行时逐位一致，stage 2 的 best_solution 因用 v1 参考代码把产物写进临时目录而无分（v2 约定即为此而设）；host 重算一致。
+- **host 校验器**：从正式 psydef runner 逐行抽出的校验块，对组装产物 **通过**（research_idea.json 由 idea 映射并早于 trace）。
+- **契约措辞草案**：`contract_wording_draft.md`（实验/选择/提升/输出位置/预算/报告六处）。
+- 决定不做的：不修代码围栏解析回退；不动 stage 目标里的 HF 条款；不把预测另存为 npy；不占用 writeup 槽位。
+
+端到端一发的流程：主题体 ideation → research_idea.json（BFTS 前）→ stage 1–4（20/6/6/2，种子 1，原生 generate_report）→ 容器退出 → host 组装 → host 校验。4 小时上限。事前预测：stage 1 通过；stage 2–4 留在真实数据；组装得到 ≥2 个带官方分的实验；host 校验通过。风险：stage 2/3 的 HF 条款与围栏 bug 消耗步数；stage 4 消融节点可能不产出官方分（则实验数为 2–3）。
