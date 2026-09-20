@@ -287,3 +287,18 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 - 更正（2026-09-20 晚）：`best_solution_<node>.py` 由上游 `get_best_node(only_good=False)` 写出，是框架在该阶段**全部节点**（含它自己判为 buggy 的）里选的；带入下一阶段的节点则只在通过节点里选。本次 stage 2（048fa074）和 stage 3（4ea34bb1）的 best_solution 都是 buggy 节点；stage 1 与 stage 4 的 best_solution 是同一个通过节点 8d3cb8ad（3 份不同代码）。通过节点只有 stage 1 的 2 个，stage 2/3/4 的新节点无一通过。
 - 口径决定（用户）：契约的"2–4 个实验"按框架各阶段选出的方案计数，不要求非 buggy；组装脚本不改。最终产物（stage 4 best_solution = 8d3cb8ad）在两种原生口径下一致，host 转换、官方打分 0.1203、校验通过，这三步成立。
 - 这是 **02 第一次在真实数据上以框架自己的四阶段流程 + 确定性组装通过 host 校验并得到官方分**。分数本身低（0.12），与 psydef 早先 stage-1-only 的 0.13–0.14 同量级。
+
+### 端到端 规格体臂 结果（`control_e2espec_rep1_psydef02_luna_20260920_215346`，21:53–23:2x UTC，约 90 分钟）
+
+输入 = 正式 psydef 规格 topic + ideation 契约（生产口径），其余与主题体臂完全相同（loader v2 走 dataset-reference 槽、阶段 20/6/6/2、host 确定性组装 + 校验）。
+
+| 阶段 | 节点 | 崩溃 | 新通过 | 真实数据 + scorer | best_solution 判定 |
+|---|---|---|---|---|---|
+| 1 | 11 | 4（2 个围栏） | 1（第 10 个） | 11/11 | buggy（454538f1，目标轮定位/泄漏） |
+| 2 | 7 | 0 | 2 | 7/7 | buggy（9f6fd878，额外内部切分） |
+| 3 | 7 | 2 | 0 | 7/7 | **崩溃节点**（1aa1518c，ValueError），复现 rc=1 无分数 |
+| 4 | 3 | 1 | 0 | 3/3 | 通过节点（ba73ebcf，stage 2 带入） |
+
+- 组装：4 个 best_solution 中 3 个复现出官方分（0.1409 / 0.1445 / — / 0.1445）；选择 = stage 4 的 ba73ebcf，配置 routed_svm，官方分 **0.1445**，host 重算一致；**host 校验通过**（assembly 0、validation 0）；原生退出码 143 同主题臂（上游自杀式清理）。
+- 规格体特有现象：规格里"生成的程序自己必须写出 /workspace/predictions.jsonl、score.json、experiment_trace.json、final_report.md"让 stage 3 的 5 个节点都往根目录写这套文件、互相覆盖；最后留下的版本（routed_linear_margin，官方分 0.1537，host 重算一致）来自一个被 luna 判 buggy 的节点，已原样快照到 `native_root_handoff/`。luna 的 buggy 理由多为合规冲突：research_idea.json 后写、HF 数据集只冒烟、stage 3 的"三个 HF 数据集"与规格的"恰好两个实验"直接矛盾。
+- 与主题体臂对比（各 1 发）：stage 1 通过所需节点 2 vs 11；两臂 stage 3/4 都没有新通过节点；两臂都完成组装、打分、校验。按预注册规则（两发都过 stage 1、后续阶段留在真实数据、组装与校验都过），**结论是保留正式 meta prompt，主题体不是必需**；主题体的优势只体现在 stage 1 收敛速度，单发不足以定量。规格体额外暴露的"节点自己写根目录契约文件"是与 host 组装重叠的责任，需在契约里二选一。
