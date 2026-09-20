@@ -2,7 +2,8 @@
 """Logging-only diagnostic patch for AI-Scientist-v2 BFTS (no behavior change).
 
 Writes, under <cwd>/prompt_logs/ :
-  step_<k>_memory.md          the Memory summary generated at the start of step k
+  <stage>_step_<k>_memory.md  the Memory summary generated at the start of step k of that stage
+                              (stage prefix added 2026-09-20: without it, stage 2 overwrote stage 1's files)
   q_<n>_<kind>_<pid>.md       every compiled prompt sent through
                               MinimalAgent.plan_and_code_query / ParallelAgent.plan_and_code_query
                               (kind = draft | debug | improve | other, inferred from prompt keys)
@@ -60,9 +61,10 @@ def _pl_log_prompt(prompt, completion_text):
         pass
 
 
-def _pl_log_memory(step_index, memory_summary):
+def _pl_log_memory(step_index, memory_summary, stage_name=None):
     try:
-        with open(_pl_os.path.join(_pl_dir(), f"step_{step_index:03d}_memory.md"), "w", encoding="utf-8") as f:
+        tag = (str(stage_name)[:12] + "_") if stage_name else ""
+        with open(_pl_os.path.join(_pl_dir(), f"{tag}step_{step_index:03d}_memory.md"), "w", encoding="utf-8") as f:
             f.write(memory_summary if isinstance(memory_summary, str) else repr(memory_summary))
     except Exception:
         pass
@@ -85,7 +87,7 @@ M_OLD = (
     "            memory_summary = self.journal.generate_summary(include_code=False)\n"
 )
 M_NEW = M_OLD + (
-    "        _pl_log_memory(len(self.journal.nodes), memory_summary)  # " + MARK + "\n"
+    "        _pl_log_memory(len(self.journal.nodes), memory_summary, getattr(self, \"stage_name\", None))  # " + MARK + "\n"
 )
 
 
