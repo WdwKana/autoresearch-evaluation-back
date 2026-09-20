@@ -310,3 +310,9 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 - 20 个节点里 **19 个自己生成小随机 MLP**（如 8×32、12×…）做合成原型，只有 1 个（n15）用参考加载器读真实记录，但因 `np.erf` 在 NumPy 2.x 不存在而崩溃。psydef 上 loader 从第 1 个节点起就被用；ARC 上"随机初始化 MLP"这一任务定义本身让"自己造数据"成为最自然的 stage 1 原型，参考加载器通道没有被采用。
 - luna 判 buggy 的理由高度集中：估计器没有可训练参数，但 02 原生 stage 1 实现指南要求逐 epoch 打印训练/验证损失，节点于是写了空转的 epoch 循环，被反复指为"假 epoch"；其次是"没有实现提供的 ARC 套件"（用合成小网络）、rank 选择用验证集或各 rank 结果相同、decay ratio 定义误导。
 - 结论：主题体 + 参考加载器这条路在 ARC 上没有复现 psydef 的结果。ARC 暴露了两个 psydef 不会触发的冲突：(a) 02 原生"训练循环/epoch 指标"硬要求 vs 无训练的估计问题；(b) 任务定义里的"随机 MLP"使合成原型比真实记录更自然，stage 1 不会自发走向参考数据。两者都是框架认知/阶段目标层面的，按当前约束不改。
+
+### TDC 主题体臂（设计与离线链路验证，2026-09-20 23:4x UTC）
+
+与 psydef/ARC 同构:主题体 `tdc_admet_tox_native.md`(三端点毒性、scaffold split、macro AUROC、CPU/无 RDKit)+ 参考模块 `tdc_reference_v1.py`(仅 load_split / validation_score(官方验证 scorer, 写 working/<name>.validation_metrics.json) / test_predictions(写 working/<name>.test_predictions.csv))经 `--add_dataset_ref` 槽注入;阶段 20/6/6/2;CPU 4 核 16 GiB。host 组装 `assemble_tdc.py`:复现各阶段 best_solution(离线容器,无网),实验 = 每阶段 best_solution 中验证 macro AUROC 最高的配置;选择 = 验证 macro AUROC 最高的实验(契约规则,校验器强制);契约包(runs/<run_id>/{config,validation_predictions,metrics,train.log,runfile}、predictions.csv、environment.json、experiment_trace.json 含 claim 账本、paper.md 表格带 claim 标记、final_report.md、logs/)全部由事实渲染;score.json 由 host 隐藏标签 scorer 在 framework 阶段审计通过后写。隐藏标签从不进容器。
+离线链路测试(两份玩具 best_solution,字符 n-gram + 逻辑回归):framework 审计 passed(2 实验、8 claims、8 个表格数值核对)、host 隐藏标签打分 main_score 0.7951、final 审计 passed。
+已知张力:节点内部会给多个配置打验证分,契约要求 candidate_count=1;trace 每条实验只记该节点的最优配置,其余配置名如实记在 config.json 的 other_configurations_scored_by_this_node。
