@@ -369,3 +369,9 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 - 4 个实验 = 各阶段 best_solution 的最优配置(验证 macro AUROC:stage1 gated 0.7971、stage2 independent_bs64_lr0_01 0.8395、stage3 independent 0.8039、stage4 gated 0.8052);选择 = 验证最高的 stage 2(契约规则)。framework 审计 passed(4 实验、16 claims、16 个表格数值核对)、**隐藏标签 main_score 0.7949**(AMES 0.7776 / hERG 0.7642 / DILI 0.8430)、final 审计 passed。
 - 对比:9 月 18 日正式 TDC 02×luna 的榜单分 0.6311(那批带 26 分钟/节点的线程超额缺陷,且是节点自己写根目录契约文件的路线)。
 - 事实补充:四个阶段的 best_solution 都是框架判 buggy 的节点(选择在全部节点里做),各阶段的通过节点是 stage 1 第 16 个节点及其带入;按用户口径(实验不要求非 buggy)计入,trace 的 `framework_verdict_is_buggy` 字段如实记录。
+
+#### ARC rep 3(CPU,v2)中途观察(40 分钟)
+
+- **stage 1 第 3 个节点通过**(4 节点:1 崩溃、2 判 buggy、1 通过),**4/4 节点用参考模块读真实记录**(rep 1 为 1/20);stage 2 7 节点全部真实记录、估计器全部可提交,带入节点通过;stage 3 进行中。按预注册规则落在第二档:节点转向真实记录且有节点通过 → 主因是 A/C 冲突 + 真实数据无必要性,(i)+(ii) 足够。
+- B(逐 epoch 训练指标)的表现:通过节点 n3 引入了一个"输入方差校准标量",用 3 轮坐标搜索选取,每轮记录训练/验证损失 —— 即节点用一个真实(虽小)的学习环节满足了 B,luna 接受;stage 2 里把网格搜索包装成 epoch/优化器的节点仍被判"epoch 无效"。B 是持续的压力(把方法推向"可校准"的形态),但不再是阻断。
+- 参考模块边角:n1 自己先把估计器写到 `working/<name>.estimator.py` 再把该路径传给 local_validation,copy 到同一路径触发 SameFileError;已在 v2 中改为同路径跳过复制(rep 3 用的仍是发出时的副本)。

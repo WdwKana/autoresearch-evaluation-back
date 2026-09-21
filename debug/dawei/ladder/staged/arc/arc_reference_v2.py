@@ -229,7 +229,8 @@ def local_validation(name, estimator, records=None):
     packaged = os.path.join(WORKING_DIR, f"{safe}.estimator.py")
     package_note = ""
     if isinstance(estimator, str):
-        shutil.copy(estimator, packaged)
+        if os.path.abspath(estimator) != os.path.abspath(packaged):   # a script may already have written the packaged path itself
+            shutil.copy(estimator, packaged)
         ns = {"__name__": "estimator_file"}
         exec(compile(open(packaged, encoding="utf-8").read(), packaged, "exec"), ns)
         est = ns["Estimator"]()
