@@ -16,12 +16,12 @@ WS=$RUN/workspace; INP=$RUN/inputs
 mkdir -p "$WS" "$RUN/logs" "$INP"
 rsync -a --exclude .git --exclude experiments --exclude "ai_scientist/ideas/my_research_topic.md" --exclude "ai_scientist/ideas/topic2_topic.md" "$PUB/AI-Scientist-v2/" "$WS/"
 mkdir -p "$WS/real_eval/adapters/ai_scientist_v2" "$WS/real_eval/adapters/tdc_admet_tox" "$WS/tier" "$WS/automation" "$WS/data"
-cp "$PUB/real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_prompt_logging.py" "$WS/real_eval/adapters/ai_scientist_v2/"
+cp "$PUB/real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_ideation_tolerant_parser.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py" "$PUB/real_eval/adapters/ai_scientist_v2/patch_prompt_logging.py" "$WS/real_eval/adapters/ai_scientist_v2/"
 cp "$PUB/real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py" "$WS/real_eval/adapters/tdc_admet_tox/"
 cp "$SP/tier/tier_apply.py" "$WS/tier/"
 python3 "$SP/tier/tier_build.py" 0 "$REP" "$WS" "$PUB" >/dev/null
 python3 - "$WS/tier/tier.json" "$TAG" <<'PY'
-import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-spec",model_tag=sys.argv[2],use_ideation_contract=True,ideation_patches="action-format label normalization, MAX_NUM_TOKENS 16384, up to 3 ideation attempts (production psydef wrapper)",thread_caps=8,topic_input="psydefdetect_topic.md (production spec) + ideation contract paragraph + hf_dataset_reference.py (loader v2, --add_dataset_ref)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_psydef.py)"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
+import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-spec",model_tag=sys.argv[2],use_ideation_contract=True,ideation_patches="action-format label normalization, tolerant parser (multi-block replies, trailing prose, surplus idea wrapper), MAX_NUM_TOKENS 16384, up to 3 ideation attempts (production psydef wrapper)",thread_caps=8,topic_input="psydefdetect_topic.md (production spec) + ideation contract paragraph + hf_dataset_reference.py (loader v2, --add_dataset_ref)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_psydef.py)"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 python3 "$PUB/automation/scripts/generate_psydefdetect_native_inputs.py" --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" --contract-file "$PUB/automation/psydefdetect_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
@@ -43,6 +43,7 @@ set -euo pipefail
 echo "CONTROL_E2E_SPEC model=$OPENAI_MODEL"
 python3 tier/tier_apply.py
 python3 real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py
+python3 real_eval/adapters/ai_scientist_v2/patch_ideation_tolerant_parser.py
 python3 - <<PY
 from pathlib import Path
 llm = Path("ai_scientist/llm.py"); text = llm.read_text(encoding="utf-8")

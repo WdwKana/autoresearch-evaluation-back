@@ -334,3 +334,7 @@ launcher `launch_e2e_spec_model.sh <rep> <tag> <provider_env>`:与 luna 规格�
 - **deepseek-v4-flash**(`control_e2espec_rep1_psydef02_ds_20260921_163524`):ideation 第 1 次就存了 2 个 idea,但 idea 0 的 FinalizeIdea 参数多套了一层 `{"idea": {"idea": {...}}}`,存下来的是 `{"idea": {...}}`,没有 Name/Title 顶层键;idea 1 是合规的。上游 `launch_scientist_bfts.py` 直接取 `idea['Name']`,idea 0 会崩;我的 launcher 映射 research_idea.json 时先崩在同一处(KeyError 'Title')。是模型输出格式问题,不是我的映射独有。
 - **kimi-k2.6**(`control_e2espec_rep1_psydef02_kimi_20260921_163544`):3 次 ideation 全部 "Stored 0 ideas"。kimi 每次回复把多个 ACTION/ARGUMENTS 块批量写在一条里(几次 SearchSemanticScholar 后接 FinalizeIdea),上游正则 `ARGUMENTS:\s*(.*?)(?:$|\nTHOUGHT:|\n$)` 取到第一个 ARGUMENTS 之后的全部文本,json.loads 报 "Extra data",整个反思循环中止。3/3 系统性复现;上游 prompt 只写 "Respond in the following format: ACTION/ARGUMENTS",没有明说每条回复一个动作。
 - 两者都是上游 ideation 对回复格式零容错(任一条不可解析即丢弃整轮)与这两个模型格式习惯的冲突,与 9 月 19 日 ds 系列 ideation 失败同类。luna 未触发。未做 host 修复,等待决定。
+
+#### 决定(用户):加兼容解析器 → `real_eval/adapters/ai_scientist_v2/patch_ideation_tolerant_parser.py`
+
+只改解析,不改 prompt、不改判官、不改任何决策:一条回复里的多个 ACTION/ARGUMENTS 块按模型写的顺序依次执行(同一回复的工具结果拼接后回填);JSON 之后的多余文字忽略;FinalizeIdea 多套的一层 `idea` 剥掉;仍然非法的 JSON 与上游一样丢弃整个提案。幂等,锚点找不到即报错;与标签归一化补丁任一顺序兼容。离线仿真 7 例通过(kimi 批量块、ds 嵌套、单动作 + 围栏 JSON + 结果回填、markdown 标签 + 批量、非法 JSON 仍中止、5 轮纯检索仍不存、空 idea 仍拒绝;`debug/dawei/ladder/staged/ideation_tolerant_parser_test.py`,在运行镜像内跑)。已接入 `launch_e2e_spec_model.sh`;正式 psydef wrapper 未接(待团队决定)。
