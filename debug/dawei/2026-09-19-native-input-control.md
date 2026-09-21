@@ -357,3 +357,7 @@ rep 2 只改两处:`arc_reference_v2.py`(`load_records()` 默认 20 条训练记
 离线验证:参考模块在运行镜像内测过对象/类/路径/不可打包依赖/scipy 依赖五种情形;完整链路(两份 numpy-only 的矩传播 best_solution → 组装 → whest 官方打分 9.98e-05 → host 校验)通过。发现并记入 docstring 的事实:whest 环境无 scipy;权重以 flopscope 数组传入,np.vectorize 会报 NotImplemented。
 预注册判读:节点转向真实记录但仍因假 epoch 判 buggy → B 是剩余根因;转向真实记录且有节点通过 → 主因是 A/C 冲突 + 真实数据无必要性;仍不用真实记录 → (i)+(ii) 不够。
 - rep 2(`control_e2earc_rep2_arc02_luna_20260921_182113`)发出 2 分钟后发现 GPU 5 被其他租户占用(16 GB、87% 利用率,host nvidia-smi 因 PID 命名空间看不到进程),按"GPU 忙则 CPU-only"的约定按 pid 停掉(目录保留,state=aborted_gpu_busy),以 **rep 3 CPU-only** 重发(`ARC_GPU=none`:不挂 GPU、CUDA_VISIBLE_DEVICES 置空;组装复现同样 CPU)。与 rep 1 的差别只多了"无 GPU":rep 1 的 20 个节点全是 numpy/秒级,GPU 未被实质使用。
+
+#### deepseek-v4-flash rep 3:VLM 图表反馈步骤改用 gpt-5.6-luna(用户决定)
+
+launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门),ideation、代码、判官、汇总仍是 deepseek-v4-flash;tier.json 与 state.json 记录 `vlm_model_override`。这是混合模型条件,测评口径上要单独标注。rep 3 = `control_e2espec_rep3_psydef02_ds_*`。
