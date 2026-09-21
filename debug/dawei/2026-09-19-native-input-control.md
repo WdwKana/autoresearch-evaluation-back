@@ -368,3 +368,4 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 - 组装第一次崩在我的 paper 渲染(idea 的 Risk Factors 字段是列表,`"\n".join` 报 TypeError);修复后在 host 重跑确定性步骤(组装 → framework 审计 → 隐藏标签打分 → final 审计),不触碰框架产物。
 - 4 个实验 = 各阶段 best_solution 的最优配置(验证 macro AUROC:stage1 gated 0.7971、stage2 independent_bs64_lr0_01 0.8395、stage3 independent 0.8039、stage4 gated 0.8052);选择 = 验证最高的 stage 2(契约规则)。framework 审计 passed(4 实验、16 claims、16 个表格数值核对)、**隐藏标签 main_score 0.7949**(AMES 0.7776 / hERG 0.7642 / DILI 0.8430)、final 审计 passed。
 - 对比:9 月 18 日正式 TDC 02×luna 的榜单分 0.6311(那批带 26 分钟/节点的线程超额缺陷,且是节点自己写根目录契约文件的路线)。
+- 事实补充:四个阶段的 best_solution 都是框架判 buggy 的节点(选择在全部节点里做),各阶段的通过节点是 stage 1 第 16 个节点及其带入;按用户口径(实验不要求非 buggy)计入,trace 的 `framework_verdict_is_buggy` 字段如实记录。
