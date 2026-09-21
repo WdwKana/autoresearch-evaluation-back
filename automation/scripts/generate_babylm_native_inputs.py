@@ -73,7 +73,27 @@ The framework owns the hypothesis, algorithm family, feature representation, arc
 """
 
 
+def _actual_domains(dataset_root: Path) -> list[str]:
+    """Domain names read from the materialized dataset (one ``<domain>.train.txt`` per domain).
+
+    The hard-coded list this replaced (bnc_spoken, childes, gutenberg, open_subtitles,
+    simple_wiki, switchboard) did not match the shipped files; AI-Scientist-v2 nodes
+    build file paths from the topic text without listing the directory, so a wrong
+    name there makes them fall back to synthetic data (2026-09-21).
+    """
+    try:
+        return sorted(path.name[: -len(".train.txt")] for path in Path(dataset_root).glob("*.train.txt"))
+    except OSError:
+        return []
+
+
 def render_ai_scientist_topic(dataset_root: Path, contract_file: Path, primary_model: str) -> str:
+    domains = _actual_domains(dataset_root)
+    domain_line = (
+        f"- {len(domains)} text domains, one `<domain>.train.txt` file each: {', '.join(domains)}"
+        if domains
+        else "- text domains: one `<domain>.train.txt` file per domain under the dataset root (list the directory)"
+    )
     return f"""# Title
 {TOPIC_LABEL}: Word-Level Language Modeling Benchmark
 
@@ -82,7 +102,7 @@ Build a reproducible BabyLM Strict-Small word-level language modeling workflow t
 
 # Dataset
 - standardized local dataset root: {dataset_root}
-- 6 text domains: bnc_spoken, childes, gutenberg, open_subtitles, simple_wiki, switchboard
+{domain_line}
 
 # Contract
 - topic label: {TOPIC_LABEL}

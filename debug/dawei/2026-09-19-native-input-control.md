@@ -405,3 +405,7 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 - 上游无 400 重试,且 APIStatusError 在 worker → 主进程的 pickle 中失败(缺 response/body),BrokenProcessPool,整条运行退出。
 - 修复(基础设施层,`patch_ai_scientist_v2_common.py`):chat shim 对含 reasoning_effort 的拒绝按 provider 指示改 reasoning_effort='none' 重试;并把 backend_openai 的 `backoff_create(client.chat.completions.create, …)` 也路由过 shim(wrapper 的文本替换只覆盖 `client.chat.completions.create(` 调用点,这里传的是绑定方法,原本绕过了 shim)。假客户端离线测试通过。rep 3 重发。
 - 另一个事实:3 个节点里 2 个按正式 topic 的域名列表(bnc_spoken, childes, gutenberg, open_subtitles, simple_wiki, switchboard)去找文件,实际文件是 aochildes/bnc_spoken/cbt/children_stories/gutenberg/open_subtitles/qed/simple_wikipedia/switchboard/wikipedia,找不到就"Real corpus unavailable"回退合成。正式 topic(以及各框架共用的 shared summary)的数据事实是错的,待用户决定是否修生成脚本。
+
+#### 修复(用户决定,仅针对 02):BabyLM 02 topic 的域列表改为从数据目录实际读取
+
+`generate_babylm_native_inputs.py` 的 `render_ai_scientist_topic` 不再硬编码 "6 text domains: bnc_spoken, childes, gutenberg, open_subtitles, simple_wiki, switchboard",改为生成时 glob 数据根目录下的 `*.train.txt`(现为 10 个:aochildes, bnc_spoken, cbt, children_stories, gutenberg, open_subtitles, qed, simple_wikipedia, switchboard, wikipedia);目录不可读时改为提示"列目录"。原因:02 的 BFTS 节点按 topic 文本拼文件路径、不列目录,错名字直接导致回退合成;01 的输入里没有这份列表且其 agent 会自己列目录,所以 01 不受影响。shared summary(其他框架的 brief)与契约里的"6 个文件"未改,待团队定。rep 3 发在修复之前,仍用旧 topic;从 rep 4 起生效。
