@@ -426,3 +426,8 @@ rep 3 的 16 个节点按判词分类:旧 topic "6 个域" vs 实际 10 个文�
 #### 发现:launcher 的 4 小时上限只作用于 docker 客户端,容器不会停
 
 psydef × ds rep 3 于 18:28 启动,`timeout 14400s docker run` 在 22:28 向 docker 客户端发了 SIGTERM,客户端把信号转给容器里的 `bash -lc`,bash 等前台 python 结束才退出 —— 容器与 BFTS 继续跑,launcher 也一直等。之前所有运行都自然结束,所以没暴露。修法:各 launcher 加看门狗子进程,到期 `docker stop -t 30 $NAME`,native 结束后撤销看门狗。对正在跑的 psydef ds rep 3 不追加干预(用户本就要求给 DS 更多时间),让它自然结束。
+
+#### 资源统一(用户决定,2026-09-21 23:0x UTC):CPU 上限统一为 32 核(psydef / ARC / TDC),BabyLM(GPU)16 核;线程上限 = 核数;未设内存上限的 launcher 加 64 GiB
+
+参照 TDC × luna rep 2 的 32 核。主机 384 核、负载约 85,并发 ≤ 5 时 5×32 = 160 核有余量;64 核在 5 并发下会到 320,过近。只影响之后的发射,在跑的容器不变(torch 线程数在进程启动时已定,动态调核数也无益)。
+ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别名)同此提交快照。

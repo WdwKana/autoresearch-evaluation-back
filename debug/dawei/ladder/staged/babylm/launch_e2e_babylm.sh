@@ -40,9 +40,9 @@ json.dump({"project_id":"control_e2ebabylm_babylm02_"+sys.argv[3],"phase":"diagn
 PY
 set +e
 ( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-babylm] time cap reached: container stopped" ) & WATCHDOG=$!
-timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 8 --shm-size 16g \
+timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 16 --memory 64g --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/BabyLM-2026-Strict-Small:ro" -v "$DATA:$DATA:ro" -v "$PUB/automation/babylm_contract.md:$PUB/automation/babylm_contract.md:ro" -v "$PUB/automation/babylm_contract.md:/input/babylm_contract.md:ro" --env-file "$PROVIDER_ENV" \
-  -e EXPECTED_GPU_UUID="$EXPECTED_GPU_UUID" -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
+  -e EXPECTED_GPU_UUID="$EXPECTED_GPU_UUID" -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=16 -e MKL_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16 -e TORCH_NUM_THREADS=16 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
 set -euo pipefail
 echo "CONTROL_E2E_BABYLM model=$OPENAI_MODEL"

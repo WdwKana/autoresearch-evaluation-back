@@ -175,7 +175,8 @@ def _package_source(estimator_cls):
     ordered = [needed[k] for k in sorted(needed, key=lambda k: (not k[0], k[1]))]   # imports first, then in file order
     parts = ["# packaged by the reference module from the experiment script\n"] + ordered + ["\n", class_src]
     if estimator_cls.__name__ != "Estimator":
-        parts.append(f"\n\nEstimator = {estimator_cls.__name__}\n")
+        # the official scorer looks for a class named Estimator: define it as a subclass
+        parts.append(f"\n\nclass Estimator({estimator_cls.__name__}):\n    pass\n")
     return "".join(parts)
 
 

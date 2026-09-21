@@ -40,9 +40,9 @@ PY
 set +e
 GPU_ARGS=(); CUDA_ENV=(); if [ "$GPU" = "none" ]; then CUDA_ENV=(-e CUDA_VISIBLE_DEVICES=); else GPU_ARGS=(--gpus "device=$GPU"); fi
 ( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-arc] time cap reached: container stopped" ) & WATCHDOG=$!
-timeout 14400s docker run --rm --name "$NAME" "${GPU_ARGS[@]}" "${CUDA_ENV[@]}" --cpus 8 --shm-size 16g \
+timeout 14400s docker run --rm --name "$NAME" "${GPU_ARGS[@]}" "${CUDA_ENV[@]}" --cpus 32 --memory 64g --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/arc_wbe_2026:ro" --env-file "$PROVIDER_ENV" \
-  -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
+  -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
 set -euo pipefail
 echo "CONTROL_E2E_ARC model=$OPENAI_MODEL gpu=$(nvidia-smi -L 2>/dev/null | head -1) cuda_visible=${CUDA_VISIBLE_DEVICES-unset}"

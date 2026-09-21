@@ -37,9 +37,9 @@ json.dump({"project_id":"control_e2espec_psydef02_"+sys.argv[3],"phase":"diagnos
 PY
 set +e
 ( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e] time cap reached: container stopped" ) & WATCHDOG=$!
-timeout 14400s docker run --rm --name "$NAME" --cpus 8 --shm-size 8g \
+timeout 14400s docker run --rm --name "$NAME" --cpus 32 --memory 64g --shm-size 8g \
   -v "$WS":/workspace -w /workspace -v "$PUB/data/psydefdetect:/data/psydefdetect:ro" --env-file "$PROVIDER_ENV" \
-  -e HF_ENDPOINT=https://hf-mirror.com -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e CUDA_VISIBLE_DEVICES= -e PROMPT_LOG_DIR=/workspace/prompt_logs \
+  -e HF_ENDPOINT=https://hf-mirror.com -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e CUDA_VISIBLE_DEVICES= -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
 set -euo pipefail
 echo "CONTROL_E2E_SPEC model=$OPENAI_MODEL"
