@@ -328,3 +328,9 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 
 决定(用户):后续用规格臂(正式 meta prompt)跑,主题臂留作诊断。理由:两臂效果无差异;meta eval 测的是框架消化规格的能力,各框架同一输入;起作用的是分阶段路线而非臂;规格里"程序自己写根目录契约文件"一段的责任重叠另行决定,这一轮不改规格文本。
 launcher `launch_e2e_spec_model.sh <rep> <tag> <provider_env>`:与 luna 规格臂完全相同的输入、阶段(20/6/6/2)、组装、校验,另加正式 psydef wrapper 的 ideation 补丁(标签归一化、MAX_NUM_TOKENS 16384、ideation 最多 3 次;luna 未触发,ds 此前全踩过)和线程上限(OMP/MKL/OPENBLAS/TORCH_NUM_THREADS=8,与 --cpus 8 一致)。provider env 复用最近的 ds / kimi 文件(同一 key 与 base URL,仅 OPENAI_MODEL 不同),发前各做了 1 token 连通检查。
+
+#### 结果:两发都在 ideation 阶段失败,未进入 BFTS
+
+- **deepseek-v4-flash**(`control_e2espec_rep1_psydef02_ds_20260921_163524`):ideation 第 1 次就存了 2 个 idea,但 idea 0 的 FinalizeIdea 参数多套了一层 `{"idea": {"idea": {...}}}`,存下来的是 `{"idea": {...}}`,没有 Name/Title 顶层键;idea 1 是合规的。上游 `launch_scientist_bfts.py` 直接取 `idea['Name']`,idea 0 会崩;我的 launcher 映射 research_idea.json 时先崩在同一处(KeyError 'Title')。是模型输出格式问题,不是我的映射独有。
+- **kimi-k2.6**(`control_e2espec_rep1_psydef02_kimi_20260921_163544`):3 次 ideation 全部 "Stored 0 ideas"。kimi 每次回复把多个 ACTION/ARGUMENTS 块批量写在一条里(几次 SearchSemanticScholar 后接 FinalizeIdea),上游正则 `ARGUMENTS:\s*(.*?)(?:$|\nTHOUGHT:|\n$)` 取到第一个 ARGUMENTS 之后的全部文本,json.loads 报 "Extra data",整个反思循环中止。3/3 系统性复现;上游 prompt 只写 "Respond in the following format: ACTION/ARGUMENTS",没有明说每条回复一个动作。
+- 两者都是上游 ideation 对回复格式零容错(任一条不可解析即丢弃整轮)与这两个模型格式习惯的冲突,与 9 月 19 日 ds 系列 ideation 失败同类。luna 未触发。未做 host 修复,等待决定。
