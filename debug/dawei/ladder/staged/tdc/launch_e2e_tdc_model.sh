@@ -67,7 +67,7 @@ PY
 for ideation_attempt in 1 2 3; do
   rm -f ai_scientist/ideas/tdc_admet_tox_topic.json
   timeout 1800s python ai_scientist/perform_ideation_temp_free.py --workshop-file ai_scientist/ideas/tdc_admet_tox_topic.md --model "$OPENAI_MODEL" --max-num-generations 2 --num-reflections 5 || true
-  if python3 -c "import json,sys; d=json.load(open('ai_scientist/ideas/tdc_admet_tox_topic.json')); sys.exit(0 if isinstance(d, list) and d else 1)" 2>/dev/null; then echo "IDEATION_OK attempt $ideation_attempt"; break; fi
+  if python3 -c "import json,sys; d=json.load(open('"'"'ai_scientist/ideas/tdc_admet_tox_topic.json'"'"')); sys.exit(0 if isinstance(d, list) and d else 1)" 2>/dev/null; then echo "IDEATION_OK attempt $ideation_attempt"; break; fi
   echo "IDEATION_EMPTY attempt $ideation_attempt"
 done
 test -s ai_scientist/ideas/tdc_admet_tox_topic.json

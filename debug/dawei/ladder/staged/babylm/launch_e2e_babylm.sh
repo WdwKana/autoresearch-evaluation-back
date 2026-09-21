@@ -28,7 +28,7 @@ python3 - "$WS/tier/tier.json" "$TAG" "$VLM_MODEL" "$GPU" <<'PY'
 import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-babylm-spec",model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),gpu=sys.argv[4],stage_iters="12/4/4/2",ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="babylm_topic.md (production spec, generate_babylm_native_inputs.py) + hf_dataset_reference.py (babylm_reference_v1: corpus loader, default split, word-level perplexity, submission keeper)",data_mounted=True,stages_open="1-4 (12/4/4/2)",assembly="host deterministic (assemble_babylm.py) + run_babylm_score.py"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
-python3 "$PUB/automation/scripts/generate_babylm_native_inputs.py" --output-root "$INP" --dataset-root /data/BabyLM-2026-Strict-Small --contract-file /input/babylm_contract.md --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
+python3 "$PUB/automation/scripts/generate_babylm_native_inputs.py" --output-root "$INP" --dataset-root "$DATA" --contract-file "$PUB/automation/babylm_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/babylm_topic.md" "$WS/ai_scientist/ideas/babylm_topic.md"
 ln -sfn /data/BabyLM-2026-Strict-Small "$WS/data/BabyLM-2026-Strict-Small"
 cp "$SP/staged/babylm/babylm_reference_v1.py" "$WS/hf_dataset_reference.py"
@@ -40,7 +40,7 @@ json.dump({"project_id":"control_e2ebabylm_babylm02_"+sys.argv[3],"phase":"diagn
 PY
 set +e
 timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 8 --shm-size 16g \
-  -v "$WS":/workspace -w /workspace -v "$DATA:/data/BabyLM-2026-Strict-Small:ro" -v "$PUB/automation/babylm_contract.md:/input/babylm_contract.md:ro" --env-file "$PROVIDER_ENV" \
+  -v "$WS":/workspace -w /workspace -v "$DATA:/data/BabyLM-2026-Strict-Small:ro" -v "$DATA:$DATA:ro" -v "$PUB/automation/babylm_contract.md:$PUB/automation/babylm_contract.md:ro" -v "$PUB/automation/babylm_contract.md:/input/babylm_contract.md:ro" --env-file "$PROVIDER_ENV" \
   -e EXPECTED_GPU_UUID="$EXPECTED_GPU_UUID" -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
 set -euo pipefail
