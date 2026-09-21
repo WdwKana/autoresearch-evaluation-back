@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BabyLM 端到端(诊断,不进计分板):babylm × 02 × <model>,规格体路线(正式 babylm_topic.md 由 generate_babylm_native_inputs.py 生成)。
-#   参考模块 babylm_reference_v1 走 --add_dataset_ref 槽;BFTS stage 1-4(12/4/4/2,单节点上限 3600 s)在 GPU $BABYLM_GPU(默认 1)上,启动时校验容器只看到该卡;
+#   参考模块 babylm_reference_v2 走 --add_dataset_ref 槽;BFTS stage 1-4(20/6/6/2,单节点上限 3600 s)在 GPU $BABYLM_GPU(默认 1)上,启动时校验容器只看到该卡;
 #   容器退出 -> host 组装(复现各阶段 best_solution 于同一 GPU,选最低词级验证困惑度,submission/、trace、报告)
 #   -> host 打分(run_babylm_score.py,读 trace)-> host 校验(从 babylm runner 逐行抽出)。
 # 用法: launch_e2e_babylm.sh <rep> <tag> <provider_env>   (可选 VLM_MODEL=... 只覆盖图表反馈模型)
@@ -25,18 +25,18 @@ cp "$PUB/real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py" "$WS/real_ev
 cp "$SP/tier/tier_apply.py" "$WS/tier/"
 python3 "$SP/tier/tier_build.py" 0 "$REP" "$WS" "$PUB" >/dev/null
 python3 - "$WS/tier/tier.json" "$TAG" "$VLM_MODEL" "$GPU" <<'PY'
-import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-babylm-spec",model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),gpu=sys.argv[4],stage_iters="12/4/4/2",ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="babylm_topic.md (production spec, generate_babylm_native_inputs.py) + hf_dataset_reference.py (babylm_reference_v1: corpus loader, default split, word-level perplexity, submission keeper)",data_mounted=True,stages_open="1-4 (12/4/4/2)",assembly="host deterministic (assemble_babylm.py) + run_babylm_score.py"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
+import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-babylm-spec",model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),gpu=sys.argv[4],stage_iters="20/6/6/2",ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="babylm_topic.md (production spec, generate_babylm_native_inputs.py) + hf_dataset_reference.py (babylm_reference_v2: corpus loader, fixed validation lines evaluated inside official_validation(name, nll_fn), word-level perplexity, submission keeper)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_babylm.py) + run_babylm_score.py"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 python3 "$PUB/automation/scripts/generate_babylm_native_inputs.py" --output-root "$INP" --dataset-root "$DATA" --contract-file "$PUB/automation/babylm_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/babylm_topic.md" "$WS/ai_scientist/ideas/babylm_topic.md"
 ln -sfn /data/BabyLM-2026-Strict-Small "$WS/data/BabyLM-2026-Strict-Small"
-cp "$SP/staged/babylm/babylm_reference_v1.py" "$WS/hf_dataset_reference.py"
-cp "$SP/staged/babylm/launch_e2e_babylm.sh" "$SP/staged/babylm/assemble_babylm.py" "$SP/staged/babylm/babylm_host_validate.py" "$SP/staged/babylm/babylm_reference_v1.py" "$WS/ai_scientist/ideas/babylm_topic.md" "$SP/tier/tier_apply.py" "$PUB/automation/babylm_contract.md" "$RUN/"
+cp "$SP/staged/babylm/babylm_reference_v2.py" "$WS/hf_dataset_reference.py"
+cp "$SP/staged/babylm/launch_e2e_babylm.sh" "$SP/staged/babylm/assemble_babylm.py" "$SP/staged/babylm/babylm_host_validate.py" "$SP/staged/babylm/babylm_reference_v2.py" "$WS/ai_scientist/ideas/babylm_topic.md" "$SP/tier/tier_apply.py" "$PUB/automation/babylm_contract.md" "$RUN/"
 echo "$RUN" > "$SP/current_e2ebabylm_${TAG}"; NAME=control_e2ebabylm_${TAG}_rep${REP}_${TS}; echo "$NAME" > "$SP/current_e2ebabylm_${TAG}_container"
 python3 - "$RUN/state.json" "$REP" "$TAG" "$VLM_MODEL" "$GPU" <<'PY'
 import json,sys,datetime
-json.dump({"project_id":"control_e2ebabylm_babylm02_"+sys.argv[3],"phase":"diagnostic","status":"running","summary":f"BabyLM end-to-end SPEC arm rep {sys.argv[2]} model={sys.argv[3]} vlm_override={sys.argv[4] or 'none'}: production spec topic, reference loader via dataset-reference slot, stages 1-4 (12/4/4/2) on GPU {sys.argv[5]}, host deterministic assembly + run_babylm_score + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
+json.dump({"project_id":"control_e2ebabylm_babylm02_"+sys.argv[3],"phase":"diagnostic","status":"running","summary":f"BabyLM end-to-end SPEC arm rep {sys.argv[2]} model={sys.argv[3]} vlm_override={sys.argv[4] or 'none'}: production spec topic, reference loader via dataset-reference slot, stages 1-4 (20/6/6/2) on GPU {sys.argv[5]}, host deterministic assembly + run_babylm_score + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
 PY
 set +e
 timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 8 --shm-size 16g \
@@ -61,10 +61,10 @@ PY
 python3 - <<PY
 import yaml, os
 p="bfts_config.yaml"; c=yaml.safe_load(open(p))
-c["agent"]["stages"].update({"stage1_max_iters":12,"stage2_max_iters":4,"stage3_max_iters":4,"stage4_max_iters":2})
+c["agent"]["stages"].update({"stage1_max_iters":20,"stage2_max_iters":6,"stage3_max_iters":6,"stage4_max_iters":2})
 c["agent"]["multi_seed_eval"]["num_seeds"]=1
 if os.environ.get("VLM_MODEL"): c["agent"]["vlm_feedback"]["model"]=os.environ["VLM_MODEL"]; print("VLM (plot feedback) model override:", c["agent"]["vlm_feedback"]["model"])
-yaml.safe_dump(c,open(p,"w"),sort_keys=False); print("stage iters 12/4/4/2, exec timeout", c["exec"]["timeout"], ", num_seeds 1, generate_report", c.get("generate_report"))
+yaml.safe_dump(c,open(p,"w"),sort_keys=False); print("stage iters 20/6/6/2, exec timeout", c["exec"]["timeout"], ", num_seeds 1, generate_report", c.get("generate_report"))
 PY
 for ideation_attempt in 1 2 3; do
   rm -f ai_scientist/ideas/babylm_topic.json

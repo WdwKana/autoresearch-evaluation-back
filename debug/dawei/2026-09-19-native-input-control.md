@@ -393,3 +393,8 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 - 12 个节点:4 个崩溃(CUDA OOM、TypeError、KeyError、代码围栏),8 个跑通判 buggy。判词分两类:**A/C 冲突的 BabyLM 形态**(4 个):只取每域前 600 / 2500 行、自定义 20% 切分、甚至 500 行合成语料 —— "use a simple dataset" 在文本任务上变成子采样,luna 判"不是官方可比的词级困惑度";**实现 bug**(4 个):目标对齐错、NLL 只算活跃目标、稀有词阈值设定与数据不符等。7/12 用了参考模块的 official_validation,只有 2 个用了 default_split。
 - 我把阶段迭代设为 12/4/4/2(其他 topic 是 20/6/6/2),stage 1 的搜索空间比别的 topic 小;这是我的设定,不是框架的。
 - 对照 ARC 的教训:这里真实数据是文本,子采样零成本,"结果只定义在全量语料 + 参考切分上"这一条在正式 topic 里不存在,参考模块也没有把非官方验证集标出来。
+
+#### BabyLM rep 2 设计(用户同意):验证集从节点手里拿走,训练集留给它;stage 迭代恢复 20/6/6/2
+
+`babylm_reference_v2.py`:`official_validation(name, nll_fn)` —— 节点交出 `nll_fn(lines) -> 总 NLL(nats)`,参考模块自己在固定验证行(每域 10%,种子 0,33,583 行、975,273 词)上调用并按词归一化;`training_lines()` 是其余约 30 万行,用全量或子集都行;docstring 明说"结果只定义在固定验证行上,训练数据是你的选择"。与 psydef `official_score(name, id_to_label)` 同构:预测由节点做,评估集由参考模块钉死。正式 topic 不动。离线链路测试:子集训练(5000 行)与全量训练的 unigram 都在同一验证集上得到可比的困惑度(2619 vs 2455),组装、打分、校验通过。
+契约层弱点(记录,不动):BabyLM 的打分只读 trace 里框架自报的困惑度,没有固定评估集与 host 重算,跨框架不可比;我们的组装至少复现 best_solution 并按参考模块定义重算。
