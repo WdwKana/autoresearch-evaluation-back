@@ -348,3 +348,11 @@ launcher `launch_e2e_spec_model.sh <rep> <tag> <provider_env>`:与 luna 规格�
 - **deepseek-v4-flash rep 2**(`control_e2espec_rep2_psydef02_ds_20260921_165225`):ideation 第 1 次成功(2 个 idea);stage 1 20 个节点全部真实数据 + 官方 scorer,**文本判官通过 7 个,第 1 个节点就通过**;但上游 `good_nodes` 要求 `is_buggy is False and is_buggy_plots is False`,VLM 图表门(`agent.vlm_feedback.model` 被适配层设为同一模型)对 5 个通过节点全部回复 "No plots were received"(is_buggy_plots=True),另 2 个为 None;stage 1 因此 20 次迭代耗尽、"Failed to find working implementation",随后上游 overall_summarize 崩溃(仅 1 阶段),原生退出 1,组装 3,校验 1。
 - 直接验证:向 bianxie 的 deepseek-v4-flash 发一张 8×8 红色 PNG 问颜色,返回空内容;kimi-k2.6 同样请求返回 "Red."。即 **该端点的 deepseek-v4-flash 不处理图像**,而 02 的 stage-1 完成条件硬性要求 VLM 确认收到图表。这是 02 的视觉依赖与模型(或中转)能力的不兼容,与判官标准、输入方式无关;9 月 19 日 ds 系列 stage 1 不通过很可能同因(待核对)。
 - **kimi-k2.6 rep 2**(`control_e2espec_rep2_psydef02_kimi_20260921_165245`):解析器起效(两条 5 动作块回复、8 处尾随文字),ideation 第 1 次成功;stage 1 通过 2 个节点(VLM 门 OK),已进入 stage 2。
+
+### ARC 讨论结论与 rep 2 设计（2026-09-21）
+
+苏格拉底式梳理(用户答复):(1) 三条指令冲突 = A 阶段目标"简单数据集/可造合成数据" vs B 实现指南"逐 epoch 训练指标" vs C 判官"忠于任务";(2) 读 stage 1–4 的 prompt 与切换代码:数据/接口的决定只在 stage 1 做一次,stage 2 "不许改架构"、stage 3 在带入代码上 improve(仅此时注入 idea 的 Experiment Plan)、stage 4 "同上一阶段数据集",四阶段内没有"切到真实数据"的动作 → 血统在 stage 1 钉死;用户据此撤回"玩具数据可通过"的判断,选 (a):stage 1 必须在真实数据与接口上通过,只通过输入侧实现;(3) 节点 plan 原话证实其把 stage 1 读成"先合成、正式套件留给后面"(18/20),并明知 epoch 是为满足 B 的空转(15/20);psydef 的加载器被用是因为官方指标只能经它得到,ARC 的真值节点可自造 → 真实记录无必要性;(4) 用户接受两类输入侧杠杆:(i) 参考模块形态,(ii) 主题里对"结果"的定义(不进契约,本轮只改主题)。
+
+rep 2 只改两处:`arc_reference_v2.py`(`load_records()` 默认 20 条训练记录;`validation_records()` 固定 20 条留出;`local_validation(name, estimator)` 接受脚本内的对象/类或文件路径,进程内验证,不起子进程;把类源码连同其引用的顶层函数/赋值/import 打包成自足的 `working/<name>.estimator.py`,在临时目录以子进程、只允许 numpy + 标准库 import 自测,`validation.json` 记 `submittable`;docstring 陈述官方运行时事实:numpy-only、flopscope 数组、np.vectorize/object dtype/scipy 不可用)与 `arc_wbe_2026_native_v2.md`(把"可本地开发验证"改为"结果只定义在提供的记录上,自造网络上的数字不是本任务的结果")。`assemble_arc.py` 只加一行:跳过 `submittable: false` 的配置。阶段、判官、指南、模型、GPU 5、预算与 rep 1 相同。
+离线验证:参考模块在运行镜像内测过对象/类/路径/不可打包依赖/scipy 依赖五种情形;完整链路(两份 numpy-only 的矩传播 best_solution → 组装 → whest 官方打分 9.98e-05 → host 校验)通过。发现并记入 docstring 的事实:whest 环境无 scipy;权重以 flopscope 数组传入,np.vectorize 会报 NotImplemented。
+预注册判读:节点转向真实记录但仍因假 epoch 判 buggy → B 是剩余根因;转向真实记录且有节点通过 → 主因是 A/C 冲突 + 真实数据无必要性;仍不用真实记录 → (i)+(ii) 不够。

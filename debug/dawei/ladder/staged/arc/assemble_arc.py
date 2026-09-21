@@ -116,7 +116,7 @@ for st, d, best, nid in stages:
             continue
         name = Path(sf).name[:-len(".validation.json")]
         est = rd / "working" / f"{name}.estimator.py"
-        if not est.exists():
+        if not est.exists() or payload.get("submittable") is False:
             continue
         scores[name] = float(payload["final_layer_mse"])
         pred_for[name] = est
