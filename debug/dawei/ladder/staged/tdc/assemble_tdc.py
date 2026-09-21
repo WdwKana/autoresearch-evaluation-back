@@ -219,6 +219,9 @@ environment = {"python_version": env_info["python_version"], "platform": env_inf
 (OUT / "environment.json").write_text(json.dumps(environment, indent=2), encoding="utf-8")
 idea_files = glob.glob(str(WS / "experiments/*/idea.json"))
 idea = json.load(open(idea_files[0])) if idea_files else {}
+def _text(v):   # idea fields may be lists (one string per item) or strings
+    return "\n".join(str(x) for x in v) if isinstance(v, list) else str(v or "")
+idea = {k: (_text(v) if k in ("Title", "Abstract", "Short Hypothesis", "Risk Factors and Limitations", "Experiments") else v) for k, v in idea.items()}
 sel_dir = f"runs/{selected['run_id']}"
 trace = {"task_id": "tdc_admet_tox", "framework": "AI-Scientist-v2", "framework_native_execution": True, "consumed_topic_input": True,
          "workspace_trace_root": "/workspace", "framework_internal_model": a.model, "framework_internal_api_base_url": a.base_url,

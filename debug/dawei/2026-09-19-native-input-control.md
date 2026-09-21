@@ -361,3 +361,10 @@ rep 2 只改两处:`arc_reference_v2.py`(`load_records()` 默认 20 条训练记
 #### deepseek-v4-flash rep 3:VLM 图表反馈步骤改用 gpt-5.6-luna(用户决定)
 
 launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门),ideation、代码、判官、汇总仍是 deepseek-v4-flash;tier.json 与 state.json 记录 `vlm_model_override`。这是混合模型条件,测评口径上要单独标注。rep 3 = `control_e2espec_rep3_psydef02_ds_*`。
+
+#### TDC 规格体 rep 2 结果:端到端通过,隐藏标签 main_score 0.7949
+
+- 原生:81 分钟,四阶段全部完成(退出 143 = 上游自杀式清理)。stage 1 17 个节点、7 个崩溃(3 个围栏)、第 16 个通过;stage 2 7 个节点仅带入节点通过;stage 3 7 个节点仅带入节点通过;stage 4 3 个节点 2 个通过。全部真实数据 + 官方验证 scorer;规格里"程序自己写根目录文件"这次没有触发(根目录无框架写的契约文件)。
+- 组装第一次崩在我的 paper 渲染(idea 的 Risk Factors 字段是列表,`"\n".join` 报 TypeError);修复后在 host 重跑确定性步骤(组装 → framework 审计 → 隐藏标签打分 → final 审计),不触碰框架产物。
+- 4 个实验 = 各阶段 best_solution 的最优配置(验证 macro AUROC:stage1 gated 0.7971、stage2 independent_bs64_lr0_01 0.8395、stage3 independent 0.8039、stage4 gated 0.8052);选择 = 验证最高的 stage 2(契约规则)。framework 审计 passed(4 实验、16 claims、16 个表格数值核对)、**隐藏标签 main_score 0.7949**(AMES 0.7776 / hERG 0.7642 / DILI 0.8430)、final 审计 passed。
+- 对比:9 月 18 日正式 TDC 02×luna 的榜单分 0.6311(那批带 26 分钟/节点的线程超额缺陷,且是节点自己写根目录契约文件的路线)。
