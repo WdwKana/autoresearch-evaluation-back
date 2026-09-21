@@ -414,3 +414,7 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 
 - 原生 75 分钟四阶段全部完成(stage 1 第 1 个节点通过;stage 2/3/4 各 5/2/2 个通过),全部真实数据 + 官方验证 scorer,VLM 门正常。
 - 组装:4 个 best_solution 全部复现成功、每个节点都给多个配置打了验证分(最高 0.79 左右),但**没有一个配置调用参考模块的 `test_predictions()`**,working 目录里只有 validation_predictions/metrics;规格要求的根目录 predictions.csv 节点自己也没写。契约的交付物(测试集概率)不存在,组装退出 4,framework 审计/打分/final 审计未执行。host 不能替框架生成预测,记为失败:**DS 只做了验证评估,没有做交付**。luna(rep 2)和 kimi 的节点都调用了 test_predictions。
+
+#### TDC 参考模块 v2(用户同意):单一 `official_evaluation(name, predict_fn)`
+
+节点交出 `predict_fn(rows) -> 正类概率`;参考模块自己在验证行上调用并跑官方验证 scorer,再在测试行上调用写出 `working/<name>.test_predictions.csv`。交付物随评估必然产生,DS "只验证不交付" 的失败模式消失。与 BabyLM v2 / psydef `official_score(name, id_to_label)` 同一结构:预测由节点做,评估集与交付由参考模块钉死。离线链路(两份字符 n-gram 逻辑回归)通过:framework 审计 passed、隐藏标签 main_score 0.7886、final 审计 passed。launcher 加 `TDC_REF`(默认 v2)与 `RUN_TIMEOUT`(默认 14400);DS rep 2 以 21600 s 上限发出。同条件可比起见,luna 与 kimi 的 TDC 后续也应用 v2 重跑。

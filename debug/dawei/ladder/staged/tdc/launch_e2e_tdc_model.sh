@@ -9,6 +9,7 @@ set -euo pipefail
 REP="${1:?rep}"; TAG="${2:?model tag}"; PROVIDER_ENV="${3:?provider env}"
 MODEL="$(grep -E '^OPENAI_MODEL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 VLM_MODEL="${VLM_MODEL:-}"   # optional vision-capable model for the plot-feedback step only
+REF="${TDC_REF:-tdc_reference_v2}"; RUN_TIMEOUT="${RUN_TIMEOUT:-14400}"   # reference module version; native wall-clock cap in seconds
 PUB=/data/daweiwang/claude-home/researchclaweval-public
 SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
 DATA=$PUB/data/tdc_admet_tox
@@ -24,15 +25,15 @@ cp "$PUB/real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py" "$WS/real_ev
 cp "$SP/tier/tier_apply.py" "$WS/tier/"
 python3 "$SP/tier/tier_build.py" 0 "$REP" "$WS" "$PUB" >/dev/null
 python3 - "$WS/tier/tier.json" "$TAG" "$VLM_MODEL" <<'PY'
-import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-tdc-spec",model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="tdc_admet_tox_topic.md (production spec, generate_tdc_admet_tox_native_inputs.py) + hf_dataset_reference.py (tdc_reference_v1, --add_dataset_ref)",cpus=32,thread_caps=32,data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_tdc.py) + host hidden-label scoring"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
+import json,sys,os; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-tdc-spec",reference=os.environ.get("TDC_REF","tdc_reference_v2"),run_timeout_seconds=int(os.environ.get("RUN_TIMEOUT","14400")),model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="tdc_admet_tox_topic.md (production spec, generate_tdc_admet_tox_native_inputs.py) + hf_dataset_reference.py ($REF, --add_dataset_ref)",cpus=32,thread_caps=32,data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_tdc.py) + host hidden-label scoring"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 cp "$PUB/automation/scripts/run_tdc_admet_tox_validation_score.py" "$WS/automation/scripts/"
 ln -sfn /data/tdc_admet_tox "$WS/data/tdc_admet_tox"
 python3 "$PUB/automation/scripts/generate_tdc_admet_tox_native_inputs.py" --output-root "$INP" --primary-model "$MODEL" --provider-base-url "$BASE_URL" >/dev/null
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/tdc_admet_tox_topic.md" "$WS/ai_scientist/ideas/tdc_admet_tox_topic.md"
-cp "$SP/staged/tdc/tdc_reference_v1.py" "$WS/hf_dataset_reference.py"
-cp "$SP/staged/tdc/launch_e2e_tdc_model.sh" "$SP/staged/tdc/assemble_tdc.py" "$SP/staged/tdc/tdc_reference_v1.py" "$WS/ai_scientist/ideas/tdc_admet_tox_topic.md" "$SP/tier/tier_apply.py" "$RUN/"
+cp "$SP/staged/tdc/$REF.py" "$WS/hf_dataset_reference.py"
+cp "$SP/staged/tdc/launch_e2e_tdc_model.sh" "$SP/staged/tdc/assemble_tdc.py" "$SP/staged/tdc/$REF.py" "$WS/ai_scientist/ideas/tdc_admet_tox_topic.md" "$SP/tier/tier_apply.py" "$RUN/"
 echo "$RUN" > "$SP/current_e2etdcspec_${TAG}"; NAME=control_e2etdcspec_${TAG}_rep${REP}_${TS}; echo "$NAME" > "$SP/current_e2etdcspec_${TAG}_container"
 python3 - "$RUN/state.json" "$REP" "$TAG" "$VLM_MODEL" <<'PY'
 import json,sys,datetime
@@ -40,7 +41,7 @@ json.dump({"project_id":"control_e2etdcspec_tdc02_"+sys.argv[3],"phase":"diagnos
 PY
 T_START=$(date +%s)
 set +e
-timeout 14400s docker run --rm --name "$NAME" --cpus 32 --memory 16g --shm-size 8g \
+timeout "${RUN_TIMEOUT}s" docker run --rm --name "$NAME" --cpus 32 --memory 16g --shm-size 8g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/tdc_admet_tox:ro" --env-file "$PROVIDER_ENV" \
   -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e CUDA_VISIBLE_DEVICES= -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
