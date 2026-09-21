@@ -323,3 +323,8 @@ luna 的单节点通过率在原生条件（约 13%）与我们的契约条件�
 - 但该节点跑了 26 分钟仍未结束:容器 `--cpus 4` 只限配额,`os.cpu_count()` 仍为 384,没有设线程环境变量,torch 开了 192 线程挤在 4 核配额里(线程超额调度)。正式 TDC runner 同样没设线程变量,9 月 18 日那批正式 TDC 02 运行带着同样的缺陷。
 - 00:2x UTC 用户决定结束任务;按 pid 杀 launcher 与 timeout 包装,docker stop 自己的容器;目录保留,state.json 记为 stopped_by_user。未重发。
 - 若重发:launcher 加 OMP/MKL/OPENBLAS/TORCH_NUM_THREADS=4(与配额一致),其余不变。
+
+### psydef 规格臂 × deepseek-v4-flash / kimi-k2.6（2026-09-21 00:4x UTC 并行发出，各一发）
+
+决定(用户):后续用规格臂(正式 meta prompt)跑,主题臂留作诊断。理由:两臂效果无差异;meta eval 测的是框架消化规格的能力,各框架同一输入;起作用的是分阶段路线而非臂;规格里"程序自己写根目录契约文件"一段的责任重叠另行决定,这一轮不改规格文本。
+launcher `launch_e2e_spec_model.sh <rep> <tag> <provider_env>`:与 luna 规格臂完全相同的输入、阶段(20/6/6/2)、组装、校验,另加正式 psydef wrapper 的 ideation 补丁(标签归一化、MAX_NUM_TOKENS 16384、ideation 最多 3 次;luna 未触发,ds 此前全踩过)和线程上限(OMP/MKL/OPENBLAS/TORCH_NUM_THREADS=8,与 --cpus 8 一致)。provider env 复用最近的 ds / kimi 文件(同一 key 与 base URL,仅 OPENAI_MODEL 不同),发前各做了 1 token 连通检查。
