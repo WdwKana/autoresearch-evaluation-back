@@ -51,6 +51,13 @@ def chat_create(client, **kwargs):
         if "temperature" in retry and "temperature" in message:
             retry.pop("temperature")
             changed = True
+        if "reasoning_effort" in message and retry.get("reasoning_effort") != "none":
+            # Some routes of an OpenAI-compatible provider reject function tools
+            # together with a (default) reasoning effort on /v1/chat/completions
+            # and ask for reasoning_effort='none' instead (observed 2026-09-21,
+            # gpt-5.6-luna, error type rix_api_error, param reasoning_effort).
+            retry["reasoning_effort"] = "none"
+            changed = True
         if not changed:
             raise
         return client.chat.completions.create(**retry)
@@ -91,10 +98,39 @@ def patch_interpreter() -> None:
     INTERPRETER.write_text(text.replace(INTERPRETER_OLD, INTERPRETER_NEW, 1), encoding="utf-8")
 
 
+BACKEND_OPENAI = Path("ai_scientist/treesearch/backend/backend_openai.py")
+BACKEND_OLD = """    completion = backoff_create(
+        client.chat.completions.create,
+        OPENAI_TIMEOUT_EXCEPTIONS,"""
+BACKEND_NEW = """    completion = backoff_create(
+        lambda **_kw: chat_create(client, **_kw),  # transport shim (parameter fallbacks)
+        OPENAI_TIMEOUT_EXCEPTIONS,"""
+
+
+def patch_backend_openai() -> None:
+    """Route the tree-search OpenAI backend through the shim too. The wrappers'
+    textual rewrite only catches ``client.chat.completions.create(`` call sites;
+    this backend passes the bound method to backoff_create, so a provider
+    parameter rejection there (raised inside a worker process) escaped every
+    fallback and, being unpicklable, broke the whole process pool."""
+    if not BACKEND_OPENAI.is_file():
+        return
+    text = BACKEND_OPENAI.read_text(encoding="utf-8")
+    if "chat_create(client, **_kw)" in text:
+        return
+    if BACKEND_OLD not in text:
+        print("SKIP: backend_openai backoff_create anchor not found")
+        return
+    if "from ai_scientist.gpt_responses_compat import chat_create" not in text:
+        text = "from ai_scientist.gpt_responses_compat import chat_create\n" + text
+    BACKEND_OPENAI.write_text(text.replace(BACKEND_OLD, BACKEND_NEW, 1), encoding="utf-8")
+
+
 def main() -> None:
     if not Path("ai_scientist").is_dir():
         raise SystemExit("run from the AI-Scientist-v2 source root: ai_scientist/ not found")
     patch_interpreter()
+    patch_backend_openai()
     existing = COMPAT_MODULE.read_text(encoding="utf-8") if COMPAT_MODULE.is_file() else ""
     if existing != COMPAT_SOURCE:
         COMPAT_MODULE.write_text(COMPAT_SOURCE, encoding="utf-8")

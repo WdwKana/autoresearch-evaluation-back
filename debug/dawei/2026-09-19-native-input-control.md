@@ -398,3 +398,10 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 
 `babylm_reference_v2.py`:`official_validation(name, nll_fn)` —— 节点交出 `nll_fn(lines) -> 总 NLL(nats)`,参考模块自己在固定验证行(每域 10%,种子 0,33,583 行、975,273 词)上调用并按词归一化;`training_lines()` 是其余约 30 万行,用全量或子集都行;docstring 明说"结果只定义在固定验证行上,训练数据是你的选择"。与 psydef `official_score(name, id_to_label)` 同构:预测由节点做,评估集由参考模块钉死。正式 topic 不动。离线链路测试:子集训练(5000 行)与全量训练的 unigram 都在同一验证集上得到可比的困惑度(2619 vs 2455),组装、打分、校验通过。
 契约层弱点(记录,不动):BabyLM 的打分只读 trace 里框架自报的困惑度,没有固定评估集与 host 重算,跨框架不可比;我们的组装至少复现 best_solution 并按参考模块定义重算。
+
+#### BabyLM rep 2(`control_e2ebabylm_rep2_babylm02_luna_20260921_213017`):3 个节点后整条运行被 provider 的一次 400 打死
+
+- 判官调用(parse_exec_result → backend_openai)在 worker 进程里收到 bianxie 的 400:"Function tools with reasoning_effort are not supported for gpt-5.6-luna in /v1/chat/completions… or set reasoning_effort to 'none'"(type rix_api_error)。我们的代码没有发 reasoning_effort(上游只对 o1 模型设),是 provider 某条路由对自己默认值的拒绝;直接探测:带 reasoning_effort=high 3/3 被拒,不带则通过,复现运行的请求形状也通过 —— 间歇、按路由。今天其他运行(含在跑的 5 个)0 次出现。
+- 上游无 400 重试,且 APIStatusError 在 worker → 主进程的 pickle 中失败(缺 response/body),BrokenProcessPool,整条运行退出。
+- 修复(基础设施层,`patch_ai_scientist_v2_common.py`):chat shim 对含 reasoning_effort 的拒绝按 provider 指示改 reasoning_effort='none' 重试;并把 backend_openai 的 `backoff_create(client.chat.completions.create, …)` 也路由过 shim(wrapper 的文本替换只覆盖 `client.chat.completions.create(` 调用点,这里传的是绑定方法,原本绕过了 shim)。假客户端离线测试通过。rep 3 重发。
+- 另一个事实:3 个节点里 2 个按正式 topic 的域名列表(bnc_spoken, childes, gutenberg, open_subtitles, simple_wiki, switchboard)去找文件,实际文件是 aochildes/bnc_spoken/cbt/children_stories/gutenberg/open_subtitles/qed/simple_wikipedia/switchboard/wikipedia,找不到就"Real corpus unavailable"回退合成。正式 topic(以及各框架共用的 shared summary)的数据事实是错的,待用户决定是否修生成脚本。
