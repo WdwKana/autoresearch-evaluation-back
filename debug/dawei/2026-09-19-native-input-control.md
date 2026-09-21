@@ -409,3 +409,8 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 #### 修复(用户决定,仅针对 02):BabyLM 02 topic 的域列表改为从数据目录实际读取
 
 `generate_babylm_native_inputs.py` 的 `render_ai_scientist_topic` 不再硬编码 "6 text domains: bnc_spoken, childes, gutenberg, open_subtitles, simple_wiki, switchboard",改为生成时 glob 数据根目录下的 `*.train.txt`(现为 10 个:aochildes, bnc_spoken, cbt, children_stories, gutenberg, open_subtitles, qed, simple_wikipedia, switchboard, wikipedia);目录不可读时改为提示"列目录"。原因:02 的 BFTS 节点按 topic 文本拼文件路径、不列目录,错名字直接导致回退合成;01 的输入里没有这份列表且其 agent 会自己列目录,所以 01 不受影响。shared summary(其他框架的 brief)与契约里的"6 个文件"未改,待团队定。rep 3 发在修复之前,仍用旧 topic;从 rep 4 起生效。
+
+#### TDC × deepseek-v4-flash rep 1(`control_e2etdcspec_rep1_tdc02_ds_20260921_201847`,VLM 用 luna):四阶段完成,组装失败 —— 节点从未产出测试集预测
+
+- 原生 75 分钟四阶段全部完成(stage 1 第 1 个节点通过;stage 2/3/4 各 5/2/2 个通过),全部真实数据 + 官方验证 scorer,VLM 门正常。
+- 组装:4 个 best_solution 全部复现成功、每个节点都给多个配置打了验证分(最高 0.79 左右),但**没有一个配置调用参考模块的 `test_predictions()`**,working 目录里只有 validation_predictions/metrics;规格要求的根目录 predictions.csv 节点自己也没写。契约的交付物(测试集概率)不存在,组装退出 4,framework 审计/打分/final 审计未执行。host 不能替框架生成预测,记为失败:**DS 只做了验证评估,没有做交付**。luna(rep 2)和 kimi 的节点都调用了 test_predictions。
