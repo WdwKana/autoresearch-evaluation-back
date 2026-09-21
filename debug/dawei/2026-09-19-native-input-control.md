@@ -387,3 +387,9 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 - ARC ds/kimi:CPU-only(GPU 5 仍被占用),v2 参考模块 + v2 主题。TDC ds/kimi:规格体,32 核。四发并行发出。
 - **BabyLM(新 topic,规格体做法)**:topic = 正式 `babylm_topic.md`(生成脚本;注意其"6 个域"列表与实际数据文件名不符,原样保留);参考模块 `babylm_reference_v1.py`:`load_corpus()`、`default_split()`(域内固定 10% 留出,种子 0,允许自定义但验证行不得用于拟合)、`word_count()`、`official_validation(name, total_nll_nats, validation_lines)` = exp(NLL / (词数 + 每行一个句尾)),按词归一化使不同分词可比;`save_submission()` 保留模型。组装复现各阶段 best_solution 于同一 GPU,选最低词级困惑度,提升 submission/、trace(含 validation_perplexity 与 best_validation_perplexity,供 run_babylm_score.py 读取)、报告;host 校验块从 babylm runner 逐行抽出。GPU 1(空闲);容器启动即核对只看到该卡的 UUID,否则退出 97。阶段 12/4/4/2(训练节点慢,单节点上限 3600 s),4 小时总预算。离线链路(两份 unigram best_solution)通过:组装、打分(2456 ppl)、校验。
 - 发射后发现:机械生成的 ARC/TDC 模型 launcher 里 ideation 成功检查的引号写错(bash -lc 单引号串内又用了单引号),导致每次 ideation 明明存了 idea 也被判 EMPTY、白跑 3 次(多耗 2 次 ideation API);第 3 次后按 `test -s` 继续,4 发都正常进入 BFTS。已修(仅影响后续发射;本轮四发从副本执行,不受影响)。babylm launcher 手写,无此问题。另:kimi 偶有整条回复只有"我先去搜文献"的叙述、没有 ACTION 块,上游丢弃该提案,兼容解析器对此无能为力(不是解析问题,是没有动作)。BabyLM 正式 topic 把数据集路径写成 host 路径,容器内额外把数据与契约只读挂到同一 host 路径,避免纯路径问题导致失败(生产 runner 不这样做)。
+
+#### BabyLM × luna rep 1(`control_e2ebabylm_rep1_babylm02_luna_20260921_202716`,GPU 1):stage 1 失败(12/12)
+
+- 12 个节点:4 个崩溃(CUDA OOM、TypeError、KeyError、代码围栏),8 个跑通判 buggy。判词分两类:**A/C 冲突的 BabyLM 形态**(4 个):只取每域前 600 / 2500 行、自定义 20% 切分、甚至 500 行合成语料 —— "use a simple dataset" 在文本任务上变成子采样,luna 判"不是官方可比的词级困惑度";**实现 bug**(4 个):目标对齐错、NLL 只算活跃目标、稀有词阈值设定与数据不符等。7/12 用了参考模块的 official_validation,只有 2 个用了 default_split。
+- 我把阶段迭代设为 12/4/4/2(其他 topic 是 20/6/6/2),stage 1 的搜索空间比别的 topic 小;这是我的设定,不是框架的。
+- 对照 ARC 的教训:这里真实数据是文本,子采样零成本,"结果只定义在全量语料 + 参考切分上"这一条在正式 topic 里不存在,参考模块也没有把非官方验证集标出来。
