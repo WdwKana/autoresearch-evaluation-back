@@ -41,6 +41,7 @@ json.dump({"project_id":"control_e2etdcspec_tdc02_"+sys.argv[3],"phase":"diagnos
 PY
 T_START=$(date +%s)
 set +e
+( sleep "${RUN_TIMEOUT}"; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-tdc] time cap reached: container stopped" ) & WATCHDOG=$!
 timeout "${RUN_TIMEOUT}s" docker run --rm --name "$NAME" --cpus 32 --memory 16g --shm-size 8g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/tdc_admet_tox:ro" --env-file "$PROVIDER_ENV" \
   -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e CUDA_VISIBLE_DEVICES= -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
@@ -85,6 +86,7 @@ python launch_scientist_bfts.py --load_ideas ai_scientist/ideas/tdc_admet_tox_to
 echo "NATIVE_BFTS_END"
 ' 2>&1 | tee "$RUN/logs/native.log" "$SP/e2etdcspec_${TAG}_rep${REP}_${TS}.log"
 native_rc=${PIPESTATUS[0]}
+kill "$WATCHDOG" 2>/dev/null; wait "$WATCHDOG" 2>/dev/null
 NATIVE_WALL=$(( $(date +%s) - T_START ))
 echo "[e2e-tdc] native exit code: $native_rc (wall ${NATIVE_WALL}s)"
 if ls "$WS"/{predictions.csv,experiment_trace.json,paper.md,environment.json,final_report.md,score.json} >/dev/null 2>&1; then

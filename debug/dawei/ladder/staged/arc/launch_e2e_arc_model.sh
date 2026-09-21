@@ -39,6 +39,7 @@ json.dump({"project_id":"control_e2earc_arc02_"+sys.argv[3],"phase":"diagnostic"
 PY
 set +e
 GPU_ARGS=(); CUDA_ENV=(); if [ "$GPU" = "none" ]; then CUDA_ENV=(-e CUDA_VISIBLE_DEVICES=); else GPU_ARGS=(--gpus "device=$GPU"); fi
+( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-arc] time cap reached: container stopped" ) & WATCHDOG=$!
 timeout 14400s docker run --rm --name "$NAME" "${GPU_ARGS[@]}" "${CUDA_ENV[@]}" --cpus 8 --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/arc_wbe_2026:ro" --env-file "$PROVIDER_ENV" \
   -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
@@ -83,6 +84,7 @@ python launch_scientist_bfts.py --load_ideas ai_scientist/ideas/arc_wbe_2026_nat
 echo "NATIVE_BFTS_END"
 ' 2>&1 | tee "$RUN/logs/native.log" "$SP/e2earc_${TAG}_rep${REP}_${TS}.log"
 native_rc=${PIPESTATUS[0]}
+kill "$WATCHDOG" 2>/dev/null; wait "$WATCHDOG" 2>/dev/null
 echo "[e2e-arc] native exit code: $native_rc"
 echo "[e2e-arc] host assembly ..."
 python3 "$SP/staged/arc/assemble_arc.py" --workspace "$WS" --out "$WS" --model "$MODEL" --base-url "$BASE_URL" --data-root "$DATA" --gpu "$GPU" 2>&1 | tee "$RUN/logs/assembly.log"

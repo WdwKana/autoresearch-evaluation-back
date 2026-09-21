@@ -422,3 +422,7 @@ launcher 新增可选 `VLM_MODEL`:只覆盖 `agent.vlm_feedback.model`(图表门
 #### BabyLM rep 3(旧 topic + v2 参考模块):用户取消于 16/20,0 通过;rep 4 以修正后的 topic 发出
 
 rep 3 的 16 个节点按判词分类:旧 topic "6 个域" vs 实际 10 个文件 5 个(其中 n11 被判各项功能正确、n15 在固定验证行上得到 156.8 的有效困惑度,仅因"与六域描述不符"判 buggy;n2/n12 因此崩溃);绕过官方评估/自定义切分 4 个(n1/n5/n9/n10);matplotlib `boxplot(labels=)` 废弃导致画图崩溃 2 个(n6 已完成官方验证 178.4 并保存 submission);指标截断 1、验证损失调采样 1、围栏 1、词表 bug 1。结论:不是 ARC 那种单一结构性根因,最大来源是输入里的错误事实(已修),其次是评估绕过的残余(v2 已把它从主因降为次因)。预期 rep 4 能过 stage 1;若仍 0/20 且判词集中,再查"绕过官方评估"为何在 BabyLM 上多于 psydef。
+
+#### 发现:launcher 的 4 小时上限只作用于 docker 客户端,容器不会停
+
+psydef × ds rep 3 于 18:28 启动,`timeout 14400s docker run` 在 22:28 向 docker 客户端发了 SIGTERM,客户端把信号转给容器里的 `bash -lc`,bash 等前台 python 结束才退出 —— 容器与 BFTS 继续跑,launcher 也一直等。之前所有运行都自然结束,所以没暴露。修法:各 launcher 加看门狗子进程,到期 `docker stop -t 30 $NAME`,native 结束后撤销看门狗。对正在跑的 psydef ds rep 3 不追加干预(用户本就要求给 DS 更多时间),让它自然结束。

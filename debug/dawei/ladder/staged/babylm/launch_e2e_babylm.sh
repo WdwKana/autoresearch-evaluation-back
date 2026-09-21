@@ -39,6 +39,7 @@ import json,sys,datetime
 json.dump({"project_id":"control_e2ebabylm_babylm02_"+sys.argv[3],"phase":"diagnostic","status":"running","summary":f"BabyLM end-to-end SPEC arm rep {sys.argv[2]} model={sys.argv[3]} vlm_override={sys.argv[4] or 'none'}: production spec topic, reference loader via dataset-reference slot, stages 1-4 (20/6/6/2) on GPU {sys.argv[5]}, host deterministic assembly + run_babylm_score + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
 PY
 set +e
+( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-babylm] time cap reached: container stopped" ) & WATCHDOG=$!
 timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 8 --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/BabyLM-2026-Strict-Small:ro" -v "$DATA:$DATA:ro" -v "$PUB/automation/babylm_contract.md:$PUB/automation/babylm_contract.md:ro" -v "$PUB/automation/babylm_contract.md:/input/babylm_contract.md:ro" --env-file "$PROVIDER_ENV" \
   -e EXPECTED_GPU_UUID="$EXPECTED_GPU_UUID" -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
@@ -86,6 +87,7 @@ python launch_scientist_bfts.py --load_ideas ai_scientist/ideas/babylm_topic.jso
 echo "NATIVE_BFTS_END"
 ' 2>&1 | tee "$RUN/logs/native.log" "$SP/e2ebabylm_${TAG}_rep${REP}_${TS}.log"
 native_rc=${PIPESTATUS[0]}
+kill "$WATCHDOG" 2>/dev/null; wait "$WATCHDOG" 2>/dev/null
 echo "[e2e-babylm] native exit code: $native_rc"
 if ls "$WS"/{experiment_trace.json,final_report.md,score.json} >/dev/null 2>&1; then
   mkdir -p "$RUN/native_root_handoff"; for f in experiment_trace.json final_report.md score.json; do [ -f "$WS/$f" ] && cp -p "$WS/$f" "$RUN/native_root_handoff/"; done

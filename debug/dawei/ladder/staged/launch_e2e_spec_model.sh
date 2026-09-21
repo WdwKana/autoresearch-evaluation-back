@@ -36,6 +36,7 @@ import json,sys,datetime
 json.dump({"project_id":"control_e2espec_psydef02_"+sys.argv[3],"phase":"diagnostic","status":"running","summary":f"end-to-end SPEC arm rep {sys.argv[2]} (VLM model override: {sys.argv[4] or 'none'}): production spec topic + ideation contract, loader v2 via dataset-reference slot, stages 1-4, host deterministic assembly + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
 PY
 set +e
+( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e] time cap reached: container stopped" ) & WATCHDOG=$!
 timeout 14400s docker run --rm --name "$NAME" --cpus 8 --shm-size 8g \
   -v "$WS":/workspace -w /workspace -v "$PUB/data/psydefdetect:/data/psydefdetect:ro" --env-file "$PROVIDER_ENV" \
   -e HF_ENDPOINT=https://hf-mirror.com -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e OMP_NUM_THREADS=8 -e MKL_NUM_THREADS=8 -e OPENBLAS_NUM_THREADS=8 -e TORCH_NUM_THREADS=8 -e CUDA_VISIBLE_DEVICES= -e PROMPT_LOG_DIR=/workspace/prompt_logs \
@@ -80,6 +81,7 @@ python launch_scientist_bfts.py --load_ideas ai_scientist/ideas/psydefdetect_top
 echo "NATIVE_BFTS_END"
 ' 2>&1 | tee "$RUN/logs/native.log" "$SP/e2espec_${TAG}_rep${REP}_${TS}.log"
 native_rc=${PIPESTATUS[0]}
+kill "$WATCHDOG" 2>/dev/null; wait "$WATCHDOG" 2>/dev/null
 echo "[e2e] native exit code: $native_rc"
 echo "[e2e] host assembly ..."
 python3 "$SP/staged/assemble_psydef.py" --workspace "$WS" --out "$WS" --model "$MODEL" --base-url "$BASE_URL" 2>&1 | tee "$RUN/logs/assembly.log"
