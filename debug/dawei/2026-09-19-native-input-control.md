@@ -338,3 +338,7 @@ launcher `launch_e2e_spec_model.sh <rep> <tag> <provider_env>`:与 luna 规格�
 #### 决定(用户):加兼容解析器 → `real_eval/adapters/ai_scientist_v2/patch_ideation_tolerant_parser.py`
 
 只改解析,不改 prompt、不改判官、不改任何决策:一条回复里的多个 ACTION/ARGUMENTS 块按模型写的顺序依次执行(同一回复的工具结果拼接后回填);JSON 之后的多余文字忽略;FinalizeIdea 多套的一层 `idea` 剥掉;仍然非法的 JSON 与上游一样丢弃整个提案。幂等,锚点找不到即报错;与标签归一化补丁任一顺序兼容。离线仿真 7 例通过(kimi 批量块、ds 嵌套、单动作 + 围栏 JSON + 结果回填、markdown 标签 + 批量、非法 JSON 仍中止、5 轮纯检索仍不存、空 idea 仍拒绝;`debug/dawei/ladder/staged/ideation_tolerant_parser_test.py`,在运行镜像内跑)。已接入 `launch_e2e_spec_model.sh`;正式 psydef wrapper 未接(待团队决定)。
+
+### TDC 规格体臂 rep 2（用户决定:规格体 + CPU 上限 32）
+
+`launch_e2e_tdc_spec.sh`:topic = 正式 `tdc_admet_tox_topic.md`(generate_tdc_admet_tox_native_inputs.py 生成,含"Native handoff"段),参考模块与分阶段路线、组装、审计、隐藏标签打分与主题体 launcher 完全相同;`--cpus 32` + OMP/MKL/OPENBLAS/TORCH_NUM_THREADS=32(主机 384 核、负载约 70);容器退出后先把框架自己写到根目录的契约文件快照到 `native_root_handoff/`(规格里要求程序自己写,和 psydef 规格臂同样会与 host 组装重叠),再组装。正式 wrapper 的 handoff guideline 事实与 stage-1 stop 不用(与 psydef 规格臂只取 ideation 段、不取指南事实一致;TDC 正式 wrapper 没有 ideation 注入段)。
