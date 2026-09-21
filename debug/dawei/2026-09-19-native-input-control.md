@@ -342,3 +342,9 @@ launcher `launch_e2e_spec_model.sh <rep> <tag> <provider_env>`:与 luna 规格�
 ### TDC 规格体臂 rep 2（用户决定:规格体 + CPU 上限 32）
 
 `launch_e2e_tdc_spec.sh`:topic = 正式 `tdc_admet_tox_topic.md`(generate_tdc_admet_tox_native_inputs.py 生成,含"Native handoff"段),参考模块与分阶段路线、组装、审计、隐藏标签打分与主题体 launcher 完全相同;`--cpus 32` + OMP/MKL/OPENBLAS/TORCH_NUM_THREADS=32(主机 384 核、负载约 70);容器退出后先把框架自己写到根目录的契约文件快照到 `native_root_handoff/`(规格里要求程序自己写,和 psydef 规格臂同样会与 host 组装重叠),再组装。正式 wrapper 的 handoff guideline 事实与 stage-1 stop 不用(与 psydef 规格臂只取 ideation 段、不取指南事实一致;TDC 正式 wrapper 没有 ideation 注入段)。
+
+#### rep 2 结果:deepseek-v4-flash 失败在 VLM 图表门,kimi 进入 stage 2
+
+- **deepseek-v4-flash rep 2**(`control_e2espec_rep2_psydef02_ds_20260921_165225`):ideation 第 1 次成功(2 个 idea);stage 1 20 个节点全部真实数据 + 官方 scorer,**文本判官通过 7 个,第 1 个节点就通过**;但上游 `good_nodes` 要求 `is_buggy is False and is_buggy_plots is False`,VLM 图表门(`agent.vlm_feedback.model` 被适配层设为同一模型)对 5 个通过节点全部回复 "No plots were received"(is_buggy_plots=True),另 2 个为 None;stage 1 因此 20 次迭代耗尽、"Failed to find working implementation",随后上游 overall_summarize 崩溃(仅 1 阶段),原生退出 1,组装 3,校验 1。
+- 直接验证:向 bianxie 的 deepseek-v4-flash 发一张 8×8 红色 PNG 问颜色,返回空内容;kimi-k2.6 同样请求返回 "Red."。即 **该端点的 deepseek-v4-flash 不处理图像**,而 02 的 stage-1 完成条件硬性要求 VLM 确认收到图表。这是 02 的视觉依赖与模型(或中转)能力的不兼容,与判官标准、输入方式无关;9 月 19 日 ds 系列 stage 1 不通过很可能同因(待核对)。
+- **kimi-k2.6 rep 2**(`control_e2espec_rep2_psydef02_kimi_20260921_165245`):解析器起效(两条 5 动作块回复、8 处尾随文字),ideation 第 1 次成功;stage 1 通过 2 个节点(VLM 门 OK),已进入 stage 2。
