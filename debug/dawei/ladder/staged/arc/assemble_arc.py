@@ -92,9 +92,10 @@ for st, d, best, nid in stages:
     ref = WS / "hf_dataset_reference.py"
     if ref.exists():
         shutil.copy(ref, rd / "hf_dataset_reference.py")
-    cmd = ["docker", "run", "--rm", "--network", "none", "--cpus", "8", "--gpus", f"device={a.gpu}",
+    gpu_args = [] if str(a.gpu).lower() == "none" else ["--gpus", f"device={a.gpu}"]
+    cmd = ["docker", "run", "--rm", "--network", "none", "--cpus", "8", *gpu_args,
            "-v", f"{a.data_root}:/data/arc_wbe_2026:ro", "-v", f"{automation}:/workspace/automation:ro",
-           "-v", f"{rd}:/replay", "-w", "/replay", a.image,
+           "-v", f"{rd}:/replay", "-w", "/replay", *(["-e", "CUDA_VISIBLE_DEVICES="] if str(a.gpu).lower() == "none" else []), a.image,
            "python3", "-c", "code=open('runfile.py').read(); exec(compile(code,'runfile.py','exec'),{})"]
     say(f"replaying stage {st} best_solution {nid[:8]} ...")
     t0 = dt.datetime.now()

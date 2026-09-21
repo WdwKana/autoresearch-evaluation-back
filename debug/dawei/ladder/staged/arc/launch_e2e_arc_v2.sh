@@ -10,7 +10,7 @@ PUB=/data/daweiwang/claude-home/researchclaweval-public
 SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
 DATA=/data/daweiwang/claude-home/researchclaweval-public/data/arc_white_box_estimation_2026
 WHEST=/data/daweiwang/claude-home/whest-starterkit/.venv
-GPU=5
+GPU="${ARC_GPU:-5}"   # "none" = CPU-only (used when GPU 5 is busy with another tenant)
 TS=$(date +%Y%m%d_%H%M%S)
 RUN=$PUB/real_eval/runs/control_e2earc_rep${REP}_arc02_luna_${TS}
 WS=$RUN/workspace; INP=$RUN/inputs
@@ -33,16 +33,17 @@ cp "$SP/staged/arc/arc_reference_v2.py" "$WS/hf_dataset_reference.py"
 cp "$SP/staged/arc/launch_e2e_arc_v2.sh" "$SP/staged/arc/assemble_arc.py" "$SP/staged/arc/arc_host_validate.py" "$SP/staged/arc/arc_reference_v2.py" "$SP/staged/arc/arc_wbe_2026_native_v2.md" "$SP/tier/tier_apply.py" "$RUN/"
 echo "$RUN" > "$SP/current_e2earc"; NAME=control_e2earc_rep${REP}_${TS}; echo "$NAME" > "$SP/current_e2earc_container"; echo "$RUN" > "$SP/current_e2earc_v2"
 python3 - "$RUN/state.json" "$REP" <<'PY'
-import json,sys,datetime
-json.dump({"project_id":"control_e2earc_arc02_luna","phase":"diagnostic","status":"running","summary":f"ARC end-to-end rep {sys.argv[2]} (v2: reference in-process validation + results-on-provided-records rule): challenge-style theme, reference loader via dataset-reference slot, stages 1-4 on GPU 5, host deterministic assembly + official adapter scoring + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
+import json,sys,datetime,os
+json.dump({"project_id":"control_e2earc_arc02_luna","phase":"diagnostic","status":"running","summary":f"ARC end-to-end rep {sys.argv[2]} (v2: reference in-process validation + results-on-provided-records rule): challenge-style theme, reference loader via dataset-reference slot, stages 1-4 (ARC_GPU={os.environ.get('ARC_GPU','5')}), host deterministic assembly + official adapter scoring + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
 PY
 set +e
-timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 8 --shm-size 16g \
+GPU_ARGS=(); CUDA_ENV=(); if [ "$GPU" = "none" ]; then CUDA_ENV=(-e CUDA_VISIBLE_DEVICES=); else GPU_ARGS=(--gpus "device=$GPU"); fi
+timeout 14400s docker run --rm --name "$NAME" "${GPU_ARGS[@]}" "${CUDA_ENV[@]}" --cpus 8 --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/arc_wbe_2026:ro" --env-file "$PROVIDER_ENV" \
   -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
 set -euo pipefail
-echo "CONTROL_E2E_ARC model=$OPENAI_MODEL gpu=$(nvidia-smi -L 2>/dev/null | head -1)"
+echo "CONTROL_E2E_ARC model=$OPENAI_MODEL gpu=$(nvidia-smi -L 2>/dev/null | head -1) cuda_visible=${CUDA_VISIBLE_DEVICES-unset}"
 python3 tier/tier_apply.py
 python3 - <<PY
 import yaml
