@@ -27,6 +27,7 @@ real_eval/adapters/ai_researcher/patch_exec_env_provision.py
 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
+real_eval/adapters/ai_researcher/patch_reasoning_effort_fallback.py
 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 EOF
 )
@@ -111,6 +112,7 @@ python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
 python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 python3 real_eval/adapters/ai_researcher/patch_response_probe.py
+python3 real_eval/adapters/ai_researcher/patch_reasoning_effort_fallback.py
 PS4='NATIVE_CMD> '
 set -x
 timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}s" python3 research_agent/run_infer_idea.py \
