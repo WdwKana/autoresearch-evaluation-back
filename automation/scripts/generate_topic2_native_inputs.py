@@ -161,6 +161,7 @@ trained checkpoints.
 # Inputs
 - starter code root: {topic_root}
 - frozen evaluator: evaluate.py (read-only)
+- a reference module is provided at run time with the starter-code helpers and the official evaluation function
 
 # Contract
 - topic label: {TOPIC_LABEL}
@@ -168,7 +169,7 @@ trained checkpoints.
 
 # Concrete Goal
 1. write and lock research_idea.json before the first experiment,
-2. run one or more materially different experiments and select one result,
+2. run one or more materially different experiments and select one result; a result of this task is the Reward Mean reported by the provided reference `official_evaluation` (the frozen evaluate.py on exactly five checkpoints); a reward computed any other way (own rollouts, own evaluator, fewer checkpoints) is not a result of this task,
 3. deliver exactly five checkpoints under checkpoints/ plus config.yaml and
    src/,
 4. write experiment_trace.json and final_report.md.

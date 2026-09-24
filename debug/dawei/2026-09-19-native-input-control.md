@@ -471,3 +471,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 
 - 20 个节点:5 个崩溃,15 个跑通被判"没有做要求的冻结官方评估";只有 1 个节点调了 `official_evaluation`(且调用方式不对,checkpoint 命名也不符)。其余节点自己写 PPO/评估、把自己的 rollout 均值标成"Official Evaluation",或手动拷 evaluate.py 去跑然后失败。判官(luna)每条都以参考模块的 official_evaluation 为标准。
 - 与 BabyLM rep 4 同一形态:任务里节点自己能算出"奖励",参考模块对它没有必要性;正式 topic2_topic.md 只说"improves the official Average Reward / delivers five checkpoints",没有"结果只以提供的评估函数为准"。预期下一步同 BabyLM:在 02 的 topic 渲染(`generate_topic2_native_inputs.py::render_ai_scientist_topic`,mountaincar 生成脚本包装它)加 (ii),待用户决定。
+
+#### MountainCar (ii)(用户同意,仅 02 渲染)+ rep 2
+
+`generate_topic2_native_inputs.py::render_ai_scientist_topic`(mountaincar 生成脚本包装它,其他框架的 brief 未变,已验证):Inputs 下加"a reference module is provided at run time with the starter-code helpers and the official evaluation function";Concrete Goal 第 2 条加"a result of this task is the Reward Mean reported by the provided reference `official_evaluation` (the frozen evaluate.py on exactly five checkpoints); a reward computed any other way (own rollouts, own evaluator, fewer checkpoints) is not a result of this task"。预注册判读同 BabyLM:official_evaluation 使用率从 1/20 明显上升且 stage 1 通过 → (i)+(ii) 足够。rep 2 发出。
