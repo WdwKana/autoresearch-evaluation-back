@@ -162,6 +162,7 @@ trained checkpoints.
 - starter code root: {topic_root}
 - frozen evaluator: evaluate.py (read-only)
 - a reference module is provided at run time with the starter-code helpers and the official evaluation function
+- experiments of this task are run in the provided MountainCarContinuous-v0 environment with the provided starter code only; a result obtained in a different or simplified environment, or on self-generated data, is not a result of this task
 
 # Contract
 - topic label: {TOPIC_LABEL}

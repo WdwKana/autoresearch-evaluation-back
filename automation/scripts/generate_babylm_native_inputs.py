@@ -104,6 +104,7 @@ Build a reproducible BabyLM Strict-Small word-level language modeling workflow t
 - standardized local dataset root: {dataset_root}
 {domain_line}
 - a reference module is provided at run time with the corpus loader, the fixed validation split and the official validation function
+- experiments of this task are run on this provided corpus only; a result obtained on synthetic, toy, or self-generated text is not a result of this task
 
 # Contract
 - topic label: {TOPIC_LABEL}

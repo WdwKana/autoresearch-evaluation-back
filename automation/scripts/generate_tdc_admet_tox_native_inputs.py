@@ -130,6 +130,7 @@ Use AI-Scientist-v2's native ideation and BFTS flow to propose, implement, and c
 
 # Inputs and metric
 - Read only `/data/tdc_admet_tox/{{train,validation,test}}.csv`.
+- Experiments of this task are run on these provided files only; a result obtained on synthetic, toy, or self-generated data is not a result of this task.
 - `test.csv` is unlabeled and must never be used for selection.
 - The primary metric is the unweighted macro average of the three endpoint AUROCs.
 - Use `/workspace/automation/scripts/run_tdc_admet_tox_validation_score.py` for validation evidence.

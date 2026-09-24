@@ -389,6 +389,7 @@ Formulate and run exactly two materially different experiments of your own desig
 
 # Dataset
 Use `/data/psydefdetect/PsyDefConv.json` and `automation/psydefdetect_split.json` only.
+Experiments of this task are run on this provided dataset only; a result obtained on synthetic, toy, or self-generated data is not a result of this task.
 
 # Dataset schema
 - `PsyDefConv.json` is a top-level JSON list. Every usable row has `id` (string), `dialogue_id` (string), `dialogue` (a list of `{{text, speaker}}` objects), `current_text` (string), and `label` (integer 0-8).
