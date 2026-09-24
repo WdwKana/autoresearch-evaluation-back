@@ -448,3 +448,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - rep 1:stage 4 的 best_solution 没有 import 参考模块,而是把当时的参考模块源码(含旧的"别名"打包器)整段粘进了自己的脚本;复现时跑的是节点内嵌的旧打包器,产出 `Estimator = DiagonalEstimator` 别名,官方 adapter 只认类定义 → 无候选。stage 2/3 的节点正常 import,文件正确。按"选最后阶段"的规则不改选;以修好的参考模块(追加 `class Estimator(<YourClass>): pass`)重发 rep 2(CPU,32 核,24 h)。
 - 所有 launcher 的默认 `RUN_TIMEOUT` 改为 86400(看门狗到期 docker stop);不向 agent 增加任何时间信息。
 - ARC × ds rep 2:24 个节点 1 个用提供的记录,四个 best_solution 复现各跑满 3600 s 超时(合成元预测器训练),无官方验证记录;按 (a) 口径记为失败,是模型行为结果,不修。
+
+#### TDC × kimi rep 2(`control_e2etdcspec_rep2_tdc02_kimi_20260924_051931`,v2 参考模块、32 核、24 h 上限):端到端通过,main_score 0.7963
+
+原生 99 分钟(5939 s)四阶段完成;组装 4 个 best_solution 复现 25/133/145/120 s,选 stage 2 的 smiles_aware_best_hidden_dim(验证 macro AUROC 0.9394);总墙钟 6361 s、复现运行时 423 s,两项预算都在契约内;framework 审计、隐藏标签打分(AMES 0.7892 / hERG 0.7841 / DILI 0.8157)、final 审计全部通过。与 rep 1(11.2 h、超预算)对比:32 核 + idea 选的模型轻,不是工具改动。
