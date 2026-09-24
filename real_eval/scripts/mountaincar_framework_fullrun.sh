@@ -234,7 +234,7 @@ fi
 # Some frameworks (e.g. ARIS) may save checkpoints to subdirectories.
 if [[ "$run_rc" -eq 0 ]]; then
   ckpt_dir="$WORKSPACE/checkpoints"
-  ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l)
+  ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l || true)  # no checkpoints must not kill the script (set -e + pipefail)
   if [[ "$ckpt_count" -ne 5 ]]; then
     echo "checkpoints/ has $ckpt_count files (expected 5). Scanning for misplaced checkpoints..." | tee -a "$LOG_FILE"
     # Search for checkpoint files in known subdirectories
@@ -246,7 +246,7 @@ if [[ "$run_rc" -eq 0 ]]; then
     done
     # Also search for any config-42-*.pkl files anywhere in the workspace
     find "$WORKSPACE" -maxdepth 4 -name "config-42-*.pkl" ! -path "$ckpt_dir/*" -exec cp {} "$ckpt_dir"/ \; 2>/dev/null || true
-    ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l)
+    ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l || true)
     echo "  After recovery: $ckpt_count checkpoint files in checkpoints/" | tee -a "$LOG_FILE"
     if [[ "$ckpt_count" -ne 5 ]]; then
       echo "  WARNING: Still have $ckpt_count checkpoints (expected 5). Handoff may fail." | tee -a "$LOG_FILE"
