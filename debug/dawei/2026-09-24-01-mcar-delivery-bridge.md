@@ -34,3 +34,13 @@ agent 留下两套自洽产物：
 
 ## 待做
 一发 luna 集成测试；通过后补 DS / kimi（01 MountainCar 从未跑过这两个模型）。
+
+## 集成测试第 1 发（`fullrun_mcar_01_luna_20260924_115332`，保留）：两处与交付桥无关的拦路
+1. **中转站变更**：gpt-5.6-luna 现在拒绝一切带 function tools 的 /chat/completions 请求，除非显式 `reasoning_effort='none'`
+   （直接探测 5/5 拒、加 none 后 5/5 通；09-03 的 141 次请求全通，即 09-03 之后变的）。AI-Researcher 从不发 reasoning_effort，
+   Paper Survey Agent 在 ideation 第 9 次请求死掉。修复：`real_eval/adapters/ai_researcher/patch_reasoning_effort_fallback.py`
+   （只在收到该 400 时同请求重试一次，接入 01 MountainCar 包装脚本；其余 01 包装脚本尚未接入，luna 都会撞）。与 02 的 4457b1d 同思路。
+2. **共享脚本无声退出**：`mountaincar_framework_fullrun.sh` 第 237 行 `ckpt_count=$(ls .../*.pkl | wc -l)` 在没有任何 checkpoint 时，
+   `set -euo pipefail` 让脚本以 2 退出、无输出、state.json 停在 running（回放整段 if 块：旧版 exit 2，新版走到底）。
+   这是 08-19 同步进来的代码，影响所有框架的 MountainCar 运行。修复 a8eaa3c：两处 `|| true`。
+第 2 发 `fullrun_mcar_01_luna_20260924_121831` 带两处修复重发，fallback 在 ideation 第一次被拒时即触发并继续。
