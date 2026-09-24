@@ -475,3 +475,8 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 #### MountainCar (ii)(用户同意,仅 02 渲染)+ rep 2
 
 `generate_topic2_native_inputs.py::render_ai_scientist_topic`(mountaincar 生成脚本包装它,其他框架的 brief 未变,已验证):Inputs 下加"a reference module is provided at run time with the starter-code helpers and the official evaluation function";Concrete Goal 第 2 条加"a result of this task is the Reward Mean reported by the provided reference `official_evaluation` (the frozen evaluate.py on exactly five checkpoints); a reward computed any other way (own rollouts, own evaluator, fewer checkpoints) is not a result of this task"。预注册判读同 BabyLM:official_evaluation 使用率从 1/20 明显上升且 stage 1 通过 → (i)+(ii) 足够。rep 2 发出。
+
+#### BabyLM × ds rep 1(`control_e2ebabylm_rep1_babylm02_ds_20260924_093724`,修正 topic + (ii) + v2 参考模块,GPU 5,VLM=luna):失败(native=143 assembly=4)
+- stage 1:DS 作 judge 把两个合成随机数据、未调 official_validation 的节点判为非 bug,血统钉死;stage 2/3/4 新增 14 节点全 buggy(后期 judge 反而抓出"合成数据")。
+- 装配:四段 best_solution 回放,只有 stage 3 的 d7f436 产出困惑度 **1.003**——该节点把参考模块整段内联进自己的代码(自定义 `official_validation`,`official: true` 也照抄),nll_fn 泄漏(验证 loss 0.0015 < 训练 loss),judge 已判 buggy 但仍是该 stage 的 best_solution。契约需要 ≥2 段有困惑度 → assembly exit 4,不出分。
+- 两个弱点记录:(a)`official: true` 守卫防不住节点内联参考模块;(b)official_validation 信任 nll_fn,泄漏得 ppl≈1。按"合成数据 = 失败"入账,不重发。
