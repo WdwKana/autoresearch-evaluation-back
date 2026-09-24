@@ -103,6 +103,7 @@ Build a reproducible BabyLM Strict-Small word-level language modeling workflow t
 # Dataset
 - standardized local dataset root: {dataset_root}
 {domain_line}
+- a reference module is provided at run time with the corpus loader, the fixed validation split and the official validation function
 
 # Contract
 - topic label: {TOPIC_LABEL}
@@ -114,7 +115,7 @@ Implement and evaluate a BabyLM word-level language modeling run path that:
 1. consumes the challenge contract directly,
 2. writes and locks `research_idea.json` before the first experiment,
 3. trains and evaluates on the real dataset only,
-4. records word-level validation perplexity for each experiment,
+4. records word-level validation perplexity for each experiment as reported by the provided reference validation function on its fixed validation lines; a perplexity computed any other way (own split, subsampled or self-generated text, other normalisation) is not a result of this task,
 5. writes a concise final report.
 
 # Scientific Independence

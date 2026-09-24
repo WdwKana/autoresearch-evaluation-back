@@ -431,3 +431,10 @@ psydef × ds rep 3 于 18:28 启动,`timeout 14400s docker run` 在 22:28 向 do
 
 参照 TDC × luna rep 2 的 32 核。主机 384 核、负载约 85,并发 ≤ 5 时 5×32 = 160 核有余量;64 核在 5 并发下会到 320,过近。只影响之后的发射,在跑的容器不变(torch 线程数在进程启动时已定,动态调核数也无益)。
 ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别名)同此提交快照。
+
+#### BabyLM rep 4(修正域名 + v2 参考模块)stage 1 仍失败(0/20);(ii) 加入 02 专属渲染;rep 5 在 GPU 5 发出(2026-09-24)
+
+- rep 4 判词:15/20 节点未调 `official_validation`,自算困惑度(含 2 个合成语料),luna 判"不是有效官方结果";其余在 idea(PBDS 自适应域采样控制器)的实现上有逻辑错。ideation 只看 topic、看不到参考模块,idea 自己规定了困惑度算法,节点忠实于 idea → 参考模块被绕开。与 ARC rep 1 同类:仅 (i) 不够。
+- (ii)(用户同意,仅 02 渲染):`render_ai_scientist_topic` 的 Concrete Goal 第 4 条改为"as reported by the provided reference validation function on its fixed validation lines; a perplexity computed any other way … is not a result of this task",Dataset 下加一行"a reference module is provided at run time …"。其他框架的 brief 未变(已验证)。
+- 预注册判读:official_validation 使用率从 5/20 明显上升且 stage 1 通过 → (i)+(ii) 足够;上升但仍 0 通过且判词集中在 idea 算法实现 → 复杂 idea 在 stage 1 写不对,另议;不上升 → 该句未进 idea,查 ideation 输出。
+- 昨夜其他结果:psydef × ds rep 5 0.1746(32 核);TDC × ds rep 2 0.8046(参考 v2);TDC × kimi 原生四阶段完成、组装成功,但总墙钟 47017 s、复现运行时 5517 s 两项超契约预算,审计不通过(诊断副本上其余检查全部通过);ARC × kimi host 重跑组装通过、whest 仍拒(未深挖);ARC × ds rep 2 合成路线组装失败。
