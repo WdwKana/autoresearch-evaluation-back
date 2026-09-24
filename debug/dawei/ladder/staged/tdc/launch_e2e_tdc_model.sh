@@ -9,7 +9,7 @@ set -euo pipefail
 REP="${1:?rep}"; TAG="${2:?model tag}"; PROVIDER_ENV="${3:?provider env}"
 MODEL="$(grep -E '^OPENAI_MODEL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 VLM_MODEL="${VLM_MODEL:-}"   # optional vision-capable model for the plot-feedback step only
-REF="${TDC_REF:-tdc_reference_v2}"; RUN_TIMEOUT="${RUN_TIMEOUT:-14400}"   # reference module version; native wall-clock cap in seconds
+REF="${TDC_REF:-tdc_reference_v2}"; RUN_TIMEOUT="${RUN_TIMEOUT:-86400}"   # reference module version; native wall-clock cap in seconds
 PUB=/data/daweiwang/claude-home/researchclaweval-public
 SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
 DATA=$PUB/data/tdc_admet_tox

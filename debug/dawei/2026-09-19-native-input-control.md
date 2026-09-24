@@ -442,3 +442,9 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 #### TDC × kimi rep 2 重发(用户决定):上限 24 h,不向 agent 提供时间
 
 `RUN_TIMEOUT=86400`,参考模块 v2,32 核,setsid 独立会话。02 侧没有 01 那种 budget_clock / 时间可见性补丁(仅 psydef 正式 wrapper 里有一处提及,规格臂不用);agent 能看到的时间信息只有正式 TDC topic 里契约原文的预算行("3,600 cumulative experiment seconds, 7,200 total wall seconds")和上游 stage 3 的"每个实验最多 60 分钟"反馈,两者都不动。审计仍会按契约核对两项预算字段;若再超,按契约口径记为超预算。
+
+#### ARC × kimi rep 1 的最终定位 + rep 2 重发;所有 launcher 上限统一 24 h(用户决定,2026-09-24)
+
+- rep 1:stage 4 的 best_solution 没有 import 参考模块,而是把当时的参考模块源码(含旧的"别名"打包器)整段粘进了自己的脚本;复现时跑的是节点内嵌的旧打包器,产出 `Estimator = DiagonalEstimator` 别名,官方 adapter 只认类定义 → 无候选。stage 2/3 的节点正常 import,文件正确。按"选最后阶段"的规则不改选;以修好的参考模块(追加 `class Estimator(<YourClass>): pass`)重发 rep 2(CPU,32 核,24 h)。
+- 所有 launcher 的默认 `RUN_TIMEOUT` 改为 86400(看门狗到期 docker stop);不向 agent 增加任何时间信息。
+- ARC × ds rep 2:24 个节点 1 个用提供的记录,四个 best_solution 复现各跑满 3600 s 超时(合成元预测器训练),无官方验证记录;按 (a) 口径记为失败,是模型行为结果,不修。

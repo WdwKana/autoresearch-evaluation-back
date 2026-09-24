@@ -8,6 +8,7 @@ set -euo pipefail
 REP="${1:?rep}"; TAG="${2:?model tag}"; PROVIDER_ENV="${3:?provider env}"
 MODEL="$(grep -E '^OPENAI_MODEL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 VLM_MODEL="${VLM_MODEL:-}"   # optional vision-capable model for the plot-feedback step only
+RUN_TIMEOUT="${RUN_TIMEOUT:-86400}"   # native wall-clock cap in seconds (watchdog stops the container)
 PUB=/data/daweiwang/claude-home/researchclaweval-public
 SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
 DATA=/data/daweiwang/claude-home/researchclaweval-public/data/arc_white_box_estimation_2026
@@ -39,8 +40,8 @@ json.dump({"project_id":"control_e2earc_arc02_"+sys.argv[3],"phase":"diagnostic"
 PY
 set +e
 GPU_ARGS=(); CUDA_ENV=(); if [ "$GPU" = "none" ]; then CUDA_ENV=(-e CUDA_VISIBLE_DEVICES=); else GPU_ARGS=(--gpus "device=$GPU"); fi
-( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-arc] time cap reached: container stopped" ) & WATCHDOG=$!
-timeout 14400s docker run --rm --name "$NAME" "${GPU_ARGS[@]}" "${CUDA_ENV[@]}" --cpus 32 --memory 64g --shm-size 16g \
+( sleep "${RUN_TIMEOUT}"; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-arc] time cap reached: container stopped" ) & WATCHDOG=$!
+timeout "${RUN_TIMEOUT}s" docker run --rm --name "$NAME" "${GPU_ARGS[@]}" "${CUDA_ENV[@]}" --cpus 32 --memory 64g --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/arc_wbe_2026:ro" --env-file "$PROVIDER_ENV" \
   -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '

@@ -8,6 +8,7 @@ set -euo pipefail
 REP="${1:?rep}"; TAG="${2:?model tag}"; PROVIDER_ENV="${3:?provider env}"
 MODEL="$(grep -E '^OPENAI_MODEL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 VLM_MODEL="${VLM_MODEL:-}"
+RUN_TIMEOUT="${RUN_TIMEOUT:-86400}"   # native wall-clock cap in seconds (watchdog stops the container)
 PUB=/data/daweiwang/claude-home/researchclaweval-public
 SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
 DATA=/data/daweiwang/claude-home/researchclaweval-public/data/BabyLM-2026-Strict-Small
@@ -39,8 +40,8 @@ import json,sys,datetime
 json.dump({"project_id":"control_e2ebabylm_babylm02_"+sys.argv[3],"phase":"diagnostic","status":"running","summary":f"BabyLM end-to-end SPEC arm rep {sys.argv[2]} model={sys.argv[3]} vlm_override={sys.argv[4] or 'none'}: production spec topic, reference loader via dataset-reference slot, stages 1-4 (20/6/6/2) on GPU {sys.argv[5]}, host deterministic assembly + run_babylm_score + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
 PY
 set +e
-( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-babylm] time cap reached: container stopped" ) & WATCHDOG=$!
-timeout 14400s docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 16 --memory 64g --shm-size 16g \
+( sleep "${RUN_TIMEOUT}"; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e-babylm] time cap reached: container stopped" ) & WATCHDOG=$!
+timeout "${RUN_TIMEOUT}s" docker run --rm --name "$NAME" --gpus "device=$GPU" --cpus 16 --memory 64g --shm-size 16g \
   -v "$WS":/workspace -w /workspace -v "$DATA:/data/BabyLM-2026-Strict-Small:ro" -v "$DATA:$DATA:ro" -v "$PUB/automation/babylm_contract.md:$PUB/automation/babylm_contract.md:ro" -v "$PUB/automation/babylm_contract.md:/input/babylm_contract.md:ro" --env-file "$PROVIDER_ENV" \
   -e EXPECTED_GPU_UUID="$EXPECTED_GPU_UUID" -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e OMP_NUM_THREADS=16 -e MKL_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16 -e TORCH_NUM_THREADS=16 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '

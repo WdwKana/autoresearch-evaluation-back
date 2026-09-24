@@ -8,6 +8,7 @@
 set -euo pipefail
 REP="${1:?rep}"; TAG="${2:?model tag}"; PROVIDER_ENV="${3:?provider env}"
 VLM_MODEL="${VLM_MODEL:-}"   # optional: a vision-capable model for the plot-feedback (VLM) step only, e.g. gpt-5.6-luna for deepseek-v4-flash
+RUN_TIMEOUT="${RUN_TIMEOUT:-86400}"   # native wall-clock cap in seconds (watchdog stops the container)
 MODEL="$(grep -E '^OPENAI_MODEL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 PUB=/data/daweiwang/claude-home/researchclaweval-public
 SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
@@ -22,7 +23,7 @@ cp "$PUB/real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py" "$WS/real_ev
 cp "$SP/tier/tier_apply.py" "$WS/tier/"
 python3 "$SP/tier/tier_build.py" 0 "$REP" "$WS" "$PUB" >/dev/null
 python3 - "$WS/tier/tier.json" "$TAG" "$VLM_MODEL" <<'PY'
-import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-spec",model_tag=sys.argv[2],use_ideation_contract=True,vlm_model_override=(sys.argv[3] or None),ideation_patches="action-format label normalization, tolerant parser (multi-block replies, trailing prose, surplus idea wrapper), MAX_NUM_TOKENS 16384, up to 3 ideation attempts (production psydef wrapper)",thread_caps=8,topic_input="psydefdetect_topic.md (production spec) + ideation contract paragraph + hf_dataset_reference.py (loader v2, --add_dataset_ref)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_psydef.py)"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
+import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-spec",model_tag=sys.argv[2],run_timeout_seconds=int(__import__("os").environ.get("RUN_TIMEOUT","14400")),hf_offline=True,cpus=32,use_ideation_contract=True,vlm_model_override=(sys.argv[3] or None),ideation_patches="action-format label normalization, tolerant parser (multi-block replies, trailing prose, surplus idea wrapper), MAX_NUM_TOKENS 16384, up to 3 ideation attempts (production psydef wrapper)",thread_caps=8,topic_input="psydefdetect_topic.md (production spec) + ideation contract paragraph + hf_dataset_reference.py (loader v2, --add_dataset_ref)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_psydef.py)"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 python3 "$PUB/automation/scripts/generate_psydefdetect_native_inputs.py" --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" --contract-file "$PUB/automation/psydefdetect_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
@@ -36,10 +37,10 @@ import json,sys,datetime
 json.dump({"project_id":"control_e2espec_psydef02_"+sys.argv[3],"phase":"diagnostic","status":"running","summary":f"end-to-end SPEC arm rep {sys.argv[2]} (VLM model override: {sys.argv[4] or 'none'}): production spec topic + ideation contract, loader v2 via dataset-reference slot, stages 1-4, host deterministic assembly + validation","updated_at":datetime.datetime.now(datetime.UTC).isoformat()},open(sys.argv[1],"w"),indent=2)
 PY
 set +e
-( sleep 14400; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e] time cap reached: container stopped" ) & WATCHDOG=$!
-timeout 14400s docker run --rm --name "$NAME" --cpus 32 --memory 64g --shm-size 8g \
+( sleep "${RUN_TIMEOUT}"; docker stop -t 30 "$NAME" >/dev/null 2>&1 && echo "[e2e] time cap reached: container stopped" ) & WATCHDOG=$!
+timeout "${RUN_TIMEOUT}s" docker run --rm --name "$NAME" --cpus 32 --memory 64g --shm-size 8g \
   -v "$WS":/workspace -w /workspace -v "$PUB/data/psydefdetect:/data/psydefdetect:ro" --env-file "$PROVIDER_ENV" \
-  -e HF_ENDPOINT=https://hf-mirror.com -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e CUDA_VISIBLE_DEVICES= -e PROMPT_LOG_DIR=/workspace/prompt_logs \
+  -e HF_HUB_OFFLINE=1 -e HF_DATASETS_OFFLINE=1 -e VLM_MODEL="$VLM_MODEL" -e PYTHONUNBUFFERED=1 -e OMP_NUM_THREADS=32 -e MKL_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32 -e TORCH_NUM_THREADS=32 -e CUDA_VISIBLE_DEVICES= -e PROMPT_LOG_DIR=/workspace/prompt_logs \
   ai-scientist-v2:runtime-ready bash -lc '
 set -euo pipefail
 echo "CONTROL_E2E_SPEC model=$OPENAI_MODEL"
