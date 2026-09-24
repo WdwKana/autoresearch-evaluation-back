@@ -466,3 +466,8 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 参考模块 `mountaincar_reference_v1.py`(经 `--add_dataset_ref`):`starter_src()` / `copy_starter(dest)`(冻结起始代码可改,类名 Model 不变)、`run_starter_training(src)`(起始 CLI,种子 42,写 config-42-{0..4}.pkl;陈述成本事实:2000 万步需数小时,2 万步约 1 分钟/16 核;单条训练命令契约上限 1800 s)、`official_evaluation(name, src_dir, checkpoints_dir)`(在干净目录里放 src + 5 个 checkpoint + 冻结 evaluate.py 的字节副本,运行并解析 Reward Mean,写 working/<name>.evaluation.json 与 .submission/)。
 - 组装:复现各阶段 best_solution(JAX CPU 镜像,32 核,单次上限 3600 s),只认 `official: true` 且 submission 完整(5 个 checkpoint + evaluate.py)的记录,选官方 Reward Mean 最高者,提升 src/、checkpoints/、evaluate.py(冻结副本,host 打分校验哈希)、trace、报告。host 校验块从 mountaincar runner 逐行抽出;host 打分用正式 `run_mountaincar_continuous_host_score.py`,`--python` 指向 `mc_python.sh`(在镜像里跑 evaluate.py,因为 host 没有 JAX)。
 - 离线链路测试(两份起始基线 best_solution,2 万 / 4 万步):复现 64 s / 100 s,组装、校验通过,host 打分 −11.30(official_evaluate_py)。
+
+#### MountainCar × luna rep 1(`control_e2emcar_rep1_mcar02_luna_20260924_085312`,规格体 + 参考模块 v1,CPU 32 核):stage 1 失败(0/20)
+
+- 20 个节点:5 个崩溃,15 个跑通被判"没有做要求的冻结官方评估";只有 1 个节点调了 `official_evaluation`(且调用方式不对,checkpoint 命名也不符)。其余节点自己写 PPO/评估、把自己的 rollout 均值标成"Official Evaluation",或手动拷 evaluate.py 去跑然后失败。判官(luna)每条都以参考模块的 official_evaluation 为标准。
+- 与 BabyLM rep 4 同一形态:任务里节点自己能算出"奖励",参考模块对它没有必要性;正式 topic2_topic.md 只说"improves the official Average Reward / delivers five checkpoints",没有"结果只以提供的评估函数为准"。预期下一步同 BabyLM:在 02 的 topic 渲染(`generate_topic2_native_inputs.py::render_ai_scientist_topic`,mountaincar 生成脚本包装它)加 (ii),待用户决定。
