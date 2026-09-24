@@ -438,3 +438,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - (ii)(用户同意,仅 02 渲染):`render_ai_scientist_topic` 的 Concrete Goal 第 4 条改为"as reported by the provided reference validation function on its fixed validation lines; a perplexity computed any other way … is not a result of this task",Dataset 下加一行"a reference module is provided at run time …"。其他框架的 brief 未变(已验证)。
 - 预注册判读:official_validation 使用率从 5/20 明显上升且 stage 1 通过 → (i)+(ii) 足够;上升但仍 0 通过且判词集中在 idea 算法实现 → 复杂 idea 在 stage 1 写不对,另议;不上升 → 该句未进 idea,查 ideation 输出。
 - 昨夜其他结果:psydef × ds rep 5 0.1746(32 核);TDC × ds rep 2 0.8046(参考 v2);TDC × kimi 原生四阶段完成、组装成功,但总墙钟 47017 s、复现运行时 5517 s 两项超契约预算,审计不通过(诊断副本上其余检查全部通过);ARC × kimi host 重跑组装通过、whest 仍拒(未深挖);ARC × ds rep 2 合成路线组装失败。
+
+#### TDC × kimi rep 2 重发(用户决定):上限 24 h,不向 agent 提供时间
+
+`RUN_TIMEOUT=86400`,参考模块 v2,32 核,setsid 独立会话。02 侧没有 01 那种 budget_clock / 时间可见性补丁(仅 psydef 正式 wrapper 里有一处提及,规格臂不用);agent 能看到的时间信息只有正式 TDC topic 里契约原文的预算行("3,600 cumulative experiment seconds, 7,200 total wall seconds")和上游 stage 3 的"每个实验最多 60 分钟"反馈,两者都不动。审计仍会按契约核对两项预算字段;若再超,按契约口径记为超预算。
