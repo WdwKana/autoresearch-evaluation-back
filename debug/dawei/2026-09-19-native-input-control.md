@@ -459,3 +459,10 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 组装第一次选错:stage 1 通过节点在自己代码里重定义了同名 `official_validation`(冒烟版,1200 词,记录里诚实标了 `official: false, smoke_test: true`),我的组装只读 validation_perplexity 未检查 official → 选中 1.77。修:组装只认 `official: true`(参考模块写的)记录;host 重跑(GPU 5)后选 stage 2 的 domain_conditioned_gru_epoch_5,**108.11**(stage 3/4 为 120.8 / 119.3),打分、校验通过。被选节点未调 save_submission,submission/ 只有验证记录(runner 校验块不检查该项,如实记录)。
 - ARC × kimi rep 2:stage 1 第 13 个节点通过但未调 local_validation,stage 2–4 共 17 个节点 0 个用提供的记录(working 里是 synthetic_ground_truth.npy 等),组装无官方验证记录 → 失败。主题里的结果规则在 ideation 的命中率不稳:luna rep 3、kimi rep 1 吸收了,ds 两发、kimi rep 2 没有。
 - MountainCar 运行镜像 `ai-scientist-v2:runtime-mountaincar`:在 02 镜像上加一层(577 MB):jax[cpu]==0.6.2、flax==0.10.7、optax==0.2.8、tensorflow-probability==0.25.0、gymnax==0.0.9、dotmap(版本对齐能跑的 01 镜像;最新 jax/gymnax 与起始代码不兼容)。验证:起始 PPO 2 万步 CPU 16 核 52 s 出 5 个 checkpoint,冻结 evaluate.py 11 s 跑通。Dockerfile 快照在 debug/dawei/ladder/staged/mountaincar/。
+
+#### MountainCar 路线(规格体,2026-09-24)
+
+- 正式 02 wrapper 是占位(调用上游不存在的 `--topic` 参数),从未跑过;02 镜像缺 JAX 栈 → 新层 `ai-scientist-v2:runtime-mountaincar`(见上)。
+- 参考模块 `mountaincar_reference_v1.py`(经 `--add_dataset_ref`):`starter_src()` / `copy_starter(dest)`(冻结起始代码可改,类名 Model 不变)、`run_starter_training(src)`(起始 CLI,种子 42,写 config-42-{0..4}.pkl;陈述成本事实:2000 万步需数小时,2 万步约 1 分钟/16 核;单条训练命令契约上限 1800 s)、`official_evaluation(name, src_dir, checkpoints_dir)`(在干净目录里放 src + 5 个 checkpoint + 冻结 evaluate.py 的字节副本,运行并解析 Reward Mean,写 working/<name>.evaluation.json 与 .submission/)。
+- 组装:复现各阶段 best_solution(JAX CPU 镜像,32 核,单次上限 3600 s),只认 `official: true` 且 submission 完整(5 个 checkpoint + evaluate.py)的记录,选官方 Reward Mean 最高者,提升 src/、checkpoints/、evaluate.py(冻结副本,host 打分校验哈希)、trace、报告。host 校验块从 mountaincar runner 逐行抽出;host 打分用正式 `run_mountaincar_continuous_host_score.py`,`--python` 指向 `mc_python.sh`(在镜像里跑 evaluate.py,因为 host 没有 JAX)。
+- 离线链路测试(两份起始基线 best_solution,2 万 / 4 万步):复现 64 s / 100 s,组装、校验通过,host 打分 −11.30(official_evaluate_py)。
