@@ -116,7 +116,7 @@ for st, d, best, nid in stages:
             v = float(payload["validation_perplexity"])
         except Exception:
             continue
-        if not (v > 0):
+        if not (v > 0) or payload.get("official") is not True:   # only records written by the reference module count (a node may shadow the function)
             continue
         name = Path(sf).name[:-len(".validation.json")]
         scores[name] = v

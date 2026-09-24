@@ -1,0 +1,4 @@
+# One extra layer on the 02 runtime: the JAX stack the frozen MountainCar starter code and evaluator need (CPU only).
+FROM ai-scientist-v2:runtime-ready
+RUN pip install --no-cache-dir "jax[cpu]==0.6.2" "flax==0.10.7" "optax==0.2.8" "tensorflow-probability==0.25.0" "gymnax==0.0.9" dotmap \
+ && python3 -c "import jax, flax, gymnax, optax; from tensorflow_probability.substrates import jax as tfp; e,p=gymnax.make('MountainCarContinuous-v0'); print('jax', jax.__version__, 'flax', flax.__version__, 'optax', optax.__version__, 'env ok')"

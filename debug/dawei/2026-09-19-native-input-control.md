@@ -452,3 +452,10 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 #### TDC × kimi rep 2(`control_e2etdcspec_rep2_tdc02_kimi_20260924_051931`,v2 参考模块、32 核、24 h 上限):端到端通过,main_score 0.7963
 
 原生 99 分钟(5939 s)四阶段完成;组装 4 个 best_solution 复现 25/133/145/120 s,选 stage 2 的 smiles_aware_best_hidden_dim(验证 macro AUROC 0.9394);总墙钟 6361 s、复现运行时 423 s,两项预算都在契约内;framework 审计、隐藏标签打分(AMES 0.7892 / hERG 0.7841 / DILI 0.8157)、final 审计全部通过。与 rep 1(11.2 h、超预算)对比:32 核 + idea 选的模型轻,不是工具改动。
+
+#### BabyLM × luna rep 5(`control_e2ebabylm_rep5_babylm02_luna_20260924_051334`,修正 topic + (ii) + v2 参考模块,GPU 5):端到端通过,词级困惑度 **108.11**
+
+- stage 1 第 6 个节点通过(6/7 调参考模块;rep 4 为 5/20)—— 预注册判读落在"(i)+(ii) 足够"。四阶段完成:stage 2 7 节点 1 通过、stage 3 4 节点 1 通过、stage 4 完成。
+- 组装第一次选错:stage 1 通过节点在自己代码里重定义了同名 `official_validation`(冒烟版,1200 词,记录里诚实标了 `official: false, smoke_test: true`),我的组装只读 validation_perplexity 未检查 official → 选中 1.77。修:组装只认 `official: true`(参考模块写的)记录;host 重跑(GPU 5)后选 stage 2 的 domain_conditioned_gru_epoch_5,**108.11**(stage 3/4 为 120.8 / 119.3),打分、校验通过。被选节点未调 save_submission,submission/ 只有验证记录(runner 校验块不检查该项,如实记录)。
+- ARC × kimi rep 2:stage 1 第 13 个节点通过但未调 local_validation,stage 2–4 共 17 个节点 0 个用提供的记录(working 里是 synthetic_ground_truth.npy 等),组装无官方验证记录 → 失败。主题里的结果规则在 ideation 的命中率不稳:luna rep 3、kimi rep 1 吸收了,ds 两发、kimi rep 2 没有。
+- MountainCar 运行镜像 `ai-scientist-v2:runtime-mountaincar`:在 02 镜像上加一层(577 MB):jax[cpu]==0.6.2、flax==0.10.7、optax==0.2.8、tensorflow-probability==0.25.0、gymnax==0.0.9、dotmap(版本对齐能跑的 01 镜像;最新 jax/gymnax 与起始代码不兼容)。验证:起始 PPO 2 万步 CPU 16 核 52 s 出 5 个 checkpoint,冻结 evaluate.py 11 s 跑通。Dockerfile 快照在 debug/dawei/ladder/staged/mountaincar/。
