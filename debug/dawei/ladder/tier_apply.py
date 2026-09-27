@@ -39,6 +39,7 @@ def run(cmd):
 # ---- tier 0: model adapter + transport + logging (identical for every tier) ----
 run([sys.executable, "real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py"])
 run([sys.executable, "real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py"])
+run([sys.executable, "real_eval/adapters/ai_scientist_v2/patch_remove_synthetic_data_guideline.py"])  # B11, user-approved 2026-09-27
 spec = importlib.util.spec_from_file_location("adapter", "real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)

@@ -39,3 +39,4 @@
 - 同时在跑的四发(ARC ds/kimi rep 3、BabyLM ds/kimi rep 2,10:50 发出)在结束时调用的是改后的装配脚本(发射器调用 scratchpad 里的现行路径);BabyLM luna 的离线重装配在改动前启动,报告仍是旧格式,之后重生成。
 - 本批四发的输入版本:主题含"只用提供数据"句,参考模块含 A6 两句(已逐发核对)。
 - BabyLM 装配改回取最低困惑度(与打分脚本一致,用户同意);在跑的 BabyLM ds/kimi 第 2 发将在装配时使用这一版。
+- B11 确认并执行:删除 02 原生合成数据指引一句(仅 parallel_agent.py:473);中止 ARC kimi rep3、BabyLM ds/kimi rep2(stage 1 中途,目录保留、状态 aborted);ARC ds/kimi 以 rep4 带 B11 重发;BabyLM 暂不重发。
