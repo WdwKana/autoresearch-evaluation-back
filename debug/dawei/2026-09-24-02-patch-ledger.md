@@ -70,3 +70,4 @@
 - 两发 TDC rep 3(control_e2etdcspec_rep3_tdc02_{luna,ds}_20260927_*)启动约 10 分钟后由操作者中止(用户要的是离线重装配,不是重跑),目录保留,state=aborted。
 - 更正(同日,用户同意):BabyLM 也撤回"最后一个 stage"规则,改回取验证困惑度最低的实验。原因:BabyLM 的官方分数由 automation/scripts/run_babylm_score.py 给出,它不看 selected_experiment_id,直接取 trace 中所有实验的最低困惑度;01 与 02 都用它打分(01 luna 的 trace 甚至没写选中项,742.97 就是它取的最小值)。装配选择须与打分一致,否则提交的模型与被打分的实验不是同一个。02 BabyLM luna 维持 108.11(离线按最后 stage 重装配得 119.35,仅作记录)。注:该脚本来自 08-19 原始发布,共享 BabyLM 运行器从未调用它;01 的 BabyLM wrapper 与我们的 02 发射器各自接入了它。
 - 至此各话题选择规则:TDC(契约校验器)与 BabyLM(打分脚本)= 在记录的实验里取验证最优;psydef、ARC、MountainCar = 框架链条终点(最后一个有官方记录的 stage)。
+- 契约核对(09-27,只记录不改):验收方由各契约明文规定,但两处与我们的做法有出入。(a) psydef 契约要求 score.json 由**框架自己**跑提供的打分器产出——01 自打分合规;02 路线上该文件由 host 重算写出,记为偏差。(b) BabyLM 契约明文"框架必须自行把训练数据切成 train/validation"——v2 参考模块的固定验证行把切分收归 host,与契约冲突,记入重要改动登记(与"参考模块只给 02"同组);01 自行切分反而是合规做法。
