@@ -62,6 +62,9 @@
 
 ## E. host 装配选择规则(2026-09-27 修订,用户同意)
 - 之前:psydef / ARC 取最后一个 stage;TDC 取验证 AUROC 最高的 stage(luna 一发是 18 个配置里挑)、BabyLM 取困惑度最低、MountainCar 取官方 Reward Mean 最高——host 替框架做跨 stage 选择,违背"选择归框架"。
-- 现在:五个话题统一取"最后一个有官方记录的 stage"的 best_solution(框架链条终点),不做跨 stage 分数比较。节点内多个配置仍由 host 取官方分最好的一个(已在 trace 的 selection_rule / within_node_configuration 注明),是否给参考模块加"节点声明选定配置"接口待议。
+- 现在:TDC 以外的四个话题统一取"最后一个有官方记录的 stage"的 best_solution(框架链条终点),不做跨 stage 分数比较。节点内多个配置仍由 host 取官方分最好的一个(已在 trace 的 selection_rule / within_node_configuration 注明),是否给参考模块加"节点声明选定配置"接口待议。
 - 对已有分数:psydef ×3、ARC luna、MountainCar luna 不变;BabyLM luna 按新规则为 stage 4 的 119.35(旧 108.11);TDC ×3 需按新规则重跑(不对另一份预测用隐藏标签打分)。
 - BabyLM/MountainCar 装配脚本开头说明原从 ARC 复制(写着取最后一个 stage、estimator/whest),已改正。
+- 更正(同日):TDC 撤回新规则。TDC 契约写明 select using validation evidence only,契约校验器 validate_tdc_admet_tox_run.py 要求 selection_metric=validation_macro_average_auroc 且选中项是 trace 中验证 AUROC 最高者;这条对所有框架(含 01)同样执行,所以 TDC 按验证分挑是契约规则,不是 host 越权。离线用新规则重装配的 TDC 包因此过不了框架阶段审计。TDC 三格原分数有效,不重跑。其余话题契约没有此类规则,保留"最后一个有官方记录的 stage"。
+- 旁证:同一份 best_solution 离线回放,验证分与原运行不完全一致(ds stage 4 0.8271→0.8224,kimi stage 4 0.8153→0.8357),回放存在非确定性。
+- 两发 TDC rep 3(control_e2etdcspec_rep3_tdc02_{luna,ds}_20260927_*)启动约 10 分钟后由操作者中止(用户要的是离线重装配,不是重跑),目录保留,state=aborted。

@@ -12,8 +12,7 @@ Steps:
      working/<name>.test_predictions.csv written through the reference module
   2. experiments = one entry per stage best_solution (2-4), each represented by the
      configuration with the highest validation macro AUROC that the node itself scored
-  3. selected = the last stage's best_solution that produced a validation record (the framework's
-     final stage; no score comparison across stages)
+  3. selected = the experiment with the highest validation macro AUROC (the contract's rule)
   4. write the contract package from facts only: runs/<run_id>/{config.json, validation_predictions.csv,
      metrics.json, train.log, runfile.py}, predictions.csv, environment.json, experiment_trace.json
      (with a claim ledger), paper.md (tables rendered from the metrics files), final_report.md, logs/
@@ -208,8 +207,7 @@ for idx, e in enumerate(distinct, start=1):
         claims.append({"claim_id": f"{rid}_{ep.lower()}_auroc", "endpoint": ep, "metric": "AUROC", "value": val, "source_run_id": rid,
                        "prediction_file": rec["prediction_file"], "config_file": rec["config_file"], "log_file": rec["log_file"]})
 
-# ---- selection = the framework's final stage (last record in stage order); no cross-stage score comparison ----
-selected = records[-1]
+selected = max(records, key=lambda r: r["validation_metrics"]["macro_average_auroc"])
 sel_e = next(e for e in distinct if e["run_id"] == selected["run_id"])
 shutil.copy(sel_e["configs"][sel_e["best_cfg"]]["test_predictions"], OUT / "predictions.csv")
 say(f"selected {selected['run_id']} ({sel_e['best_cfg']}, validation macro AUROC {selected['validation_metrics']['macro_average_auroc']:.4f}); test predictions promoted")
@@ -229,7 +227,7 @@ trace = {"task_id": "tdc_admet_tox", "framework": "AI-Scientist-v2", "framework_
          "workspace_trace_root": "/workspace", "framework_internal_model": a.model, "framework_internal_api_base_url": a.base_url,
          "idea_artifact": "research_idea.json", "idea_locked_before_experiments": True,
          "experiment_definition": "one experiment per BFTS stage: the best_solution the framework itself wrote at the end of that stage, represented by the configuration with the highest validation macro AUROC that the node scored through the official validation scorer; values obtained by replaying it offline",
-         "experiments": records, "selected_experiment_id": selected["run_id"], "selection_rule": "the framework's final stage: the best_solution of the last stage that produced an official record (no score comparison across stages)", "within_node_configuration": "highest validation macro AUROC among the configurations the node scored (host rule)",
+         "experiments": records, "selected_experiment_id": selected["run_id"], "selection_metric": "validation_macro_average_auroc",
          "final_prediction_file": "predictions.csv",
          "reproduction": {"entrypoint": f"{sel_dir}/runfile.py", "command": f"cd {sel_dir} && python3 -c \"code=open('runfile.py').read(); exec(compile(code,'runfile.py','exec'),{{}})\"", "seed": 0},
          "environment_file": "environment.json", "resource_budget": RESOURCE_BUDGET,
@@ -254,12 +252,12 @@ for r in records:
     paper += [f"### {r['run_id']}", "", "```text", r["hypothesis"], "```", ""]
 paper += ["## Validation protocol", "",
           "All configurations are scored on the scaffold-split validation set with the official validation scorer; the held-back split is never used for selection.",
-          "The selected experiment is the framework's final stage (the last stage with a validation record).", "",
+          "The selected experiment is the one with the highest validation macro AUROC.", "",
           "## Results", "", "| Experiment | macro AUROC | AMES AUROC | hERG AUROC | DILI AUROC |", "|---|---:|---:|---:|---:|"]
 for r in records:
     rid = r["run_id"]
     paper.append(f"| {rid} | {cell(rid, 'macro')} | {cell(rid, 'ames')} | {cell(rid, 'herg')} | {cell(rid, 'dili')} |")
-paper += ["", "## Selected approach", "", f"Selected: **{selected['run_id']}** (configuration `{sel_e['best_cfg']}`), the framework's final stage.", "",
+paper += ["", "## Selected approach", "", f"Selected: **{selected['run_id']}** (configuration `{sel_e['best_cfg']}`), by validation macro AUROC.", "",
           "## Limitations", "", "```text", idea.get("Risk Factors and Limitations", "") or "(none recorded by the framework)", "```", "",
           "## Provenance", "", "Assembled deterministically from the framework's saved artifacts; no hidden-split result is reported.", ""]
 (OUT / "paper.md").write_text("\n".join(paper), encoding="utf-8")
@@ -270,7 +268,7 @@ for r in records:
                "```text", r["hypothesis"][:1200], "```", "",
                f"- validation macro AUROC: {r['validation_metrics']['macro_average_auroc']:.4f}; per endpoint: " + ", ".join(f"{ep} {r['validation_metrics']['per_endpoint'][ep]['auroc']:.4f}" for ep in ENDPOINTS),
                f"- other configurations this node scored: {r['other_configurations_scored_by_this_node']}", ""]
-report += ["## Selection", "", f"Selected: **{selected['run_id']}** as the framework's final stage.", "",
+report += ["## Selection", "", f"Selected: **{selected['run_id']}** by validation macro AUROC (contract rule).", "",
            "## Provenance", "", f"Assembled deterministically on {trace['assembled_at']}; no LLM call in assembly.", ""]
 (OUT / "final_report.md").write_text("\n".join(report), encoding="utf-8")
 (OUT / "logs").mkdir(exist_ok=True)
