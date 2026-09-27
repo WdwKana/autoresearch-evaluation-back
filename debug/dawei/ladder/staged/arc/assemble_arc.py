@@ -93,7 +93,8 @@ for st, d, best, nid in stages:
     if ref.exists():
         shutil.copy(ref, rd / "hf_dataset_reference.py")
     gpu_args = [] if str(a.gpu).lower() == "none" else ["--gpus", f"device={a.gpu}"]
-    cmd = ["docker", "run", "--rm", "--network", "none", "--cpus", "8", *gpu_args,
+    cname = "replay_" + re.sub(r"[^a-zA-Z0-9_.-]", "_", f"{Path(a.out).name}_{st}_{nid[:8]}")[:60] + f"_{os.getpid()}"
+    cmd = ["docker", "run", "--rm", "--name", cname, "--network", "none", "--cpus", "8", *gpu_args,
            "-v", f"{a.data_root}:/data/arc_wbe_2026:ro", "-v", f"{automation}:/workspace/automation:ro",
            "-v", f"{rd}:/replay", "-w", "/replay", *(["-e", "CUDA_VISIBLE_DEVICES="] if str(a.gpu).lower() == "none" else []), a.image,
            "python3", "-c", "code=open('runfile.py').read(); exec(compile(code,'runfile.py','exec'),{})"]
@@ -106,6 +107,12 @@ for st, d, best, nid in stages:
         (rd / "replay_stderr.txt").write_text(p.stderr[-200000:], encoding="utf-8")
     except subprocess.TimeoutExpired:
         rc = 124
+        # the client timeout does not stop the container; stop it by name or it leaks (2026-09-27, awesome_hellman)
+        try:
+            subprocess.run(["docker", "stop", "-t", "10", cname], capture_output=True, text=True, timeout=60)
+            say(f"replay {nid[:8]} timed out after {a.replay_timeout}s; container {cname} stopped")
+        except Exception as stop_exc:
+            say(f"replay {nid[:8]} timed out; docker stop {cname} failed: {stop_exc}")
     secs = (dt.datetime.now() - t0).total_seconds()
     scores, pred_for = {}, {}
     for sf in sorted(glob.glob(str(rd / "working" / "*.validation.json"))):

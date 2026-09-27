@@ -27,6 +27,7 @@ import datetime as dt
 import glob
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -106,7 +107,8 @@ for st, d, best, nid in stages:
     env_probe = ("import json,platform,sys,importlib,importlib.util;pk={};\n"
                  "[pk.__setitem__(m,getattr(importlib.import_module(m),'__version__','?')) for m in ('numpy','pandas','scipy','sklearn','torch') if importlib.util.find_spec(m)];\n"
                  "json.dump({'python_version':sys.version.split()[0],'platform':platform.platform(),'packages':pk},open('working/_environment_probe.json','w'))")
-    cmd = ["docker", "run", "--rm", "--network", "none", "--cpus", "4", "--memory", "16g",
+    cname = "replay_" + re.sub(r"[^a-zA-Z0-9_.-]", "_", f"{Path(a.out).name}_{st}_{nid[:8]}")[:60] + f"_{os.getpid()}"
+    cmd = ["docker", "run", "--rm", "--name", cname, "--network", "none", "--cpus", "4", "--memory", "16g",
            "-v", f"{a.data_root}:/data/tdc_admet_tox:ro", "-v", f"{automation}:/workspace/automation:ro",
            "-v", f"{rd}:/replay", "-w", "/replay", "-e", "CUDA_VISIBLE_DEVICES=", "-e", "OMP_NUM_THREADS=4", a.image,
            "python3", "-c", env_probe + "\ncode=open('runfile.py').read(); exec(compile(code,'runfile.py','exec'),{})"]
@@ -119,6 +121,12 @@ for st, d, best, nid in stages:
         (rd / "replay_stderr.txt").write_text(p.stderr[-200000:], encoding="utf-8")
     except subprocess.TimeoutExpired:
         rc = 124
+        # the client timeout does not stop the container; stop it by name or it leaks (2026-09-27, awesome_hellman)
+        try:
+            subprocess.run(["docker", "stop", "-t", "10", cname], capture_output=True, text=True, timeout=60)
+            say(f"replay {nid[:8]} timed out after {a.replay_timeout}s; container {cname} stopped")
+        except Exception as stop_exc:
+            say(f"replay {nid[:8]} timed out; docker stop {cname} failed: {stop_exc}")
         (rd / "replay_stdout.txt").write_text("replay timed out", encoding="utf-8")
         (rd / "replay_stderr.txt").write_text("", encoding="utf-8")
     secs = (dt.datetime.now() - t0).total_seconds()
