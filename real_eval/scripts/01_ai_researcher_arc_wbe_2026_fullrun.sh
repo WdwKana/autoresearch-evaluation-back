@@ -141,6 +141,7 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_loop_guard.py" "$REPO/real_eval
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_budget_clock.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_wire_tap.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_resource_visibility.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_logger_resilience.py" "$REPO/real_eval/adapters/ai_researcher/"
