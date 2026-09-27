@@ -511,5 +511,5 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 行为有改善:6/20 调官方验证、4 条合法记录(全为退化 MSE 1.4499),但 kimi 严格判官加方法平凡,过不了 stage 1。
 
 #### MountainCar × ds rep 2(`control_e2emcar_rep2_mcar02_ds_20260927_132821`,A5+A6+A7+B11):失败(native=1 assembly=3,stage 1 20 节点跑满)
-- 对比 rep 1(6/20 调官方评估):rep 2 首节点即调官方评估,全程约 7-8/20;但没有一个节点跑通冻结评估(PyTorch 权重与加载接口的搏斗贯穿始终),0 条官方记录;单个"good"节点未调官方评估。
+- 对比 rep 1(6/20 调官方评估):rep 2 首节点即调官方评估,全程约 7-8/20;但没有一个节点跑通冻结评估(PyTorch 权重与加载接口的搏斗贯穿始终),0 条官方记录;唯一 is_buggy=False 的节点其实调了官方评估(记录未写成)但被 VLM 判 is_buggy_plots=True,不算 good node,stage 1 因此无通过节点。
 - A7 把失败原因从"不知道接口"变成"知道接口但转换不动"(节点尝试 torch→flax 转换失败);判定仍是 DS 实现能力,按封线决定入账,不再补丁。
