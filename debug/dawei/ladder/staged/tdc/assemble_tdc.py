@@ -246,30 +246,30 @@ def cell(rid, ep):
 
 title = idea.get("Title", "TDC ADMET toxicity study")
 paper = [f"# {title}", "", "## Hypothesis", "", idea.get("Short Hypothesis", "") or idea.get("Abstract", ""), "",
-         "## Methods", "", "Each experiment is the solution the framework promoted at the end of one of its stages, replayed offline on CPU.",
-         "The framework's own plan for each one is quoted verbatim below.", ""]
+         "## Methods", ""]
 for r in records:
     paper += [f"### {r['run_id']}", "", "```text", r["hypothesis"], "```", ""]
-paper += ["## Validation protocol", "",
-          "All configurations are scored on the scaffold-split validation set with the official validation scorer; the held-back split is never used for selection.",
-          "The selected experiment is the one with the highest validation macro AUROC.", "",
-          "## Results", "", "| Experiment | macro AUROC | AMES AUROC | hERG AUROC | DILI AUROC |", "|---|---:|---:|---:|---:|"]
+paper += ["## Results", "", "| Experiment | macro AUROC | AMES AUROC | hERG AUROC | DILI AUROC |", "|---|---:|---:|---:|---:|"]
 for r in records:
     rid = r["run_id"]
     paper.append(f"| {rid} | {cell(rid, 'macro')} | {cell(rid, 'ames')} | {cell(rid, 'herg')} | {cell(rid, 'dili')} |")
-paper += ["", "## Selected approach", "", f"Selected: **{selected['run_id']}** (configuration `{sel_e['best_cfg']}`), by validation macro AUROC.", "",
-          "## Limitations", "", "```text", idea.get("Risk Factors and Limitations", "") or "(none recorded by the framework)", "```", "",
-          "## Provenance", "", "Assembled deterministically from the framework's saved artifacts; no hidden-split result is reported.", ""]
+paper += ["", "## Limitations", "", "```text", idea.get("Risk Factors and Limitations", "") or "(none recorded by the framework)", "```", "",
+          "## Host packaging notes (written by the host, not by the framework)", "",
+          "- Methods above quote the framework's own plan for each experiment verbatim; each experiment is the solution the framework promoted at the end of one of its stages, replayed offline on CPU.",
+          "- All configurations were scored on the scaffold-split validation set with the official validation scorer; the held-back split was never used for selection.",
+          f"- Selected: **{selected['run_id']}** (configuration `{sel_e['best_cfg']}`); rule: highest validation macro AUROC among the experiments (TDC contract rule).",
+          "- Assembled deterministically from the framework's saved artifacts; no hidden-split result is reported.", ""]
 (OUT / "paper.md").write_text("\n".join(paper), encoding="utf-8")
-report = [f"# {title}", "", "## Research idea (framework-authored)", "", idea.get("Abstract", ""), "",
-          "## Experiments (the framework's per-stage selections, replayed offline)", ""]
+report = [f"# {title}", "", "## Research idea", "", idea.get("Abstract", ""), "",
+          "## Experiments", ""]
 for r in records:
     report += [f"### {r['run_id']} (stage {r['framework_stage']}, framework verdict is_buggy={r['framework_verdict_is_buggy']})", "",
                "```text", r["hypothesis"][:1200], "```", "",
                f"- validation macro AUROC: {r['validation_metrics']['macro_average_auroc']:.4f}; per endpoint: " + ", ".join(f"{ep} {r['validation_metrics']['per_endpoint'][ep]['auroc']:.4f}" for ep in ENDPOINTS),
                f"- other configurations this node scored: {r['other_configurations_scored_by_this_node']}", ""]
-report += ["## Selection", "", f"Selected: **{selected['run_id']}** by validation macro AUROC (contract rule).", "",
-           "## Provenance", "", f"Assembled deterministically on {trace['assembled_at']}; no LLM call in assembly.", ""]
+report += ["## Host packaging notes (written by the host, not by the framework)", "", "- Text above is the framework's own (idea, per-stage plans, stage summaries); values come from the official records; the host only formatted them.", "- Experiments: the best_solution the framework saved at the end of each stage, replayed offline without network.",
+           f"- Selected: **{selected['run_id']}**; rule: highest validation macro AUROC among the experiments (TDC contract rule).",
+           f"- Assembled deterministically on {trace['assembled_at']}; no LLM call in assembly.", ""]
 (OUT / "final_report.md").write_text("\n".join(report), encoding="utf-8")
 (OUT / "logs").mkdir(exist_ok=True)
 (OUT / "logs" / "assembly_log.txt").write_text("\n".join(log), encoding="utf-8")

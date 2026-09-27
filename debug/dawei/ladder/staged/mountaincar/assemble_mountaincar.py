@@ -175,15 +175,16 @@ trace = {
     "assembled_at": dt.datetime.now(dt.UTC).isoformat(),
 }
 (OUT / "experiment_trace.json").write_text(json.dumps(trace, ensure_ascii=False, indent=2), encoding="utf-8")
-lines = [f"# {_text(idea.get('Title', 'MountainCar study'))}", "", "## Research idea (framework-authored)", "", _text(idea.get("Abstract", "")), "",
+lines = [f"# {_text(idea.get('Title', 'MountainCar study'))}", "", "## Research idea", "", _text(idea.get("Abstract", "")), "",
          "**Hypothesis.** " + _text(idea.get("Short Hypothesis", "")), "",
-         "## Experiments (the framework's per-stage selections, replayed offline)", ""]
+         "## Experiments", ""]
 for e in experiments:
     lines += [f"### {e['experiment_id']} (stage {e['stage']})", "", "```text", e["plan"][:1200] or "(no plan text)", "```", "",
               f"- official Reward Mean by configuration: {json.dumps({k: round(v, 3) for k, v in e['reward_mean_by_configuration'].items()})}",
               f"- best configuration: {e['best_configuration']} -> {e['reward_mean']}", ""]
-lines += ["## Selection", "", f"Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`), the framework's final stage.", "",
-          "## Provenance", "", f"Assembled deterministically from the framework's saved artifacts on {trace['assembled_at']}; no LLM call in assembly.", ""]
+lines += ["## Host packaging notes (written by the host, not by the framework)", "", "- Text above is the framework's own (idea, per-stage plans, stage summaries); values come from the official records; the host only formatted them.", "- Experiments: the best_solution the framework saved at the end of each stage, replayed offline without network.",
+          f"- Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`); rule: the framework's final stage (last stage with an official record).",
+          f"- Assembled deterministically on {trace['assembled_at']}; no LLM call in assembly.", ""]
 (OUT / "final_report.md").write_text("\n".join(lines), encoding="utf-8")
 (OUT / "assembly_log.txt").write_text("\n".join(log), encoding="utf-8")
 say("done: src/, checkpoints/, evaluate.py, experiment_trace.json, final_report.md")

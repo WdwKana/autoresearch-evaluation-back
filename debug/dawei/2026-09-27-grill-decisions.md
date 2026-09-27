@@ -35,3 +35,6 @@
 - 01 MountainCar 第 2 发(fullrun_mcar_01_luna_20260924_121831)host 官方打分:score −9.438,reward_std 2.283,score_source official_evaluate_py,5 个 checkpoint;输出在 control_hostscore_mcar01_run2_* (原运行目录未写入)。
 - BabyLM luna 按"最后一个有官方记录的 stage"离线重装配(GPU 5)进行中。
 - 02 报告删 host 段落:待做(需改五个装配脚本的报告部分)。
+- 02 报告改为"框架原文 + 表格 + 一个 host 说明节":五个装配脚本把 host 写的句子(方法开头、TDC 验证协议、选择说明、出处)全部移入末尾"Host packaging notes (written by the host, not by the framework)",正文只留框架原文(idea、各 stage 计划、阶段摘要、idea 里的局限性)和官方记录的数值表。离线测试:TDC luna 重装配后契约框架阶段审计 passed(16 个表格数字均有证据标记),选中项不变;psydef luna 选中 stage 4,分数 0.1445 与原来一致。
+- 同时在跑的四发(ARC ds/kimi rep 3、BabyLM ds/kimi rep 2,10:50 发出)在结束时调用的是改后的装配脚本(发射器调用 scratchpad 里的现行路径);BabyLM luna 的离线重装配在改动前启动,报告仍是旧格式,之后重生成。
+- 本批四发的输入版本:主题含"只用提供数据"句,参考模块含 A6 两句(已逐发核对)。

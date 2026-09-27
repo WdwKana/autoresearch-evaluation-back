@@ -190,19 +190,20 @@ for name in ("draft", "baseline", "research", "ablation"):
         except Exception:
             pass
 lines = [f"# {idea.get('Title', 'PsyDefDetect study')}", "",
-         "## Research idea (framework-authored)", "", idea.get("Abstract", ""), "", "**Hypothesis.** " + idea.get("Short Hypothesis", ""), "",
-         "## Experiments (the framework's per-stage selections, replayed offline)", ""]
+         "## Research idea", "", idea.get("Abstract", ""), "", "**Hypothesis.** " + idea.get("Short Hypothesis", ""), "",
+         "## Experiments", ""]
 for e in experiments:
     lines += [f"### {e['experiment_id']} (stage {e['stage']})", "", e["plan"][:1200] or "(no plan text)", "",
               f"- official psydefdetect_score by configuration: {json.dumps(e['official_scores'])}",
               f"- best configuration: {e['best_configuration']} -> {e['psydefdetect_score']}", ""]
-lines += ["## Selection", "", f"Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`), the framework's best_solution of its final stage.",
-          f"Host re-score of the promoted predictions: **{host_score:.4f}** (macro-F1 over labels 1-8).", ""]
 if summ:
     lines += ["## Framework's own stage summaries", ""]
     for name, s in summ.items():
         lines += [f"### {name}", "", "```json", json.dumps(s, ensure_ascii=False, indent=1)[:6000], "```", ""]
-lines += ["## Provenance", "", f"Assembled deterministically from the framework's saved artifacts on {trace['assembled_at']}; no LLM call in assembly.", ""]
+lines += ["## Host packaging notes (written by the host, not by the framework)", "", "- Text above is the framework's own (idea, per-stage plans, stage summaries); values come from the official records; the host only formatted them.", "- Experiments: the best_solution the framework saved at the end of each stage, replayed offline without network.",
+          f"- Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`); rule: the framework's final stage (last stage with an official record).",
+          f"- Host re-score of the promoted predictions: {host_score:.4f} (macro-F1 over labels 1-8).",
+          f"- Assembled deterministically on {trace['assembled_at']}; no LLM call in assembly.", ""]
 (OUT / "final_report.md").write_text("\n".join(lines), encoding="utf-8")
 (OUT / "assembly_log.txt").write_text("\n".join(log), encoding="utf-8")
 say("done: predictions.jsonl, score.json, experiment_trace.json, final_report.md")
