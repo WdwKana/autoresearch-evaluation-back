@@ -6,10 +6,9 @@ those are yours to decide.
 
 Results of this task are defined on the provided PsyDefConv corpus and its fixed split
 only: a score obtained on synthetic, toy, or self-generated dialogues is not a result of
-this task and cannot be selected or submitted. This module is importable from your script
-as it is (`from hf_dataset_reference import official_score`): import it rather than
-pasting or re-implementing it; only the files written by this module's official_score are
-official records.
+this task and cannot be selected or submitted. This module is importable from your script as it is (`from hf_dataset_reference import
+official_score`): import it rather than pasting or re-implementing it; only the files
+written by this module's official_score are official records.
 
 Official evaluation goes through official_score(name, id_to_label) only. It writes
 the prediction file and the scorer's output under the working directory:
