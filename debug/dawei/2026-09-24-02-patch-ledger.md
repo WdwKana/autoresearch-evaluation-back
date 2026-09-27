@@ -12,6 +12,7 @@
 | A3 | 3d94b0c（09-24） | MountainCar | "结果定义句"：只有参考 `official_evaluation`（冻结 evaluate.py，恰好五个 checkpoint）报的 Reward Mean 才是本任务结果 | 同 A2；rep 1 0/20 全绕过冻结评分 | rep 2 在跑 |
 | A4 | b524243（09-21） | ARC | 主题正文加"结果只定义在提供的记录上；参与者自造网络上的数字不是本任务结果"（scratchpad `staged/arc/arc_wbe_2026_native_v2.md`，快照在 debug/dawei/ladder/staged/arc/） | 节点自造小 MLP 训练评估 | 是（luna 0.0988） |
 | A5 | 本次（09-24） | psydef / TDC / BabyLM / MountainCar | "仅在提供的数据上做实验；合成、玩具、自造数据上得到的结果不是本任务结果"，四个话题措辞一致，放在 Dataset / Inputs 一节；ARC 已由 A4 覆盖 | 02 自身 stage-1 目标写着 `Use a simple dataset`、设计指引写着 `create synthetic data if needed`；01 的提示词原生写着 `MUST use actual dataset (no toy data)`，02 缺这句 | 尚未（等在跑的结束后再决定重跑哪几格） |
+| A6 | 本次（09-27） | 全部五个话题 | 参考模块 docstring 加两句：结果只定义在提供的数据/环境上，合成、玩具、自造数据上的数字不是本任务结果、不能被选择或提交；本模块可直接 `from hf_dataset_reference import <官方函数>`，请 import 而不是粘贴或重写，只有本模块写出的文件才是官方记录 | judge/coder 在每个 stage 看到的 task_desc 只有 idea JSON + 参考模块源码，主题 md 从不进入 stage；A2/A3/A5 的句子只能靠 ideation 吸收（DS/kimi 六份 idea 0 次吸收，luna 5 次）。参考模块源码是唯一稳定到达 judge 的通道 | 尚未（MountainCar ds/kimi rep 1 在此之前发出，用的是旧 docstring） |
 
 作用域证明（A5）：改前改后各生成一次全部框架输入（90 个文件），diff 只有 6 个 AI-Scientist-v2 话题文件不同（babylm/mcar 各含 my_research_topic.md 同名副本）。
 

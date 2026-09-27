@@ -8,7 +8,10 @@ estimation method: that is yours to decide.
 Results of this task are defined on the provided records only: the accuracy of an
 estimator is its local validation on the held-out public records (below), and the
 official score is computed on hidden records of the same suite. Numbers measured on
-networks you generate yourself are not results of this task.
+networks you generate yourself are not results of this task. This module is importable
+from your script as it is (`from hf_dataset_reference import local_validation`): import it
+rather than pasting or re-implementing it; only the files written by this module's
+local_validation are official records.
 
 Local validation goes through local_validation(name, estimator) only. `estimator` is an
 object (or class) with predict(mlp), defined in your script. It is evaluated in this

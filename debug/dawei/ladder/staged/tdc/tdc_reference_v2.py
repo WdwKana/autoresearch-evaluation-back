@@ -3,6 +3,13 @@
 It shows how to load the three splits and how a configuration is evaluated and handed
 in. It contains no features, no models and no experiment design: those are yours.
 
+Results of this task are defined on the provided splits only: a number obtained on
+synthetic, toy, or self-generated molecules is not a result of this task and cannot be
+selected or submitted. This module is importable from your script as it is (`from
+hf_dataset_reference import official_evaluation`): import it rather than pasting or re-
+implementing it; only the files written by this module's official_evaluation are official
+records.
+
 Official evaluation goes through official_evaluation(name, predict_fn) only. You hand
 over a function predict_fn(rows) -> list of positive-class probabilities (same order
 as rows; each row is a dict with sample_id, endpoint, smiles). The module calls it on

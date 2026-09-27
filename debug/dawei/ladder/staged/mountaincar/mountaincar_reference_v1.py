@@ -6,6 +6,14 @@ is kept for submission. It contains no algorithmic changes: those are yours to d
 (you may modify src/train.py, src/policy.py, src/networks.py, src/helpers.py and
 src/config.yaml, and add code under src/; keep the class name `Model` in networks.py).
 
+Results of this task are defined in the provided MountainCarContinuous-v0 environment with
+the provided starter code and the frozen evaluator only: a reward obtained in a different
+or simplified environment, or from any evaluator other than the frozen evaluate.py, is not
+a result of this task and cannot be selected or submitted. This module is importable from
+your script as it is (`from hf_dataset_reference import official_evaluation`): import it
+rather than pasting or re-implementing it; only the files written by this module's
+official_evaluation are official records.
+
 Official evaluation goes through official_evaluation(name, src_dir, checkpoints_dir)
 only. It copies your src/ (with its config.yaml) and exactly five checkpoints named
 config-42-0.pkl .. config-42-4.pkl (any five files matching config*.pkl) into a clean
