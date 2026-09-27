@@ -44,3 +44,9 @@ agent 留下两套自洽产物：
    `set -euo pipefail` 让脚本以 2 退出、无输出、state.json 停在 running（回放整段 if 块：旧版 exit 2，新版走到底）。
    这是 08-19 同步进来的代码，影响所有框架的 MountainCar 运行。修复 a8eaa3c：两处 `|| true`。
 第 2 发 `fullrun_mcar_01_luna_20260924_121831` 带两处修复重发，fallback 在 ideation 第一次被拒时即触发并继续。
+
+## 集成测试第 2 发(`fullrun_mcar_01_luna_20260924_121831`):交付桥工作,门槛因"只有 1 个实验"以 42 拒绝
+- ideation 通过(fallback 触发 1 次),Machine Learning Agent 67 轮,框架自己写出 5 个 checkpoint + src + 三份根文件(Quantile-Distributional PPO)。
+- 搬运:`relocated 5 checkpoint(s)`、`overlaid 6 src file(s)`;host 离线用冻结评分器复算 **Reward Mean −9.44**——交付桥修复达到目的。
+- 门槛(`mountaincar_framework_fullrun.sh` 的 handoff gate)拒绝:`experiment_trace.json must record 2-4 experiments`,trace 里只有 1 个实验(`qdppo-n16-2updates`)。这是契约要求,不是桥的问题:research_completed=false,不入榜;−9.44 仅作参考。
+- 门槛的拒绝原因只走 stderr 未进 e2e.log(09-03 那发同样),排障要靠离线回放 `gate_mcar.py`;是否让 runner 把原因写进 state.summary,待议。

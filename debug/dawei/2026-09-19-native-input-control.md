@@ -480,3 +480,13 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - stage 1:DS 作 judge 把两个合成随机数据、未调 official_validation 的节点判为非 bug,血统钉死;stage 2/3/4 新增 14 节点全 buggy(后期 judge 反而抓出"合成数据")。
 - 装配:四段 best_solution 回放,只有 stage 3 的 d7f436 产出困惑度 **1.003**——该节点把参考模块整段内联进自己的代码(自定义 `official_validation`,`official: true` 也照抄),nll_fn 泄漏(验证 loss 0.0015 < 训练 loss),judge 已判 buggy 但仍是该 stage 的 best_solution。契约需要 ≥2 段有困惑度 → assembly exit 4,不出分。
 - 两个弱点记录:(a)`official: true` 守卫防不住节点内联参考模块;(b)official_validation 信任 nll_fn,泄漏得 ppl≈1。按"合成数据 = 失败"入账,不重发。
+
+#### MountainCar × luna rep 2(`control_e2emcar_rep2_mcar02_luna_20260924_103646`,(i) 参考模块 v1 + (ii) 结果定义句,CPU 32 核 JAX 镜像):端到端通过,Reward Mean **−10.78**(冻结 evaluate.py)
+- stage 1:19 节点,18 buggy / 1 good;good 节点(第 19 个,`epc_preliminary_fixed`)是第一个把交付格式做对并调用 `official_evaluation` 的节点。前 11 个节点全部用 PyTorch 重写策略、绕过或做不对冻结评估(节点自算本地奖励 −0.22 vs 官方 −10.78)。
+- stage 2/3/4 各达迭代上限;装配回放:stage 2 −10.778、stage 3 −10.778(同一套 checkpoint)、stage 1/4 无官方记录;选 stage 2。writeup 后框架自行清理进程(native=143,与 BabyLM rep 5 同形)。
+- host 校验通过,host 用镜像内冻结评分器复算 −10.78。02 MountainCar 首格出分。
+
+#### BabyLM × kimi rep 1(`control_e2ebabylm_rep1_babylm02_kimi_20260924_100543`,GPU 4,judge=kimi):失败(assembly=4,0 段回放有困惑度)
+- stage 1:15 节点,1 good——用合成数据、未调 official_validation(kimi 作 judge 与 DS 同样放行合成节点;对比 luna 作 judge 在 rep 5 全程拦住)。stage 2:6 节点 3 good 全合成;stage 3:7 节点 2 good;stage 4:3 节点 1 good。
+- 磁盘上 3 条官方记录都来自 buggy 节点;四段 best_solution 回放(1149/905/1790/2461 s)均无困惑度。按"合成数据 = 失败"入账,不重发。
+- 至此 02 规格臂:BabyLM luna 108.11 / ds 失败 / kimi 失败;MountainCar luna −10.78。
