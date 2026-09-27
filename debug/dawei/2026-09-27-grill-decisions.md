@@ -41,3 +41,4 @@
 - BabyLM 装配改回取最低困惑度(与打分脚本一致,用户同意);在跑的 BabyLM ds/kimi 第 2 发将在装配时使用这一版。
 - B11 确认并执行:删除 02 原生合成数据指引一句(仅 parallel_agent.py:473);中止 ARC kimi rep3、BabyLM ds/kimi rep2(stage 1 中途,目录保留、状态 aborted);ARC ds/kimi 以 rep4 带 B11 重发;BabyLM 暂不重发。
 - **更正(同日)**:上一条的共享层改动(d541787,契约/预算/生成器 9 处 "one or more"→"2 to 4")没有得到用户批准——我把"共享层的改动，如果02已经改了，那我们的01也可以先改了去跑"误读为批准。用户指出后已回退(git revert),两发基于该措辞发出的 01 MountainCar 运行(fullrun_mcar_01_ds_20260927_124140、fullrun_mcar_01_kimi_20260927_124200)在数分钟内停止,目录保留,状态 aborted。Q10 的对齐决定仍然只是"记录在案、待批准执行"。共享层改动的规矩重申:先给出改动清单,用户逐条点头后才动。
+- 用户澄清正确路径:计数矛盾按**框架专属补丁**处理,不改共享文件。已实现:01 MountainCar 包装脚本的 runtime command 在容器内、本 run 的 workspace 副本上把 "one or more materially different"→"2 to 4 materially different"(附 never-start-a-fifth 句),只动 automation/docs/benchmark 三个 run-local 目录,JSON 校验后写回,日志打 [mcar-01-wording] 行。离线模拟 workspace 测试:5 个文件对齐、无残留、实例 JSON 有效。共享 automation/ 文件保持原文。02 mcar 渲染里的同句是 02 专属渲染,待同样处理(下次 02 mcar 发射前)。
