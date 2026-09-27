@@ -495,3 +495,8 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - stage 1 跑满 20 节点,20/20 buggy,0 good。只有 6/20 节点的代码调了 `official_evaluation`;9 个没调;7 个是 NameError/TypeError 之类代码错误;1 个只存了 4 个 checkpoint 被官方评估拒。
 - DS 作 judge 这次没有放行自评或非官方结果(与 ARC/BabyLM 的宽松放行不同),失败在 coder 能力:20 个节点内没写出一个跑通冻结评估的实现。
 - stage 1 无 good node,框架不进入 stage 2;随后框架自己的 `overall_summarize` 因只有 1 个 stage 抛 ValueError(expected 4, got 1),native 退出 1。装配只找到 1 个 stage 的 best_solution,契约要求 2–4,exit 3。
+
+#### MountainCar × kimi rep 1(`control_e2emcar_rep1_mcar02_kimi_20260927_055932`,主题句已加、参考模块旧 docstring):失败(assembly=4,0 段有官方记录)
+- stage 1:14 节点 2 good——两个 good 节点都是 gymnasium 真环境 + 自写 PyTorch PPO + 自评奖励(92.6/93.7),未调 official_evaluation;kimi 作 judge 放行自评分数(与 DS 在 ARC/BabyLM 的放行同型)。
+- 四个 stage 的 best_solution 全是同一个 stage-1 节点 411646e0(血统锁死的极端形态:后续 stage 从未产出更好节点);回放 4 次均无官方记录 → assembly exit 4,不出分。
+- 入账:研究未完成;kimi 判官对"日志干净的自评结果"不执行任务文本规范,再添一例。
