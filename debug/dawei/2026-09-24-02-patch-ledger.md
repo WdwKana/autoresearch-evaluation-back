@@ -68,3 +68,5 @@
 - 更正(同日):TDC 撤回新规则。TDC 契约写明 select using validation evidence only,契约校验器 validate_tdc_admet_tox_run.py 要求 selection_metric=validation_macro_average_auroc 且选中项是 trace 中验证 AUROC 最高者;这条对所有框架(含 01)同样执行,所以 TDC 按验证分挑是契约规则,不是 host 越权。离线用新规则重装配的 TDC 包因此过不了框架阶段审计。TDC 三格原分数有效,不重跑。其余话题契约没有此类规则,保留"最后一个有官方记录的 stage"。
 - 旁证:同一份 best_solution 离线回放,验证分与原运行不完全一致(ds stage 4 0.8271→0.8224,kimi stage 4 0.8153→0.8357),回放存在非确定性。
 - 两发 TDC rep 3(control_e2etdcspec_rep3_tdc02_{luna,ds}_20260927_*)启动约 10 分钟后由操作者中止(用户要的是离线重装配,不是重跑),目录保留,state=aborted。
+- 更正(同日,用户同意):BabyLM 也撤回"最后一个 stage"规则,改回取验证困惑度最低的实验。原因:BabyLM 的官方分数由 automation/scripts/run_babylm_score.py 给出,它不看 selected_experiment_id,直接取 trace 中所有实验的最低困惑度;01 与 02 都用它打分(01 luna 的 trace 甚至没写选中项,742.97 就是它取的最小值)。装配选择须与打分一致,否则提交的模型与被打分的实验不是同一个。02 BabyLM luna 维持 108.11(离线按最后 stage 重装配得 119.35,仅作记录)。注:该脚本来自 08-19 原始发布,共享 BabyLM 运行器从未调用它;01 的 BabyLM wrapper 与我们的 02 发射器各自接入了它。
+- 至此各话题选择规则:TDC(契约校验器)与 BabyLM(打分脚本)= 在记录的实验里取验证最优;psydef、ARC、MountainCar = 框架链条终点(最后一个有官方记录的 stage)。

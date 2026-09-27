@@ -38,3 +38,4 @@
 - 02 报告改为"框架原文 + 表格 + 一个 host 说明节":五个装配脚本把 host 写的句子(方法开头、TDC 验证协议、选择说明、出处)全部移入末尾"Host packaging notes (written by the host, not by the framework)",正文只留框架原文(idea、各 stage 计划、阶段摘要、idea 里的局限性)和官方记录的数值表。离线测试:TDC luna 重装配后契约框架阶段审计 passed(16 个表格数字均有证据标记),选中项不变;psydef luna 选中 stage 4,分数 0.1445 与原来一致。
 - 同时在跑的四发(ARC ds/kimi rep 3、BabyLM ds/kimi rep 2,10:50 发出)在结束时调用的是改后的装配脚本(发射器调用 scratchpad 里的现行路径);BabyLM luna 的离线重装配在改动前启动,报告仍是旧格式,之后重生成。
 - 本批四发的输入版本:主题含"只用提供数据"句,参考模块含 A6 两句(已逐发核对)。
+- BabyLM 装配改回取最低困惑度(与打分脚本一致,用户同意);在跑的 BabyLM ds/kimi 第 2 发将在装配时使用这一版。
