@@ -59,3 +59,9 @@
 2. C 类参考模块是否成为 02 的正式路线（它替代了 D 类的 coder-only 交付指引 + stage 1 截断）。
 3. B8–B10 正式删除。
 4. VLM 覆盖在结果表里的标注方式。
+
+## E. host 装配选择规则(2026-09-27 修订,用户同意)
+- 之前:psydef / ARC 取最后一个 stage;TDC 取验证 AUROC 最高的 stage(luna 一发是 18 个配置里挑)、BabyLM 取困惑度最低、MountainCar 取官方 Reward Mean 最高——host 替框架做跨 stage 选择,违背"选择归框架"。
+- 现在:五个话题统一取"最后一个有官方记录的 stage"的 best_solution(框架链条终点),不做跨 stage 分数比较。节点内多个配置仍由 host 取官方分最好的一个(已在 trace 的 selection_rule / within_node_configuration 注明),是否给参考模块加"节点声明选定配置"接口待议。
+- 对已有分数:psydef ×3、ARC luna、MountainCar luna 不变;BabyLM luna 按新规则为 stage 4 的 119.35(旧 108.11);TDC ×3 需按新规则重跑(不对另一份预测用隐藏标签打分)。
+- BabyLM/MountainCar 装配脚本开头说明原从 ARC 复制(写着取最后一个 stage、estimator/whest),已改正。

@@ -9,14 +9,14 @@ Inputs (a finished run workspace):
   workspace/logs/0-run/{draft,baseline,research,ablation}_summary.json      native summaries, if present
 Steps:
   1. replay every per-stage best_solution in a clean offline container (cwd = replay dir,
-     exec() like the native interpreter); collect working/<name>.official_score.json
+     exec() like the native interpreter); collect working/<name>.validation.json
   2. experiments = one entry per stage best_solution (2-4); local_final_layer_mse = the best
-     configuration the node itself validated; selected = the last stage's best_solution
-  3. promote the selected configuration's estimator to <out>/estimator.py and write submission.json;
-     the official adapter (whest) is run by the launcher afterwards and writes score.json
+     configuration the node itself validated (lowest perplexity); selected = the last stage with an official record
+  3. promote the selected configuration's saved model (submission/) and validation record;
+     the launcher then runs run_babylm_score.py and the host validation
   4. write <out>/experiment_trace.json (facts only) and <out>/final_report.md (rendered
      from journal facts + native summaries when present)
-Usage: assemble_arc.py --workspace WS --out OUT --model M --base-url URL [--data-root D] [--image IMG]
+Usage: assemble_babylm.py --workspace WS --out OUT --model M --base-url URL [--data-root D] [--image IMG]
 """
 from __future__ import annotations
 
@@ -141,8 +141,8 @@ if len(scored) < 2:
     say(f"only {len(scored)} replays produced a validation perplexity; contract needs 2")
     sys.exit(4)
 
-# ---- 3. selection = the lowest word-level validation perplexity (the topic's objective) ----
-selected = min(scored, key=lambda e: e["validation_perplexity"])
+# ---- 3. selection = the framework's final stage (last scored stage); no cross-stage score comparison ----
+selected = scored[-1]
 say(f"selected {selected['experiment_id']} ({selected['best_configuration']}, word-level validation perplexity {selected['validation_perplexity']:.3f})")
 sub_dir = OUT / "submission"
 if sub_dir.exists():
@@ -174,7 +174,7 @@ trace = {
     "experiment_definition": "one experiment per BFTS stage: the best_solution the framework itself wrote at the end of that stage; its word-level validation perplexity obtained by replaying it offline through the reference module's official_validation",
     "experiments": [{k: v for k, v in e.items() if k != "plan"} | {"plan_excerpt": e["plan"][:600], "name": e["best_configuration"]} for e in experiments],
     "selected_experiment_id": selected["experiment_id"],
-    "selection_rule": "lowest word-level validation perplexity among the framework's per-stage selections",
+    "selection_rule": "the framework's final stage: the best_solution of the last stage that produced an official record (no score comparison across stages)",
     "best_validation_perplexity": selected["validation_perplexity"],
     "submission_artifact": "submission/",
     "score_artifact": "score.json (written by the host scorer after assembly)",
@@ -189,7 +189,7 @@ for e in experiments:
     lines += [f"### {e['experiment_id']} (stage {e['stage']})", "", "```text", e["plan"][:1200] or "(no plan text)", "```", "",
               f"- word-level validation perplexity by configuration: {json.dumps({k: round(v, 3) for k, v in e['validation_perplexity_by_configuration'].items()})}",
               f"- best configuration: {e['best_configuration']} -> {e['validation_perplexity']}", ""]
-lines += ["## Selection", "", f"Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`), the lowest word-level validation perplexity.", "",
+lines += ["## Selection", "", f"Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`), the framework's final stage.", "",
           "## Provenance", "", f"Assembled deterministically from the framework's saved artifacts on {trace['assembled_at']}; no LLM call in assembly.", ""]
 (OUT / "final_report.md").write_text("\n".join(lines), encoding="utf-8")
 (OUT / "assembly_log.txt").write_text("\n".join(log), encoding="utf-8")

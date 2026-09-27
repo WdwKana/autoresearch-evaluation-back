@@ -9,14 +9,14 @@ Inputs (a finished run workspace):
   workspace/logs/0-run/{draft,baseline,research,ablation}_summary.json      native summaries, if present
 Steps:
   1. replay every per-stage best_solution in a clean offline container (cwd = replay dir,
-     exec() like the native interpreter); collect working/<name>.official_score.json
+     exec() like the native interpreter); collect working/<name>.evaluation.json
   2. experiments = one entry per stage best_solution (2-4); local_final_layer_mse = the best
-     configuration the node itself validated; selected = the last stage's best_solution
-  3. promote the selected configuration's estimator to <out>/estimator.py and write submission.json;
-     the official adapter (whest) is run by the launcher afterwards and writes score.json
+     configuration the node itself evaluated (highest official Reward Mean); selected = the last stage with an official record
+  3. promote the selected configuration's src/, checkpoints/ and the frozen evaluate.py;
+     the launcher then scores them with the frozen evaluator in the JAX image
   4. write <out>/experiment_trace.json (facts only) and <out>/final_report.md (rendered
      from journal facts + native summaries when present)
-Usage: assemble_arc.py --workspace WS --out OUT --model M --base-url URL [--data-root D] [--image IMG]
+Usage: assemble_mountaincar.py --workspace WS --out OUT --model M --base-url URL [--data-root D] [--image IMG]
 """
 from __future__ import annotations
 
@@ -139,8 +139,8 @@ if len(scored) < 2:
     say(f"only {len(scored)} replays produced an official evaluation with a complete submission; contract needs 2")
     sys.exit(4)
 
-# ---- 3. selection = the highest official Reward Mean (the topic's objective) ----
-selected = max(scored, key=lambda e: e["reward_mean"])
+# ---- 3. selection = the framework's final stage (last scored stage); no cross-stage score comparison ----
+selected = scored[-1]
 say(f"selected {selected['experiment_id']} ({selected['best_configuration']}, reward_mean {selected['reward_mean']:.3f})")
 sub = OUT / selected["submission_artifact"]
 for name in ("src", "checkpoints"):
@@ -168,7 +168,7 @@ trace = {
     "experiment_definition": "one experiment per BFTS stage: the best_solution the framework itself wrote at the end of that stage; its official Reward Mean obtained by replaying it offline through the reference module's official_evaluation (frozen evaluate.py)",
     "experiments": [{k: v for k, v in e.items() if k != "plan"} | {"plan_excerpt": e["plan"][:600]} for e in experiments],
     "selected_experiment_id": selected["experiment_id"],
-    "selection_rule": "highest official Reward Mean among the framework's per-stage selections",
+    "selection_rule": "the framework's final stage: the best_solution of the last stage that produced an official record (no score comparison across stages)",
     "submission_artifact": "checkpoints/ + src/ + evaluate.py",
     "score_artifact": "score.json (written by the host scorer after assembly)",
     "assembled_by": "host deterministic assembly (assemble_mountaincar.py): replay + relocation; no LLM call",
@@ -182,7 +182,7 @@ for e in experiments:
     lines += [f"### {e['experiment_id']} (stage {e['stage']})", "", "```text", e["plan"][:1200] or "(no plan text)", "```", "",
               f"- official Reward Mean by configuration: {json.dumps({k: round(v, 3) for k, v in e['reward_mean_by_configuration'].items()})}",
               f"- best configuration: {e['best_configuration']} -> {e['reward_mean']}", ""]
-lines += ["## Selection", "", f"Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`), the highest official Reward Mean.", "",
+lines += ["## Selection", "", f"Selected: **{selected['experiment_id']}** (configuration `{selected['best_configuration']}`), the framework's final stage.", "",
           "## Provenance", "", f"Assembled deterministically from the framework's saved artifacts on {trace['assembled_at']}; no LLM call in assembly.", ""]
 (OUT / "final_report.md").write_text("\n".join(lines), encoding="utf-8")
 (OUT / "assembly_log.txt").write_text("\n".join(log), encoding="utf-8")
