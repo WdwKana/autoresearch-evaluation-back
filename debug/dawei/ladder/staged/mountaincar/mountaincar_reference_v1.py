@@ -22,6 +22,15 @@ directory next to a byte-exact copy of the frozen evaluate.py, runs it there
     working/<name>.evaluation.json    (reward_mean, reward_std)
     working/<name>.submission/        (src/, config.yaml, checkpoints/: what gets handed in)
 and prints one line "official evaluation (<name>): reward_mean=<v> reward_std=<v>".
+
+How the frozen evaluator loads a submission (facts about the frozen artifact): it
+imports get_model_ready from src/networks.py and rebuilds the model from
+src/config.yaml, then loads each config-42-*.pkl with the starter's load_pkl_object and
+takes the parameter tree from the "network" key -- a checkpoint must be what the
+starter's save_pkl_object writes (src/train.py already saves exactly this). A file saved
+any other way, for example a PyTorch state_dict, does not load. official_evaluation
+copies src_dir as it is, so keep the package complete: train.py, policy.py, networks.py
+(still providing Model and get_model_ready), helpers.py, config.yaml, __init__.py.
 Call it once per configuration you evaluate, with a distinct name each time; a
 configuration without this call has no result and cannot be submitted.
 """
