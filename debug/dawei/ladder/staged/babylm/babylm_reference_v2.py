@@ -7,8 +7,8 @@ submission. It contains no model, no tokenizer and no training recipe: those are
 Results of this task are defined on the provided corpus and its fixed validation lines
 only: a perplexity obtained on synthetic, toy, or self-generated text is not a result of
 this task and cannot be selected or submitted. This module is importable from your script as it is (`from hf_dataset_reference import
-official_validation`): import it rather than pasting or re-implementing it; only the files
-written by this module's official_validation are official records.
+official_validation`): import it rather than pasting or re-implementing it; only the
+files written by this module's official_validation are official records.
 
 Official validation goes through official_validation(name, nll_fn) only. You hand over a
 function nll_fn(lines) -> float that returns the summed negative log-likelihood in nats
