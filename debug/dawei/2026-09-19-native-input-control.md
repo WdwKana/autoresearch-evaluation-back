@@ -490,3 +490,8 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - stage 1:15 节点,1 good——用合成数据、未调 official_validation(kimi 作 judge 与 DS 同样放行合成节点;对比 luna 作 judge 在 rep 5 全程拦住)。stage 2:6 节点 3 good 全合成;stage 3:7 节点 2 good;stage 4:3 节点 1 good。
 - 磁盘上 3 条官方记录都来自 buggy 节点;四段 best_solution 回放(1149/905/1790/2461 s)均无困惑度。按"合成数据 = 失败"入账,不重发。
 - 至此 02 规格臂:BabyLM luna 108.11 / ds 失败 / kimi 失败;MountainCar luna −10.78。
+
+#### MountainCar × ds rep 1(`control_e2emcar_rep1_mcar02_ds_20260927_055912`,主题含"只用提供数据"句、参考模块为旧 docstring,VLM=luna):失败(native=1 assembly=3)
+- stage 1 跑满 20 节点,20/20 buggy,0 good。只有 6/20 节点的代码调了 `official_evaluation`;9 个没调;7 个是 NameError/TypeError 之类代码错误;1 个只存了 4 个 checkpoint 被官方评估拒。
+- DS 作 judge 这次没有放行自评或非官方结果(与 ARC/BabyLM 的宽松放行不同),失败在 coder 能力:20 个节点内没写出一个跑通冻结评估的实现。
+- stage 1 无 good node,框架不进入 stage 2;随后框架自己的 `overall_summarize` 因只有 1 个 stage 抛 ValueError(expected 4, got 1),native 退出 1。装配只找到 1 个 stage 的 best_solution,契约要求 2–4,exit 3。
