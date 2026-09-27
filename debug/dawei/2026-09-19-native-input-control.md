@@ -500,3 +500,12 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - stage 1:14 节点 2 good——两个 good 节点都是 gymnasium 真环境 + 自写 PyTorch PPO + 自评奖励(92.6/93.7),未调 official_evaluation;kimi 作 judge 放行自评分数(与 DS 在 ARC/BabyLM 的放行同型)。
 - 四个 stage 的 best_solution 全是同一个 stage-1 节点 411646e0(血统锁死的极端形态:后续 stage 从未产出更好节点);回放 4 次均无官方记录 → assembly exit 4,不出分。
 - 入账:研究未完成;kimi 判官对"日志干净的自评结果"不执行任务文本规范,再添一例。
+
+#### ARC × ds rep 5(`control_e2earc_rep5_arc02_ds_20260927_122453`,A5+A6+B11 全套,VLM=luna):端到端通过,官方分 **0.14**(whest,越低越好)
+- 与 rep 3 的唯一变量是 B11。stage 1:7 节点全部 import 参考模块、全部调 local_validation、0 合成;四个 stage 全走完,四份 best_solution 里三份有官方记录。
+- 但方法退化:所有配置的本地验证 MSE 都是 1.4499(退化为平凡预测,深层激活趋零),官方分 0.14 ≈ 1.45×0.1 算力下限系数,明显差于 luna 的 0.0988。02×ARC×ds 首次出分,分数诚实反映"协议已遵守、方法平凡"。
+- 判定:research_completed=true,scored=true;B11 单变量证据成立(DS coder 的合成行为由框架原生指令驱动)。
+
+#### ARC × kimi rep 5(同版本):失败(native=1 assembly=3)
+- stage 1 跑满 20 节点 0 good(kimi 判官把产出合法官方记录的节点也判 buggy);无 stage 2;overall_summarize 因单 stage 崩(已知工程杂音,用户决定不修)。装配只见 1 个 stage,契约需 2-4,诚实失败。
+- 行为有改善:6/20 调官方验证、4 条合法记录(全为退化 MSE 1.4499),但 kimi 严格判官加方法平凡,过不了 stage 1。
