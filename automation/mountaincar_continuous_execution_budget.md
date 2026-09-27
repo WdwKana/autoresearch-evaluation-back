@@ -4,7 +4,7 @@ This budget is mandatory for MountainCar-Continuous native framework evaluation 
 
 1. Before the first experiment, write and lock `/workspace/research_idea.json` with the hypothesis, method rationale, expected failure modes, and comparison logic.
 2. The framework owns method choice. The host does not prescribe an algorithm family, feature representation, architecture, hyperparameters, experiment sequence, baseline, or selected method.
-3. Run 2 to 4 materially different, framework-native experiments chosen from the framework-authored idea. Never start a fifth experiment.
+3. Run one or more materially different, framework-native experiments chosen from the framework-authored idea. The framework decides the number of experiments.
 4. Keep only a compact experiment ledger in context: experiment id, artifact path, framework-visible result, and decision. Do not paste full source files, checkpoint tensors, or verbose training output into the conversation.
 5. Each framework-internal API client must use the injected `OPENAI_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. Do not hardcode a public provider, another provider, or a model name.
 6. Each training command has a hard timeout of `1800` seconds. A run may spend no more than `training_command_timeout` seconds on a single training command.

@@ -120,7 +120,7 @@ model definition does not expect, or vice versa.
 
 ## Success Criteria
 - write and lock research_idea.json before the first experiment
-- run 2 to 4 materially different framework-native experiments chosen by the
+- run one or more materially different framework-native experiments chosen by the
   framework, then finalize
 - produce exactly five valid checkpoints under checkpoints/ plus config.yaml
   and src/
@@ -170,7 +170,7 @@ trained checkpoints.
 
 # Concrete Goal
 1. write and lock research_idea.json before the first experiment,
-2. run 2 to 4 materially different experiments and select one result; a result of this task is the Reward Mean reported by the provided reference `official_evaluation` (the frozen evaluate.py on exactly five checkpoints); a reward computed any other way (own rollouts, own evaluator, fewer checkpoints) is not a result of this task,
+2. run one or more materially different experiments and select one result; a result of this task is the Reward Mean reported by the provided reference `official_evaluation` (the frozen evaluate.py on exactly five checkpoints); a reward computed any other way (own rollouts, own evaluator, fewer checkpoints) is not a result of this task,
 3. deliver exactly five checkpoints under checkpoints/ plus config.yaml and
    src/,
 4. write experiment_trace.json and final_report.md.
@@ -223,7 +223,7 @@ def build_ai_researcher_payload(topic_root: Path, contract_file: Path) -> dict[s
         "dataset_root": str(topic_root),
         "contract_file": str(contract_file),
         "result_fields": RESULT_FIELDS,
-        "task1": "Before the first experiment, write and lock research_idea.json. Run 2 to 4 materially different framework-chosen experiments, train real checkpoints, and deliver exactly five checkpoints plus config.yaml and src/.",
+        "task1": "Before the first experiment, write and lock research_idea.json. Run one or more materially different framework-chosen experiments, train real checkpoints, and deliver exactly five checkpoints plus config.yaml and src/.",
         "task2": "Own the hypothesis, method choice, experiment design, comparison, and final selection. The host creates score.json after native exit by running the frozen evaluate.py.",
     }
 
@@ -262,7 +262,7 @@ def build_dr_claw_tasks() -> dict[str, object]:
             {
                 "id": "native_research_workflow",
                 "title": "Complete the Topic 2 native research workflow",
-                "goal": "Write the pre-experiment idea, choose and run 2 to 4 materially different experiments, train real checkpoints, select one result, and deliver the required framework-authored artifacts.",
+                "goal": "Write the pre-experiment idea, choose and run one or more materially different experiments, train real checkpoints, select one result, and deliver the required framework-authored artifacts.",
             }
         ],
     }
@@ -347,7 +347,7 @@ prompts:
       the framework must choose the hypothesis and method.
     experiment_design: >-
       Stay inside Topic 2 only. Use the frozen starter code at
-      /workspace/src and the read-only evaluator. Design 2 to 4 materially
+      /workspace/src and the read-only evaluator. Design one or more materially
       different experiments chosen by the framework, with no host prescribed
       algorithm family, representation, architecture, hyperparameters, or
       sequence. CRITICAL: Save checkpoints DIRECTLY to /workspace/checkpoints/

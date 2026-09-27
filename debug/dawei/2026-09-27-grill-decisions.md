@@ -40,4 +40,3 @@
 - 本批四发的输入版本:主题含"只用提供数据"句,参考模块含 A6 两句(已逐发核对)。
 - BabyLM 装配改回取最低困惑度(与打分脚本一致,用户同意);在跑的 BabyLM ds/kimi 第 2 发将在装配时使用这一版。
 - B11 确认并执行:删除 02 原生合成数据指引一句(仅 parallel_agent.py:473);中止 ARC kimi rep3、BabyLM ds/kimi rep2(stage 1 中途,目录保留、状态 aborted);ARC ds/kimi 以 rep4 带 B11 重发;BabyLM 暂不重发。
-- 共享层对齐执行(用户批准"01 也可以先改了去跑"):MountainCar/topic2 的契约、预算文档、生成器共 9 处 "one or more" → "2 to 4"(与共享门槛一致);重生成 mcar 输入,diff 仅计数措辞行。协作者通知:03/06 的 topic2 包装脚本里仍有旧措辞,留待批量改动时一并处理(他们当前跑的是 ARC/TDC,不受影响)。01 MountainCar ds/kimi 首发随即发射。

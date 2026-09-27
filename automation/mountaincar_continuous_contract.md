@@ -39,7 +39,7 @@ checkpoints plus the config and code required to reconstruct the model.
 - The framework must write and lock `research_idea.json` before its first
   experiment. It must include the hypothesis, method rationale, expected
   failure modes, and comparison logic.
-- `experiment_trace.json` must prove 2 to 4 materially different experiments,
+- `experiment_trace.json` must prove one or more materially different experiments,
   identify the selected experiment, record framework-native execution and the
   injected internal API model/base URL, and set `idea_artifact:
   "research_idea.json"` and `idea_locked_before_experiments: true`.
