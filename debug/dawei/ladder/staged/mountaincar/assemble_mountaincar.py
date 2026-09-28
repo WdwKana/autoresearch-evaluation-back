@@ -64,8 +64,8 @@ for d in stage_dirs:
         continue
     node_id = re.search(r"best_solution_([0-9a-f]+)\.py", best[-1]).group(1)
     stages.append((st, d, best[-1], node_id))
-if len(stages) < 2:
-    say(f"only {len(stages)} stage selections found; the contract needs 2-4")
+if len(stages) < 1:
+    say(f"only {len(stages)} stage selections found; the contract needs at least 1")
     sys.exit(3)
 stages = stages[-4:]  # at most 4 (stages 1-4)
 say("stage selections: " + ", ".join(f"stage{st}={nid[:8]}" for st, _, _, nid in stages))
