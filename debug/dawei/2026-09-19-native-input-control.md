@@ -531,5 +531,13 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - **02 psydef × gpt-6-luna:装配中**(四 stage 全过,13/19 节点 good,官方调用全覆盖,历史最干净的 02 运行形态)。
 - **01 ARC × kimi(本轮):失败于包装脚本尾部缺陷**。研究本体完成:五份交付物齐全、trace 模型字段正确(模型字面值补丁生效)、7 个实验;native 末尾以 127 退出,未到门槛。离线门槛回放:即便到达也会因"7 个实验超出 2-4"被拒——kimi 这次输在超量而非缺量。**包装脚本尾部缺陷(开放 bug,只记确证事实)**:仅出现在尾部失败的运行(本发与 g6 首发),成功运行日志中不存在;日志恰终止于该行;报错指向外层脚本 629 行并含被截断的探针路径;两次深入分析被安全层拦截,不再沿原路径追查,待新思路或单独复现环境再议。
 - **TDC × gpt-6-luna(02, rep 1):端到端通过,隐藏标签 main_score 0.7697**(AMES 0.8104 / hERG 0.7277 / DILI 0.7709);框架审计与最终审计双过。g6 列 02 侧第三格。
-- **TDC × gpt-6-luna(01):端到端通过,隐藏标签 main_score 见 score.json**(调研 235 轮后 65 轮实现,墙钟内完赛)。
+- **TDC × gpt-6-luna(01):端到端通过,隐藏标签 main_score 0.8212**——TDC 全表新高(此前最好 02×g6 之外的三模型均 ≤0.79;02×g6 反而是 TDC 四模型最低 0.7697)。调研 235 轮后 65 轮实现,墙钟内完赛。
 - **BabyLM × gpt-6-luna(01, rep 2)**:keepalive 移植后首发即触发一次并成功续跑(上一发同点位直接全场报废)——补丁当日回本。
+
+#### gpt-6-luna 列第二批终态(2026-09-28 上午)
+- **MountainCar × gpt-6-luna(02, rep 1,`control_e2emcar_rep1_mcar02_g6luna_20260928_061454`):端到端通过,Reward Mean −10.777684,std 2.2127767**。但与 luna rep 2 的分数**到机器精度逐位相同**(mean 与 std 均为 −10.777684211730957 / 2.2127766609191895)。冻结 evaluate.py 是把全部 5 个 checkpoint × 各 seed 的回报汇入同一数组再取 mean/std——两组 5 个 checkpoint 里只有 `config-42-1.pkl` 字节相同(md5 cb79ee…,且该文件同时出现在 g6 自己的 20000/100000 两个 submission 里),其余 4 个字节不同却完全不改变汇总分布 ⇒ 两次运行交付的 5 个策略在评估分布上行为完全一致,唯一共同的确定性来源是参考模块 seed-42 起始训练。**结论:02×MountainCar 的 −10.78 是"起始配置不动点",luna 与 g6 两格都是管线通过、但无可归因于模型的策略改进**;表格入分时带此脚注。
+- **BabyLM × gpt-6-luna(02, rep 1,GPU 5):失败**(assembly 中止:仅 1 个 stage 选择,契约需 2-4)。stage 1 共 20 节点 0 good、0 官方记录;异常谱:SyntaxError 9(已知 code-only 回复解析缺陷形态)、OOM 3、AcceleratorError 1、RuntimeError 1、无异常判 buggy 6。BabyLM×02 至此四个模型(luna/ds/kimi/g6)全部未通过,维持"框架属性"判定,不加补丁。
+- **01 MountainCar × gpt-6-luna(rep 1,`fullrun_mcar_01_g6luna_20260928_061154`):门槛拒(42),0 checkpoint**。agent 自行编写了依赖 GPU 的训练管线,GPU 预检 exit 3(本 topic 包装器统一 `FRAMEWORK_DISABLE_GPU=1`,CPU-only,对所有模型一致;同期 kimi 在纯 CPU 上以 ~52 核正常训练),此后未转向 CPU 方案,90 分钟即自行收尾且未写正式报告。预算对等已核实:g6 与 kimi 的 native 均为 `timeout 86400s`,budget_clock 仅可见性不强制。判定:模型自身失败,列入 3 发通过率协议的重发候选。
+- **01 MountainCar × kimi(进行中,`fullrun_mcar_01_kimi_20260928_044203`)**:训练**已完成**——`workspace/checkpoints/` 下 5/5 个 `config-42-*.pkl` 齐全;但 06:39 起 `execute_command('… run_training_testing.py | head -100')` 的结果再未返回(第二命令通道;沙箱容器已不存在,框架容器单核 100% 空转,期间零 API 消耗)。包装器对 native rc≠0 显式"继续 handoff+评分",24h 上限 ~明晨 04:45 触发后该格大概率仍能出分。**提前 docker stop 走同一条 handoff 路径可省 ~19h,但按既定规则(kill 仅凭明示指令;权限层也拦截了我的干预尝试)留待用户决定。**
+- **01 BabyLM × gpt-6-luna(rep 2,进行中)**:08:18–09:25 停摆一小时(外层框架与内层 tcp_server 同时单核 100%、无 LLM 流量;此形态既不抛连接异常(keepalive 不触发)也不满足 run_command 静默(空闲超时不触发)),09:25 **自行恢复**继续运行。我在恢复前尝试的手动沙箱重启被权限层拒绝、未执行,run 未被干预。
+- **第二命令通道(terminal_tools execute_command)缺口升级**:一夜之内实际冻结 mcar×kimi 一格(至上限),且 babylm 停摆形态疑似相关。候选补丁 = 把空闲超时/keepalive 语义延伸到该通道(仍为 wrapper 层 adapter,不动框架源码)。按"先汇总再修"纪律**未实施**,待用户裁决。
