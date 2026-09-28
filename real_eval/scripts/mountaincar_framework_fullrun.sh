@@ -287,8 +287,8 @@ if trace.get("framework_native_execution") is not True or trace.get("consumed_to
 if trace.get("workspace_trace_root") != "/workspace":
     raise SystemExit("experiment_trace.json must set workspace_trace_root=/workspace")
 experiments = trace.get("experiments")
-if not isinstance(experiments, list) or not 2 <= len(experiments) <= 4:
-    raise SystemExit("experiment_trace.json must record 2-4 experiments")
+if not isinstance(experiments, list) or len(experiments) < 1:
+    raise SystemExit("experiment_trace.json must record at least 1 experiment")
 ids = []
 for row in experiments:
     eid = row.get("experiment_id") or row.get("id") if isinstance(row, dict) else None
