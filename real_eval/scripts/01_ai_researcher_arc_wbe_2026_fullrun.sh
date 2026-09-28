@@ -387,6 +387,43 @@ RUNTIME_COMMAND=$(cat <<EOF
 set -euo pipefail
 echo "AI_RESEARCHER_NATIVE_INFER_IDEA"
 cd /workspace/AI-Researcher
+# 01-scoped input-fact patch (run-local copies only; the shared generator stays
+# untouched per the 2026-09-28 shared-layer ruling). The trace gate requires
+# framework_internal_model / framework_internal_api_base_url to equal the injected
+# values byte-for-byte, but the brief never stated the literals; kimi hallucinated
+# "gpt-4" (fullrun_arc_01_kimi_20260927_131103). Append the literals, read from THIS
+# container's env, to every run-local copy of the brief.
+python3 - <<'PYMODELFACT'
+import os
+from pathlib import Path
+
+MARK = "arc01-model-fact"
+model = os.environ.get("OPENAI_MODEL", "")
+base = os.environ.get("OPENAI_BASE_URL", "")
+pairs = [
+    ("  \"not_called\")", f'  "not_called"); in this run that value is exactly "{model}"'),
+    ("  `OPENAI_BASE_URL` environment variable", f'  `OPENAI_BASE_URL` environment variable; in this run that value is exactly "{base}"'),
+]
+if model and base:
+    for f in Path("/workspace").rglob("ARC_WBE_2026_BRIEF.md"):
+        text = f.read_text(encoding="utf-8")
+        if MARK in text or "in this run that value is exactly" in text:
+            print(f"[{MARK}] already present: {f}")
+            continue
+        n = 0
+        for old, new in pairs:
+            if text.count(old) == 1:
+                text = text.replace(old, new, 1)
+                n += 1
+        if n:
+            text += f"\n<!-- {MARK}: injected-model literals appended by the 01 wrapper -->\n"
+            f.write_text(text, encoding="utf-8")
+            print(f"[{MARK}] {n} literal(s) appended: {f}")
+        else:
+            print(f"[{MARK}] anchors not found in {f}; brief left untouched")
+else:
+    print(f"[{MARK}] OPENAI_MODEL/OPENAI_BASE_URL not set; nothing done")
+PYMODELFACT
 if [ "${AI_RESEARCHER_CONTEXT_HYGIENE:-0}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_context_hygiene.py
 else
