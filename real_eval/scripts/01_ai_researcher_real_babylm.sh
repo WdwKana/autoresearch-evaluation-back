@@ -621,6 +621,7 @@ cp "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" "$REPO/real
   python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
   python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
   python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
+  python3 real_eval/adapters/ai_researcher/patch_reasoning_effort_fallback.py
   python3 real_eval/adapters/ai_researcher/patch_refine_report_fallback.py
   python3 real_eval/adapters/ai_researcher/patch_nested_gpu_isolation.py
   python3 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
