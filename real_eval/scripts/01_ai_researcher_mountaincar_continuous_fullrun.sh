@@ -16,6 +16,8 @@ real_eval/adapters/ai_researcher/patch_empty_input_truth.py
 real_eval/adapters/ai_researcher/patch_loop_guard.py
 real_eval/adapters/ai_researcher/patch_budget_clock.py
 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
+real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
+real_eval/adapters/ai_researcher/patch_refine_report_fallback.py
 real_eval/adapters/ai_researcher/patch_nested_gpu_isolation.py
 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
 real_eval/adapters/ai_researcher/patch_resource_visibility.py
@@ -137,6 +139,8 @@ python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
 python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
 python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
+python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
+python3 real_eval/adapters/ai_researcher/patch_refine_report_fallback.py
 python3 real_eval/adapters/ai_researcher/patch_nested_gpu_isolation.py
 python3 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
 python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py

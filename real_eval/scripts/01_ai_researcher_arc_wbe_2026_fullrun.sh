@@ -141,6 +141,7 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_loop_guard.py" "$REPO/real_eval
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_budget_clock.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_wire_tap.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py" "$REPO/real_eval/adapters/ai_researcher/"
+cp "$ROOT/real_eval/adapters/ai_researcher/patch_refine_report_fallback.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_resource_visibility.py" "$REPO/real_eval/adapters/ai_researcher/"
@@ -403,6 +404,7 @@ if [ "${AI_RESEARCHER_LOOP_GUARD:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
   python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
   python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
+  python3 real_eval/adapters/ai_researcher/patch_refine_report_fallback.py
   python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
   python3 real_eval/adapters/ai_researcher/patch_nested_cpu_isolation.py
   python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py
@@ -626,7 +628,7 @@ if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1}" = 1 ]; then
 fi
 
 set +e
-python3 - "$WORKSPACE" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" "$FRAMEWORK_PROVIDER_BASE_URL" <<'PY'
+python3 - "$WORKSPACE" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" "$FRAMEWORK_PROVIDER_BASE_URL" 2>"$LOG_DIR/handoff_gate.err" <<'PY'
 from pathlib import Path
 import json
 import re
@@ -692,8 +694,13 @@ for key in ("hypothesis", "method_rationale", "expected_failure_modes", "compari
 PY
 handoff_rc=$?
 set -e
+gate_reason=""
+if [[ -s "$LOG_DIR/handoff_gate.err" ]]; then
+  gate_reason="$(tail -n 1 "$LOG_DIR/handoff_gate.err")"
+  echo "[handoff-gate] $gate_reason" | tee -a "$LOG_FILE"
+fi
 if [[ "$handoff_rc" -ne 0 ]]; then
-  write_state "failed" "AI-Researcher ARC handoff artifacts missing or non-conformant before scoring" 42 "python run_infer_idea.py --category arc_wbe_2026"
+  write_state "failed" "AI-Researcher ARC handoff gate rejected: ${gate_reason:-see logs/handoff_gate.err}" 42 "python run_infer_idea.py --category arc_wbe_2026"
   exit 42
 fi
 
@@ -708,7 +715,7 @@ if ! "$WEIGHTS_ONLY_PYTHON" "$ROOT/automation/scripts/run_arc_wbe_2026_local_sco
 fi
 
 set +e
-python3 - "$WORKSPACE" "$TRACE_ROOT" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" <<'PY'
+python3 - "$WORKSPACE" "$TRACE_ROOT" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" 2>"$LOG_DIR/postscore_gate.err" <<'PY'
 from pathlib import Path
 import json
 import sys
@@ -732,7 +739,8 @@ PY
 postscore_rc=$?
 set -e
 if [[ "$postscore_rc" -ne 0 ]]; then
-  write_state "failed" "AI-Researcher ARC post-score validation failed; see log for the concrete violation" 44 "python run_infer_idea.py --category arc_wbe_2026"
+  post_reason=""; [[ -s "$LOG_DIR/postscore_gate.err" ]] && post_reason="$(tail -n 1 "$LOG_DIR/postscore_gate.err")" && echo "[postscore-gate] $post_reason" | tee -a "$LOG_FILE"
+  write_state "failed" "AI-Researcher ARC post-score validation failed: ${post_reason:-see logs/postscore_gate.err}" 44 "python run_infer_idea.py --category arc_wbe_2026"
   exit 44
 fi
 

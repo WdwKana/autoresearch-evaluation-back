@@ -176,9 +176,9 @@ required type and value semantics. Field names alone are not sufficient.
 - `framework_internal_model`: the exact value of the injected `OPENAI_MODEL`
   environment variable (the model driving the framework's own reasoning; NOT
   whether experiment scripts called an LLM — never write placeholders such as
-  "not_called")
+  "not_called"){model_literal}
 - `framework_internal_api_base_url`: the exact value of the injected
-  `OPENAI_BASE_URL` environment variable
+  `OPENAI_BASE_URL` environment variable{base_literal}
 - `idea_artifact`: the literal string `"research_idea.json"`
 - `idea_locked_before_experiments`: boolean `true`
 
@@ -471,7 +471,10 @@ def generate_native_inputs(
         "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md": render_framework_brief(
             Path("/data/arc_wbe_2026"), Path("/input/contract.md")
         )
-        + AI_RESEARCHER_TRACE_VALUE_SPEC,
+        + AI_RESEARCHER_TRACE_VALUE_SPEC.format(
+            model_literal=f'; in this run that value is exactly "{primary_model}"',
+            base_literal=f'; in this run that value is exactly "{provider_base_url}"',
+        ),
         "AI-Scientist-v2/ai_scientist/ideas/arc_wbe_2026_topic.md": ai_scientist_topic,
         "AI-Scientist-v2/ai_scientist/ideas/my_research_topic.md": ai_scientist_topic,
         "Auto-claude-code-research-in-sleep/ARC_WBE_2026_BRIEF.md": framework_brief,
