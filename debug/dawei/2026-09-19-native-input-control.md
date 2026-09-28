@@ -541,3 +541,12 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - **01 MountainCar × kimi(`fullrun_mcar_01_kimi_20260928_044203`):终态 failed/137(用户授权提前 stop,09:48)**。经过:训练完成、`workspace/checkpoints/` 5/5 齐全,但 06:39 起 `execute_command('… run_training_testing.py | head -100')` 结果再未返回(terminal_tools 第二通道缺口;冻结期间零 API 消耗)。用户明示后 09:48 `docker stop`——**事后发现 handoff/门槛/评分整段都在容器内命令尾部(PYRELOC heredoc),container 级杀灭把它们一并跳过**,宿主侧仅补写 failed/137;此前"stop 与 24h 上限等价"的判断有误:上限路径是容器内 `timeout` 只 TERM python、bash 尾部照常执行 handoff。表格结论不变:trace 仅 1 个实验(`sde-dp3-mountaincar-001`),即便 handoff 跑了也会被门槛(2-4)拒,与 mcar×ds 先例同型 → 该格第 1 发失败入账,省下 ~19h。运行目录完整保留(checkpoint、trace、全量日志)。**教训:今后对 01 wrapper 提前收割,正确杠杆是 `docker exec kill` 容器内 run_infer 进程(与上限 TERM 语义一致,容器内尾部继续跑),而不是 docker stop 整个容器。**不对本 run 目录做任何事后补跑(host 不回填框架侧流程)。
 - **01 BabyLM × gpt-6-luna(rep 2,进行中)**:08:18–09:25 停摆一小时(外层框架与内层 tcp_server 同时单核 100%、无 LLM 流量;此形态既不抛连接异常(keepalive 不触发)也不满足 run_command 静默(空闲超时不触发)),09:25 **自行恢复**继续运行。我在恢复前尝试的手动沙箱重启被权限层拒绝、未执行,run 未被干预。
 - **第二命令通道(terminal_tools execute_command)缺口升级**:一夜之内实际冻结 mcar×kimi 一格(至上限),且 babylm 停摆形态疑似相关。候选补丁 = 把空闲超时/keepalive 语义延伸到该通道(仍为 wrapper 层 adapter,不动框架源码)。按"先汇总再修"纪律**未实施**,待用户裁决。
+
+#### MountainCar 实验数契约统一为 ≥1(2026-09-28,用户三项逐项批准)
+- 裁定方向:回到上游 topic2 原版的 "one or more"(≥1,**上限亦随之取消**;预算由 24h 墙钟兜底),而非契约文字向 2-4 看齐。考古结论支撑:topic2 原版契约与门槛自洽(≥1);2-4 随 00da561(08-19)的 mountaincar 分叉进入且从无契约文字支撑;本地 09-03 用 topic2 文本填 0 字节契约时埋下文字/门槛分裂。
+- 三项改动:**7945411** 共享门槛 2-4→≥1(逐字取自 topic2 runner);**c1b7fd0** 撤 01 wrapper 的 [mcar-01-wording] run-local 改写(agent 此后读契约原文);**9129f60** 02 装配 stage-selection 下限 2→1(staged 实盘同步)。其余 topic(ARC/psydef/TDC/babylm)契约与门槛本就自洽 2-4,不联动。补丁链健康检查 111 项全 OK。
+- **追溯重裁**(bd54 系列 adjudicate_mountaincar_ge1.sh;独立目录 `real_eval/runs/adjudication_mcar01_ge1_20260928/`,原 run 目录零接触;门槛从现行 runner 运行时逐字抽取,官方评分在 ai-researcher-exec:mountaincar-jax 镜像内、--network none):
+  - **01 mcar × ds(124914):≥1 门槛通过,官方分 −13.4445**(std 2.00,official_evaluate_py,5 checkpoint)→ 入表并注明"≥1 追溯重裁"。**01 MountainCar 首格出分。**
+  - **01 mcar × luna(121831):重裁仍拒**——research_idea.json 缺契约必需的全部四字段(hypothesis/method_rationale/expected_failure_modes/comparison_logic;用了自有 schema)。该检查自 00da561 就在门槛里,09-24 被排在其前的计数检查掩盖;拒因由"计数"更正为"idea schema 违约"。当年 −9.44 系交付桥验证的非正式数字,不入表;Q10 "应过门槛"的预期被此深层违规推翻。
+  - kimi(044203)五件交付物意外齐全(含 final_report.md),但未被计数拒过(容器级终止),不在批准名单;是否同法重裁待用户表态。
+- 表格 01 MountainCar 行更新:luna 拒(idea 缺字段)/ ds **−13.44**(≥1 重裁)/ kimi failed-137 / g6 拒(0 ckpt)。
