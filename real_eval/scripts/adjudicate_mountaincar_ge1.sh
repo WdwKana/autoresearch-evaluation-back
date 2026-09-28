@@ -19,6 +19,10 @@ adjudicate() {
   local tag=$1 run=$2 model=$3
   local src="$ROOT/real_eval/runs/$run/workspace"
   local adj="$ADJROOT/$tag"
+  if [ -s "$adj/verdict.json" ]; then
+    echo "== [$tag] verdict already recorded; skipping (delete verdict.json to re-adjudicate)"
+    return 0
+  fi
   echo "== [$tag] source run: $run"
   mkdir -p "$adj/workspace" "$adj/logs"
 
@@ -81,4 +85,7 @@ PROV
 
 adjudicate luna_121831 fullrun_mcar_01_luna_20260924_121831 gpt-5.6-luna
 adjudicate ds_124914  fullrun_mcar_01_ds_20260927_124914  deepseek-v4-flash
+# kimi added 2026-09-28 on explicit user approval: run was terminated pre-gate
+# (container-level stop), all five deliverables present, trace records 1 experiment.
+adjudicate kimi_044203 fullrun_mcar_01_kimi_20260928_044203 kimi-k2.6
 echo "ADJUDICATION_DONE"

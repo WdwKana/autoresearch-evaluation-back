@@ -549,4 +549,8 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
   - **01 mcar × ds(124914):≥1 门槛通过,官方分 −13.4445**(std 2.00,official_evaluate_py,5 checkpoint)→ 入表并注明"≥1 追溯重裁"。**01 MountainCar 首格出分。**
   - **01 mcar × luna(121831):重裁仍拒**——research_idea.json 缺契约必需的全部四字段(hypothesis/method_rationale/expected_failure_modes/comparison_logic;用了自有 schema)。该检查自 00da561 就在门槛里,09-24 被排在其前的计数检查掩盖;拒因由"计数"更正为"idea schema 违约"。当年 −9.44 系交付桥验证的非正式数字,不入表;Q10 "应过门槛"的预期被此深层违规推翻。
   - kimi(044203)五件交付物意外齐全(含 final_report.md),但未被计数拒过(容器级终止),不在批准名单;是否同法重裁待用户表态。
-- 表格 01 MountainCar 行更新:luna 拒(idea 缺字段)/ ds **−13.44**(≥1 重裁)/ kimi failed-137 / g6 拒(0 ckpt)。
+  - **kimi 重裁(用户随后批准,同日执行):gate 拒**——trace 的 `framework_internal_api_base_url` 写成幻觉的 `https://api.openai.com/v1`(实际注入为 bianxie 中转;`framework_internal_model` 倒是写对了 kimi-k2.6)。与 ARC kimi 幻觉 "gpt-4" 同族:模型侧溯源违约,契约明文要求记录注入的 base URL。拒因=溯源失实,非计数。ARC 侧当年以 [arc01-model-fact] run-local 注入事实补齐;mcar 无对应补丁——是否移植(A 类输入事实,run-local)待用户决定;g6 rep2 未带,与既往发次同条件。
+  - **三重裁总结:除 ds 外,计数从来不是真实拦截**——ds 全合规 −13.44;luna 倒在 idea schema;kimi 倒在 URL 溯源。旧 2-4 门槛只是把更深的违约挡在了视线外。
+- 表格 01 MountainCar 行更新:luna 拒(idea 缺字段)/ ds **−13.44**(≥1 重裁)/ kimi 拒(URL 溯源失实;≥1 重裁)/ g6 拒(0 ckpt,rep2 已重发)。
+- **01 mcar × g6 rep2 重发**:首次发射(105316)因发射副本的 ROOT 自推导指向 scratchpad、source lib 失败而当场退出——**未创建任何 run 目录,零残留**;修正 = 按 AGENTS.md 显式导出 `RESEARCHCLAWEVAL_ROOT`,新时间戳重发(权限分类器瞬时故障延迟了重发,恢复即发)。
+- **02 mcar 重裁需求初判(基于既有记录,逐 run 扫描待分类器恢复后确认)**:ds rep1/rep2 均以 assembly=3(stage-selection 下限出口)失败 → **程序性候选**:≥1 下装配会继续走回放,能否出分取决于所选 stage 有无 official:true 且 submission 完整的记录(记录显示 ds 两发"0 条官方记录",预期回放仍无分,但按程序应重跑装配定论);kimi rep1 assembly=4(回放后 0 段官方记录)非候选;luna rep1 stage1 0/20、无官方调用,即便过下限也无可回放记录。
