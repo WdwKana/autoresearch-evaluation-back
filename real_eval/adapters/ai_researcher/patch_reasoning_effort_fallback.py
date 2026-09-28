@@ -35,6 +35,11 @@ _ref_acompletion = acompletion
 
 
 async def acompletion(**kw):  # noqa: F811 -- deliberate shadow of litellm.acompletion
+    # Protocol sanitize: tool_choice without tools is invalid in the OpenAI schema and the
+    # relay's gpt-6-luna path rejects it (observed 2026-09-28, psydef run 045919).
+    if not kw.get("tools") and "tool_choice" in kw:
+        kw = dict(kw)
+        kw.pop("tool_choice", None)
     try:
         return await _ref_acompletion(**kw)
     except Exception as exc:  # litellm.BadRequestError carries the provider text in str(exc)
@@ -43,6 +48,11 @@ async def acompletion(**kw):  # noqa: F811 -- deliberate shadow of litellm.acomp
             print("[reasoning-effort-fallback] provider rejected function tools with reasoning_effort; "
                   "retrying the same request with reasoning_effort='none'", flush=True)
             kw = dict(kw, reasoning_effort="none")
+            return await _ref_acompletion(**kw)
+        if "tool_choice" in text and "only allowed" in text and "tool_choice" in kw:
+            print("[reasoning-effort-fallback] provider rejected tool_choice without tools; "
+                  "retrying the same request without tool_choice", flush=True)
+            kw = dict(kw); kw.pop("tool_choice", None)
             return await _ref_acompletion(**kw)
         raise'''
 
