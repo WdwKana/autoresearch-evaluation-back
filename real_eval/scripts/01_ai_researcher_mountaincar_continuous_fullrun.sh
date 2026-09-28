@@ -96,42 +96,10 @@ export PYTHONPATH=/workspace:/workspace/research_agent/inno/tools:${PYTHONPATH:-
 if [ -d /workspace/AI-Researcher/benchmark ]; then
   cp -r /workspace/AI-Researcher/benchmark/. /workspace/benchmark/
 fi
-# 01-scoped wording alignment (run-local copies only; shared automation/ files in the
-# repo are untouched). The shared delivery gate requires 2-4 experiments while the
-# topic docs say "one or more"; run fullrun_mcar_01_luna_20260924_121831 followed the
-# docs, delivered 1 experiment and was rejected with exit 42. Align the text THIS
-# agent reads, inside THIS run's workspace, so contract text and gate agree.
-python3 - <<'PYALIGN'
-import json
-from pathlib import Path
-
-SUBS = [
-    ("one or more materially different", "2 to 4 materially different"),
-    ("The framework decides the number of experiments.", "Never start a fifth experiment."),
-]
-changed = 0
-roots = [Path("/workspace/automation"), Path("/workspace/docs"), Path("/workspace/benchmark")]
-for root in roots:
-    if not root.is_dir():
-        continue
-    for f in root.rglob("*"):
-        if not f.is_file() or f.suffix not in (".md", ".json", ".txt"):
-            continue
-        try:
-            text = f.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        new = text
-        for old, rep in SUBS:
-            new = new.replace(old, rep)
-        if new != text:
-            if f.suffix == ".json":
-                json.loads(new)  # never write a broken instance file
-            f.write_text(new, encoding="utf-8")
-            changed += 1
-            print(f"[mcar-01-wording] aligned {f}")
-print(f"[mcar-01-wording] {changed} run-local file(s) aligned to the 2-4 gate")
-PYALIGN
+# [2026-09-28] Experiment-count contract unified to "one or more" (>=1), matching the
+# original upstream topic2 pair (user decision, per-item approved). The shared gate in
+# mountaincar_framework_fullrun.sh now enforces >=1, so the former [mcar-01-wording]
+# run-local rewrite to "2 to 4" is removed and agents read the contract text as-is.
 python3 real_eval/adapters/mountaincar_continuous/patch_ai_researcher.py
 # New framework-fix stack (same adapters as ARC; mcar delivery globs).
 python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
