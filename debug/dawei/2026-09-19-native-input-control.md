@@ -513,3 +513,13 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 #### MountainCar × ds rep 2(`control_e2emcar_rep2_mcar02_ds_20260927_132821`,A5+A6+A7+B11):失败(native=1 assembly=3,stage 1 20 节点跑满)
 - 对比 rep 1(6/20 调官方评估):rep 2 首节点即调官方评估,全程约 7-8/20;但没有一个节点跑通冻结评估(PyTorch 权重与加载接口的搏斗贯穿始终),0 条官方记录;唯一 is_buggy=False 的节点其实调了官方评估(记录未写成)但被 VLM 判 is_buggy_plots=True,不算 good node,stage 1 因此无通过节点。
 - A7 把失败原因从"不知道接口"变成"知道接口但转换不动"(节点尝试 torch→flax 转换失败);判定仍是 DS 实现能力,按封线决定入账,不再补丁。
+
+#### 夜间批次终态(2026-09-28 晨)
+- **BabyLM × ds rep 3(A5+A6+B11+B12 终版,GPU 4):端到端通过,词级困惑度 85.28**——全表最好(01-ds 106.58、02-luna 108.11)。选中 stage 3 的 divide_conquer_fusion;同 stage 另一配置 92.39 互为佐证;记录 official:true,固定验证行常数(33583 行/975273 词)与参考一致,nll 与 ppl 自洽。已知弱点同 luna 108.11:获胜节点内联参考模块(非 import)、未存模型工件(submission 只有验证记录),口径与 luna 格一致故接受。
+- **BabyLM × kimi rep 3(终版):失败** assembly=4,0 段回放有困惑度。kimi × BabyLM 两版本均失败,封线入账。
+- **ARC × kimi rep 6(B11,用户点名重发):失败** assembly=4,仅 1 段回放有合格 estimator(契约需 2)。stage 1 血统锁于自评节点,stage 2-4 未恢复官方调用。ARC × kimi 封线入账为失败。
+- **ARC × ds rep 3 装配(旧输入版,历史遗留):失败**(0 段合格),不影响表格(该格由 rep 5 的 0.14 代表)。stage 3/4 回放各超时,旧装配脚本各泄漏一个容器(已由用户处置)。
+- **01 ARC × kimi(空闲超时试点):历史性地跑完全流程但被门槛拒(42)**。五份交付物齐全、4 个实验、选中 exp_003_rcae_calibrated;拒因=trace 的 framework_internal_model 写成 "gpt-4"、base_url 写成 api.openai.com(kimi 幻觉填表;实际注入模型为 kimi-k2.6)。**空闲超时补丁夜间触发 5 次、每次通道恢复,kimi 首次未卡死走到交付**——工具目标达成;失败性质=trace 元数据不实,按契约判 conformance 失败。estimator 留存,可做诊断性离线打分(未做,待示)。
+- **01 MountainCar × ds:门槛拒(42)**:agent 自己把 5 个 checkpoint 放到根目录(交付桥无需搬运),但 trace 只记 1 个实验(exp_001_ds_epac_full),门槛需 2-4。run-local 措辞已是 2-4,DS 没有照做——与 luna run 2 同型的"1 实验"失败,这次不是措辞背锅。
+- **01 MountainCar × kimi:native 崩溃(rc=1)**:AI-Researcher 原生脆弱点——ML 阶段未产出 experiment_report 时,run_infer_idea.py:517 直接 KeyError。无交付物。候选 01 稳健性适配器(记入待办,未做)。
+- 夜间花费(账号侧,账单页仅覆盖到 20:39):窗口内约 $7.9,其中合作者(gpt-6-luna+ds-pro)约 $2.2;我们侧多为 ds(babylm rep3 长训练)。总体与睡前预估一致。
