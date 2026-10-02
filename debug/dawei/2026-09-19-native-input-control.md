@@ -584,7 +584,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 #### 01 算力预算对齐 02(2026-10-02 下午,用户裁定"按 02 的数字给 01,旧格结果不管")
 - 起因:01 TDC×ds@paratera 容器 405% CPU——其实是顶着共享 runner 硬编码的 `--cpus 4` 天花板在训练(宿主 384 核、负载 71 为其他租户)。盘点发现 02 的生产 launcher 给 TDC/ARC/psydef/mcar **32 核**、BabyLM **16 核**(+64g),而 01 实际是 TDC 4 核(runner 硬编码 + wrapper `EXEC_CPUS=4`)、其余 topic 嵌套沙箱 8 核(隔离补丁默认值)——同 topic 两框架差 2-8 倍,TDC 又受契约 3,600s 累计训练时长约束,01 被系统性饿着。
 - 改动:共享 runner [tdc_admet_tox_framework_fullrun.sh:329](real_eval/scripts/tdc_admet_tox_framework_fullrun.sh#L329) `--cpus 4→32`(用户批准);五个 01 wrapper 向框架容器注入 `AI_RESEARCHER_EXEC_CPUS`(TDC/psydef/mcar/ARC=32,BabyLM=16)供嵌套沙箱隔离补丁取用。内存不动(01 沙箱本不限内存,≥02 的 64g)。
-- 口径:已出分的 01 旧格(ARC/psydef/TDC g6 与 luna 等)为旧预算结果,用户决定不重跑、不纠结;新发射一律新预算。正在跑的 TDC×ds(131845,4 核)按用户指令 kill(容器内 TERM,wrapper 自行收尾),在新预算下重发(id 见后)。01 babylm×g6 rep3(140521,沙箱 8 核+GPU 6)用户未点名,**暂未动**,待示下。
+- 口径:已出分的 01 旧格(ARC/psydef/TDC g6 与 luna 等)为旧预算结果,用户决定不重跑、不纠结;新发射一律新预算。正在跑的 TDC×ds(131845,4 核)按用户指令 kill(容器内 TERM,wrapper 自行收尾),在新预算下重发:`fullrun_tdc_01_ds_20261002_145722`(容器核验 NanoCpus=32、EXEC_CPUS=32、16g)。01 babylm×g6 rep3(140521,沙箱 8 核+GPU 6)用户未点名,**暂未动**,待示下。
 
 #### 中转站切换:bianxie → paratera(2026-10-02)
 - 新站 = 并行科技(用户称 bingxing),**API base URL = `https://llmapi.paratera.com/v1`**(`ai.paratera.com` 为门户;`/v1` 无 key 401、带 key 200,118 模型)。
