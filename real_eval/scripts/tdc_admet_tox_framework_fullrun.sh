@@ -326,7 +326,7 @@ declare -a docker_cmd=(
   docker run --rm
   --name "tdc-fw-$RUN_TOKEN"
   --network "$NETWORK_NAME"
-  --cpus 4
+  --cpus 32
   --memory 16g
   --pids-limit 2048
   --env-file "$PROVIDER_ENV"
