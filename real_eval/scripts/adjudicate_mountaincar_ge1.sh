@@ -88,4 +88,10 @@ adjudicate ds_124914  fullrun_mcar_01_ds_20260927_124914  deepseek-v4-flash
 # kimi added 2026-09-28 on explicit user approval: run was terminated pre-gate
 # (container-level stop), all five deliverables present, trace records 1 experiment.
 adjudicate kimi_044203 fullrun_mcar_01_kimi_20260928_044203 kimi-k2.6
+# g6 rep2 added 2026-10-02: the run completed its research with all deliverables
+# (5 checkpoints, idea/trace/report, trace model=gpt-6-luna correct) but the
+# in-container gate compared the trace against the wrong expected model
+# (gpt-5.6-luna from the .env default) and rejected it with 42 -- host-side
+# defect, not a framework failure. Adjudicate under the run's actual model.
+adjudicate g6_113815 fullrun_mcar_01_g6luna_rep2_20260928_113815 gpt-6-luna
 echo "ADJUDICATION_DONE"

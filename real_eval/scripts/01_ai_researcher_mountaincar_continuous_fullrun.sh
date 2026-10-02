@@ -270,4 +270,12 @@ if moved:
 PYRELOC
 EOF
 )
+# [2026-10-02] The shared runner derives its own MC_MODEL (gate expectation) from
+# the PROVIDER_CONFIG toml unless MOUNTAINCAR_CONTINUOUS_MODEL is set, while this
+# wrapper injects $MC_MODEL (env-derived) into the container. A launch whose
+# PROVIDER_CONFIG defaulted to the luna toml made the gate expect gpt-5.6-luna
+# and reject a complete, truthful gpt-6-luna delivery (fullrun_mcar_01_g6luna_rep2
+# _20260928_113815, exit 42). Pin the runner's expectation to the model this
+# wrapper actually ran.
+export MOUNTAINCAR_CONTINUOUS_MODEL="$MC_MODEL"
 exec "$ROOT/real_eval/scripts/mountaincar_framework_fullrun.sh"
