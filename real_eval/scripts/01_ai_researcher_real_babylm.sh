@@ -25,7 +25,14 @@ cleanup_inner_container() {
 }
 
 # Preemptive cleanup: remove any stale AI-Researcher containers from previous runs
-docker ps -a --format '{{.Names}}' | rg '^ai_researcher_babylm_' | xargs -r docker rm -f >/dev/null 2>&1 || true
+# [2026-10-02] Removed the blanket prefix purge that used to live here
+# (`rg '^ai_researcher_babylm_' | xargs docker rm -f`): launching a second
+# BabyLM run force-removed the FIRST run's live inner sandbox
+# (fullrun_babylm_01_g6luna_20260928_072044 lost its container at 11:53:02,
+# seven seconds after fullrun_babylm_01_kimi_20260928_115255 started), and the
+# keepalive adapter cannot resurrect a removed container. The exact-name
+# cleanup above already covers this run's own containers; orphan cleanup from
+# crashed runs is a manual operation, never a launch side effect.
 
 trap cleanup_inner_container EXIT
 
