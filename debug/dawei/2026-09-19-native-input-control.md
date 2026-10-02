@@ -581,6 +581,11 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - **paratera 的 Kimi-K2.6 线路大面积 429(13:4x 起)**:错误文本为上游 "You exceeded your current quota"(中转站 Kimi 线路池部分上游额度耗尽;DeepSeek 完全正常,我们账号无关),8 次探测 6 次失败。三发 01 kimi 原地重试、02 mcar×kimi rep3 停止出新节点并随后自行以 native=1/assembly=4 结束。**用户指令停掉全部 kimi 运行**(13:58):01 TDC×kimi 132511 → failed_native_research、01 ARC×kimi 132514 → failed/143、01 BabyLM×kimi 132915 → failed_no_artifacts(均对容器内 run_infer 发 TERM,与 wrapper 上限路径同语义,wrapper 尾部自行写终态;ARC 的内层沙箱残留按精确名清除);02 mcar×kimi rep3 132526 在停之前已自行结束。**四格均为基础设施原因(中转站上游配额),不计入 kimi 尝试数**,待 paratera Kimi 线路恢复后重发。paratera 的 `/key/info` 管理接口被禁用,预算/账单仍不可见。
 - babylm×kimi 132518 **当场失败(发射配置,不计尝试)**:自动挑卡输出为空 → wrapper 回落默认 `REAL_EVAL_ALLOWED_GPUS=0,1,2,3` → 嵌套 GPU 隔离补丁生成 `--gpus device=0,1,2,3` 撞 docker "cannot set both Count and DeviceIDs"。教训:该补丁要求**单卡索引**。挑卡为空的原因是 GPU 板已变:8 张卡全部被其他租户驻留 30-67GB(0% 利用率),无全空卡;按剩余显存最宽裕的 6 号(余 42.7GB)单卡重发(id 见后续扫描)。共享卡上存在与他人驻留模型争抢显存的 OOM 风险,已知悉。
 
+#### 01 算力预算对齐 02(2026-10-02 下午,用户裁定"按 02 的数字给 01,旧格结果不管")
+- 起因:01 TDC×ds@paratera 容器 405% CPU——其实是顶着共享 runner 硬编码的 `--cpus 4` 天花板在训练(宿主 384 核、负载 71 为其他租户)。盘点发现 02 的生产 launcher 给 TDC/ARC/psydef/mcar **32 核**、BabyLM **16 核**(+64g),而 01 实际是 TDC 4 核(runner 硬编码 + wrapper `EXEC_CPUS=4`)、其余 topic 嵌套沙箱 8 核(隔离补丁默认值)——同 topic 两框架差 2-8 倍,TDC 又受契约 3,600s 累计训练时长约束,01 被系统性饿着。
+- 改动:共享 runner [tdc_admet_tox_framework_fullrun.sh:329](real_eval/scripts/tdc_admet_tox_framework_fullrun.sh#L329) `--cpus 4→32`(用户批准);五个 01 wrapper 向框架容器注入 `AI_RESEARCHER_EXEC_CPUS`(TDC/psydef/mcar/ARC=32,BabyLM=16)供嵌套沙箱隔离补丁取用。内存不动(01 沙箱本不限内存,≥02 的 64g)。
+- 口径:已出分的 01 旧格(ARC/psydef/TDC g6 与 luna 等)为旧预算结果,用户决定不重跑、不纠结;新发射一律新预算。正在跑的 TDC×ds(131845,4 核)按用户指令 kill(容器内 TERM,wrapper 自行收尾),在新预算下重发(id 见后)。01 babylm×g6 rep3(140521,沙箱 8 核+GPU 6)用户未点名,**暂未动**,待示下。
+
 #### 中转站切换:bianxie → paratera(2026-10-02)
 - 新站 = 并行科技(用户称 bingxing),**API base URL = `https://llmapi.paratera.com/v1`**(`ai.paratera.com` 为门户;`/v1` 无 key 401、带 key 200,118 模型)。
 - **模型 ID 大小写严格**(小写 400 "no healthy deployments"):`GPT-5.6-Luna` / `GPT-6-Luna` / `DeepSeek-V4-Flash` / `Kimi-K2.6`。
