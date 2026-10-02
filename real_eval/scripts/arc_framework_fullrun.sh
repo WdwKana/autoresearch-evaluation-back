@@ -81,7 +81,10 @@ PY
 }
 
 real_eval_require_clean_dir "$BASE"
-trap 'docker ps -q --filter "name=arc_wbe_2026_eval_" | xargs -r docker rm -f' EXIT
+# [2026-10-02, user-approved shared-layer fix] Exit cleanup removes only THIS run's
+# inner sandboxes (prefix + run id), never every arc_wbe_2026_eval_* container on
+# the host -- the 01 ARC inner sandboxes share that prefix.
+trap 'docker ps --format "{{.Names}}" | grep -E "^arc_wbe_2026_eval_.*${RUN_ID}" | xargs -r docker rm -f' EXIT
 mkdir -p "$BASE" "$INPUT_ROOT" "$CODEX_HOME_DIR" "$LOG_DIR"
 if [[ -n "$FRAMEWORK_HOST_HOME_DIR" ]]; then
   mkdir -p "$FRAMEWORK_HOST_HOME_DIR"
