@@ -575,6 +575,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 补遗:provider toml 的 key 走 `experimental_bearer_token` 字段(lib `real_eval_provider_env_from_codex_toml` 只读该字段,不读 env_key)——首发金丝雀 131427 以 401 "Invalid proxy server token"(旧 bianxie key)自败;四个 toml 的 bearer 已换新 key(sha 对齐 .env),scratchpad provider env 的 `OPENROUTER_MODEL` 改指 paratera 上存活的同模型(kimi→Kimi-K2.6,g6→GPT-6-Luna;GPT-5.6-Luna 当前 503)。
 - **金丝雀 01 TDC×ds(131845)在 paratera 跑通**:40+ 轮 LLM、零 401/4xx/5xx,模型 DeepSeek-V4-Flash,经 tdc-gpt-relay 中继。provider 链验证完毕,其余四发随后放出。
 - 13:25 放出其余四发(均 paratera、精确大小写模型 ID、冻结副本、watcher 齐挂):01 TDC×kimi `fullrun_tdc_01_kimi_20261002_132511`、01 ARC×kimi `fullrun_arc_01_kimi_20261002_132514`(第 3 发)、01 BabyLM×kimi `fullrun_babylm_01_kimi_20261002_132518`(修复前缀清理后的 wrapper 快照)、02 mcar×kimi rep3 `control_e2emcar_rep3_mcar02_kimi_20261002_132526`(第三次物理发射,前两次为配置/额度中止,首个完整运行在 ≥1 双下限之下的 02 mcar 新运行)。
+- babylm×kimi 132518 **当场失败(发射配置,不计尝试)**:自动挑卡输出为空 → wrapper 回落默认 `REAL_EVAL_ALLOWED_GPUS=0,1,2,3` → 嵌套 GPU 隔离补丁生成 `--gpus device=0,1,2,3` 撞 docker "cannot set both Count and DeviceIDs"。教训:该补丁要求**单卡索引**。挑卡为空的原因是 GPU 板已变:8 张卡全部被其他租户驻留 30-67GB(0% 利用率),无全空卡;按剩余显存最宽裕的 6 号(余 42.7GB)单卡重发(id 见后续扫描)。共享卡上存在与他人驻留模型争抢显存的 OOM 风险,已知悉。
 
 #### 中转站切换:bianxie → paratera(2026-10-02)
 - 新站 = 并行科技(用户称 bingxing),**API base URL = `https://llmapi.paratera.com/v1`**(`ai.paratera.com` 为门户;`/v1` 无 key 401、带 key 200,118 模型)。
