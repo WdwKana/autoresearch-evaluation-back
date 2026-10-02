@@ -564,6 +564,18 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - **02 babylm×g6 rep2:finished,词级验证 ppl 185.75**——native 在 stage 3 死于额度墙(native=1),stage1/2 有官方记录,装配选 stage2 `gru_shuffled_lr_2e-03_seed_17`,host 评分+校验通过。02 babylm×g6 首次出分(research_completed 部分、scored/contract_complete 通过)。
 - 表格更新:01 mcar×g6 **−11.30**;01 babylm×g6 2429.9(伤残);02 babylm×g6 **185.75**。
 
+#### BabyLM "keepalive 清空工作区"排查结论(2026-10-02):不是 keepalive,是 wrapper 启动时的前缀清容器
+- 磁盘证据:01 babylm×g6 rep2 的内层 /workplace 真身在宿主 `…/workplace_paper/task_babylm_10m_idea_openai__gpt-6-luna/workplace/workplace/`,project 完好(44 个文件,模型/训练脚本/checkpoints 10:37/results 11:01),**11:53 之后零文件落盘**——没有任何东西被清空,是 11:53 起 agent 再也连不上原容器。
+- 日志证据:11:53:02 起 `wait_for_container_ready` 的 `docker inspect` 返回 rc=1(容器**不存在**,非停止);keepalive 的 `docker restart` 对已移除的容器无效;此后 45 分钟所有工具调用报 "Container …" 错误,agent 自述"工作区被清空"实为"换了个空容器/无容器";12:39 以 11:01 前的真实实验结果收尾(ppl 2429.9 来自死前的真实实验)。
+- **根因**:[01_ai_researcher_real_babylm.sh:28](real_eval/scripts/01_ai_researcher_real_babylm.sh#L28) 启动时 `docker ps -a | rg '^ai_researcher_babylm_' | xargs docker rm -f`——**按前缀清掉所有 BabyLM 内层容器**。我 11:52:55 发射 babylm×kimi,7 秒后 g6 的沙箱被它删除。修复 75238c5:删除该前缀清理(第 24 行按本 run 精确名清理保留;孤儿容器清理改为人工操作)。
+- **全仓审计(按前缀批量删/停容器)**:psydef wrapper 的清理按 run id 限定(安全);01 TDC/mcar/ARC wrapper 无前缀清理;02 staged launcher 只对自身 $NAME 做时限 stop。**两处共享 runner 的 EXIT trap 为潜在同类隐患**(非 01 路径,01 ARC/babylm wrapper 自包含不经过它们):`babylm_framework_fullrun.sh:61` 退出时删所有 `ai_researcher_babylm_*`;`arc_framework_fullrun.sh:84` 退出时删所有 `arc_wbe_2026_eval_*`(= 01 ARC 内层沙箱的命名前缀)。任何经共享 runner 的 ARC/BabyLM 运行退出都会误杀同时在跑的 01 同 topic 沙箱。属共享层,待用户逐项批准后改为精确名。
+- 推论:01 babylm×g6 的 2429.9 是被外力截断的运行结果;按基础设施原因不计入 g6 的尝试数,可重发。
+
+#### paratera 切换后的首批运行(2026-10-02 午)
+- 补遗:provider toml 的 key 走 `experimental_bearer_token` 字段(lib `real_eval_provider_env_from_codex_toml` 只读该字段,不读 env_key)——首发金丝雀 131427 以 401 "Invalid proxy server token"(旧 bianxie key)自败;四个 toml 的 bearer 已换新 key(sha 对齐 .env),scratchpad provider env 的 `OPENROUTER_MODEL` 改指 paratera 上存活的同模型(kimi→Kimi-K2.6,g6→GPT-6-Luna;GPT-5.6-Luna 当前 503)。
+- **金丝雀 01 TDC×ds(131845)在 paratera 跑通**:40+ 轮 LLM、零 401/4xx/5xx,模型 DeepSeek-V4-Flash,经 tdc-gpt-relay 中继。provider 链验证完毕,其余四发随后放出。
+- 13:25 放出其余四发(均 paratera、精确大小写模型 ID、冻结副本、watcher 齐挂):01 TDC×kimi `fullrun_tdc_01_kimi_20261002_132511`、01 ARC×kimi `fullrun_arc_01_kimi_20261002_132514`(第 3 发)、01 BabyLM×kimi `fullrun_babylm_01_kimi_20261002_132518`(修复前缀清理后的 wrapper 快照)、02 mcar×kimi rep3 `control_e2emcar_rep3_mcar02_kimi_20261002_132526`(第三次物理发射,前两次为配置/额度中止,首个完整运行在 ≥1 双下限之下的 02 mcar 新运行)。
+
 #### 中转站切换:bianxie → paratera(2026-10-02)
 - 新站 = 并行科技(用户称 bingxing),**API base URL = `https://llmapi.paratera.com/v1`**(`ai.paratera.com` 为门户;`/v1` 无 key 401、带 key 200,118 模型)。
 - **模型 ID 大小写严格**(小写 400 "no healthy deployments"):`GPT-5.6-Luna` / `GPT-6-Luna` / `DeepSeek-V4-Flash` / `Kimi-K2.6`。
