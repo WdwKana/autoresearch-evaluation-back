@@ -587,6 +587,13 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 改动:共享 runner [tdc_admet_tox_framework_fullrun.sh:329](real_eval/scripts/tdc_admet_tox_framework_fullrun.sh#L329) `--cpus 4→32`(用户批准);五个 01 wrapper 向框架容器注入 `AI_RESEARCHER_EXEC_CPUS`(TDC/psydef/mcar/ARC=32,BabyLM=16)供嵌套沙箱隔离补丁取用。内存不动(01 沙箱本不限内存,≥02 的 64g)。
 - 口径:已出分的 01 旧格(ARC/psydef/TDC g6 与 luna 等)为旧预算结果,用户决定不重跑、不纠结;新发射一律新预算。正在跑的 TDC×ds(131845,4 核)按用户指令 kill(容器内 TERM,wrapper 自行收尾),在新预算下重发:`fullrun_tdc_01_ds_20261002_145722`(容器核验 NanoCpus=32、EXEC_CPUS=32、16g)。01 babylm×g6 rep3(140521,沙箱 8 核+GPU 6)用户未点名,**暂未动**,待示下。
 
+#### kimi 三发 01 终态(2026-10-03 下午收账;02 mcar×kimi rep3 仍在 stage 1)
+- **01 TDC×kimi(072253):门槛拒——溯源字段写错**。交付物齐全且框架阶段审计离线复跑通过(2 个实验、选中 pcnn_etr_v1、1,685 条预测、3 条论文数字可溯),但 trace 的 `framework_internal_model='PCNN-ETR'`、`framework_internal_api_base_url='local'`——kimi 把两个字段理解成"实验里用的模型/本地",而 `tdc01-model-fact` 已把字面值(Kimi-K2.6 / relay URL)追加进 run-local brief(日志确认触发)。宿主判 "framework_internal_model does not match the injected model",未评分。这是 kimi 第三次溯源失实(ARC "gpt-4"、mcar "api.openai.com"、TDC "PCNN-ETR/local"),且本次是在事实已披露的情况下——模型侧失败,计入尝试。调研 329 轮占去一小时,09:16 才交付。
+- **01 ARC×kimi(072256):超时被杀(137)**,旧 2h 墙钟(发射于墙钟对齐前,用户决定不重发);被杀时仍在写估计器代码,无任何交付物。残留内层沙箱已按精确名清除。
+- **01 BabyLM×kimi(072259):状态 finished,但 score.json 的 ppl 1.0314 是无效度量,不入表**。取证:该值来自最早一次评估 `results.json`(loss 0.0309)——数据集把每行 pad 到 128,而损失 `F.cross_entropy(..., reduction='mean')` 未忽略 padding,padding 位主导了平均损失。agent 随后自己写了 "Fixed perplexity computation (only non-padding tokens)" 的 v2/v3,得到 baseline 68.08 / v2 65.16 / v3 64.21(见 project 下 results_*.json 与 experiment_trace_final.json),但根目录最终 `experiment_trace.json` 与报告只记了那条过期的 1.03。即便修正后的 64-68 也不可与他格直接比:词表仅 5,000(大量 UNK)、验证只取 50 个 batch。
+- **系统性提示**:01 BabyLM 的宿主评分是 `source: framework_experiment_trace`——**直接采信框架自报值,没有宿主侧复算**(02 侧由参考模块在固定验证行上计算)。01 该行已入表的 742.97 / 106.58 / 577.24 同样是未经独立验证的自报值,词表/分词/验证子集口径均未受约束。是否给 01 BabyLM 加宿主侧复算或口径约束,待用户裁决。
+- 表格:01 TDC kimi → 拒(溯源);01 ARC kimi → 超时(旧墙钟);01 BabyLM kimi → 无效分数(度量 bug)。
+
 #### 01 墙钟对齐 02(2026-10-03 晨,落实 09-27 "统一 24h/32 核" 的墙钟那一半)
 - 盘点:02 五个 launcher 均 `RUN_TIMEOUT=86400`;01 原为 psydef 7200s、ARC 7200s、mcar 7000s(仅我们手动发射时覆盖为 86400)、TDC 硬编码 7000s、BabyLM 无墙钟。09-27 只定了方向"暂不改",10-02 只落实了 CPU 一半。
 - 改动(wrapper 层):psydef / ARC / mcar 的原生墙钟默认值 → **86400**(同时驱动 agent 可见的 budget clock);共享 runner 内无先于 wrapper 生效的外层墙钟。
