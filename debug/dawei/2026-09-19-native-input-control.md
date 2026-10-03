@@ -607,6 +607,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 | 02 mcar×kimi | rep3 `…072307`:失败(20 节点 0 官方记录) | rep4(`launch_e2emcar_kimi_4.nohup`) |
 
 - **16:22 用户调整(第 2 次尝试重排)**:24h 跑 01 不可控 → 01 ARC 墙钟改 **6h**(b08134a,`AI_RESEARCHER_ARC_TIMEOUT_SECONDS` 默认 21600);BabyLM 不加上限(保持无墙钟);TDC 维持契约 7000s 未动、继续跑(`…160040`);02 mcar×kimi 取消不重发。16:00 那批的 ARC `…160043`、BabyLM `…160046`、02 mcar rep4 `…160054` 均为用户取消(不计尝试;ARC/BabyLM 以容器内 TERM 收尾,02 以 launcher 的 docker stop 路径收尾,ARC 残留内层沙箱按精确名清除)。**第 2 次尝试的现行 run:01 TDC `…160040`、01 ARC `fullrun_arc_01_kimi_20261003_162459`(6h)、01 BabyLM `fullrun_babylm_01_kimi_20261003_162502`(GPU 2);02 mcar×kimi 暂无第 2 次。** 注:psydef / mcar 的 01 wrapper 默认墙钟仍为今晨改的 24h,未随 ARC 一并改。
+- **16:34 追加(用户):01 mcar×kimi 按 6h 墙钟 + 新 CPU 预算发一次**:`fullrun_mcar_01_kimi_20261003_163455`。mcar wrapper 默认墙钟 24h→6h(46d4e22,与 ARC 一致;psydef 仍为 24h,未被要求改)。核验:容器内 `timeout 21600s`、`AI_RESEARCHER_EXEC_CPUS=32`、model-fact 触发 2 个文件、无预算时钟/旧措辞补丁字样、无锚点报错;发射前 Kimi 探测 4/4。该格此前唯一一发(09-28 `…044203`)被用户提前停止,重裁因 URL 溯源失实被拒。GPT-5.6-Luna 在 paratera 仍 503(同日探测;`AZ-GPT-5.6-Luna` 线路 4/4 可用但未做等价性与兼容性验证,用户决定暂缓)。
 - 不计入尝试的历史发射:09-28 额度墙、10-02 上游 429 被停、各次发射配置中止;更早的真实失败(ARC×kimi 两发、02 mcar×kimi rep1)属协议开始前的历史,单独留档。
 - **第 2 次尝试的补丁栈与第 1 次不同**(用户当日清理所致,非同条件复跑):已无预算时钟、已无 exit-delivery(BabyLM/ARC 不再有事后补写,agent 不自己写 idea/报告即记缺失)、ARC 墙钟 2h→24h;context hygiene 本就未生效。核验:TDC 容器 32 核且无预算时钟变量、model-fact 触发;ARC 外层 `timeout 86400s` 且日志无已删补丁字样;BabyLM 内层 GPU=[2]/16 核;02 mcar rep4 ideation 正常。发射前 Kimi 线路探测 6/6 正常。
 
