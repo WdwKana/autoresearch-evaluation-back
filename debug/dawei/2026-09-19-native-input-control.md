@@ -603,6 +603,9 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 | `ai_scientist_v2/exit_delivery_check.py` | **删除**(e784c3b):文件 + 01 BabyLM/ARC 调用块 + 01 mcar 与三个正式 02 wrapper 入口清单条目 + 两处已注释调用 | grill Q6⑤ 否定;02 侧 09-17/18 已禁用,01 侧漏关 |
 | `ai_researcher/patch_context_hygiene.py` | **删除**:文件 + 01 ARC wrapper 三处接线(复制、开关块、env 透传) | 09-01 加入当天即改为 opt-in(f6ef98d);全仓仅 ARC 一处接线且默认关;无任何发射脚本/.env 置 1;历史上只在一发 cancelled 的 09-01 kimi ARC 试验里生效过,无入表格子依赖;问题已由堵灌水源的 `patch_idea_loop_fixes` + `patch_file_browser_paging` 在源头解决,且该补丁会改变 agent 可见的对话历史(开/关不可比) |
 
+| `ai_researcher/patch_budget_clock.py` | **删除**(用户决定"先去掉,既有结果不必计较"):文件 + 五个 01 wrapper 的调用、入口清单/复制行、`AI_RESEARCHER_TOTAL_BUDGET_SECONDS` 环境变量注入 | 它向 agent 提示词里加"总预算声明 + 先估算命令耗时"的建议,并给 execute_command/run_python 结果加 `[clock]` 行——属于宿主写给 agent 的信息。无其他补丁依赖它(`patch_resource_visibility` 的锚点是框架原文;该环境变量只有它读)。删除后健康检查 105 项全过。此前所有 01 运行均带此补丁,新发射起不再带 |
+| `ai_scientist_v2/patch_worker_future_headroom.py` | **暂不处理**(用户) | 从未接线(4a83595 "add unwired");但所治症状(父进程先于子进程超时、节点以 "Worker process timed out" 无声丢失)在 02 运行中持续出现(BabyLM×kimi rep1 26/29) |
+
 #### exit-delivery(退出时让框架模型补写缺失交付物)核查与关闭(2026-10-03)
 - 用户指出该机制应已被否定。核查:`real_eval/adapters/ai_scientist_v2/exit_delivery_check.py`(08-28 为 02 而写,09-02/09-03 以"验收层"接入 01)在 01 BabyLM 与 01 ARC 两个 wrapper 中**默认开启**(`AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1`);脚本自述也写明"judgment call … should be ratified"。09-27 grill 决策 Q6 第⑤条"不替框架写叙述(报告、论文),不补填框架未给的字段"已否定此类做法,但当时"实现动作待确认后再做",开关一直没关——决定与代码脱节。
 - 影响面(逐 run 查 `logs/exit_delivery_check.log`):**01 BabyLM 每一个 finished 的运行**都由它在运行结束后补写了 `research_idea.json` 与 `final_report.md`——luna 742.97(09-03)、ds 106.58(09-07)、g6 rep2 2429.9、g6 rep3 577.24、kimi 1.03;困惑度本身来自 agent 自己写的 `experiment_trace.json`(finished 运行中 trace 未被补写)。01 ARC 调用过但所有运行补写 0 个文件(0.0886 / 0.142 不依赖它)。01 mcar / TDC / psydef 不调用。

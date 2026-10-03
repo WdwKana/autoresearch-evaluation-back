@@ -23,7 +23,6 @@ real_eval/adapters/ai_researcher/patch_exec_env_provision.py
 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
-real_eval/adapters/ai_researcher/patch_budget_clock.py
 real_eval/adapters/ai_researcher/patch_wire_tap.py
 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
@@ -77,8 +76,6 @@ AI_RESEARCHER_PSYDEFDETECT_LOCAL_EXPERIMENTS_ONLY=1
 AI_RESEARCHER_ML_DELIVERY_GLOBS=*.py
 -e
 AI_RESEARCHER_MAX_TURNS=300
--e
-AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-86400}
 -e
 AI_RESEARCHER_LOOP_GUARD_LIMIT=8
 -e
@@ -982,7 +979,6 @@ python3 real_eval/adapters/ai_researcher/patch_exec_env_provision.py
 python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 python3 real_eval/adapters/ai_researcher/patch_response_probe.py
-python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
 python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py

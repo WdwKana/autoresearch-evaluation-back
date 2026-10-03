@@ -21,7 +21,6 @@ real_eval/adapters/ai_researcher/patch_file_browser_paging.py
 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
-real_eval/adapters/ai_researcher/patch_budget_clock.py
 real_eval/adapters/ai_researcher/patch_wire_tap.py
 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
@@ -70,8 +69,6 @@ AI_RESEARCHER_PREPARE_BYPASS=1
 -e
 AI_RESEARCHER_ML_DELIVERY_GLOBS=*.py
 -e
-AI_RESEARCHER_TOTAL_BUDGET_SECONDS=7000
--e
 AI_RESEARCHER_REQUEST_PROBE=1
 -e
 AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
@@ -100,7 +97,6 @@ python3 real_eval/adapters/ai_researcher/patch_file_browser_paging.py
 python3 real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 python3 real_eval/adapters/ai_researcher/patch_request_probe.py
 python3 real_eval/adapters/ai_researcher/patch_response_probe.py
-python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
 python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py

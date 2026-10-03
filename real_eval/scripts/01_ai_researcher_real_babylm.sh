@@ -624,7 +624,6 @@ cp "$ROOT/real_eval/adapters/ai_researcher/"patch_*.py "$REPO/real_eval/adapters
   python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
   python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
   python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
-  python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
   python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
   python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
   python3 real_eval/adapters/ai_researcher/patch_run_command_keepalive.py

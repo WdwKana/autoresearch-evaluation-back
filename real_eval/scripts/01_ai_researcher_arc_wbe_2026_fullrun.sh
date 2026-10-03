@@ -137,7 +137,6 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py" "$REPO/real
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_prepare_bypass.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_empty_input_truth.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_loop_guard.py" "$REPO/real_eval/adapters/ai_researcher/"
-cp "$ROOT/real_eval/adapters/ai_researcher/patch_budget_clock.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_wire_tap.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_refine_report_fallback.py" "$REPO/real_eval/adapters/ai_researcher/"
@@ -433,7 +432,6 @@ if [ "${AI_RESEARCHER_EMPTY_INPUT_TRUTH:-1}" = 1 ]; then
 fi
 if [ "${AI_RESEARCHER_LOOP_GUARD:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
-  python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
   python3 real_eval/adapters/ai_researcher/patch_wire_tap.py
   python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
   python3 real_eval/adapters/ai_researcher/patch_refine_report_fallback.py
@@ -614,7 +612,6 @@ timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-86400}s" docker run --rm \
   -e AI_RESEARCHER_PREPARE_BYPASS="${AI_RESEARCHER_PREPARE_BYPASS:-1}" \
   -e AI_RESEARCHER_LOOP_GUARD_LIMIT="${AI_RESEARCHER_LOOP_GUARD_LIMIT:-8}" \
   -e AI_RESEARCHER_MAX_TURNS="${AI_RESEARCHER_MAX_TURNS:-300}" \
-  -e AI_RESEARCHER_TOTAL_BUDGET_SECONDS="${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-86400}" \
   -e AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl \
   -e AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl \
   -e AI_RESEARCHER_WIRE_TAP_LOG=/workspace/wire_tap.jsonl \

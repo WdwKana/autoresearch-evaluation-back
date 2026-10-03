@@ -14,7 +14,6 @@ real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
 real_eval/adapters/ai_researcher/patch_loop_guard.py
-real_eval/adapters/ai_researcher/patch_budget_clock.py
 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
 real_eval/adapters/ai_researcher/patch_run_command_keepalive.py
@@ -70,8 +69,6 @@ AI_RESEARCHER_PREPARE_BYPASS=1
 AI_RESEARCHER_ML_DELIVERY_GLOBS=networks.py,config-*.pkl,*.py
 -e
 AI_RESEARCHER_MAX_TURNS=300
--e
-AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-86400}
 -e
 AI_RESEARCHER_LOOP_GUARD_LIMIT=8
 -e
@@ -146,7 +143,6 @@ python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 python3 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
 python3 real_eval/adapters/ai_researcher/patch_loop_guard.py
-python3 real_eval/adapters/ai_researcher/patch_budget_clock.py
 python3 real_eval/adapters/ai_researcher/patch_browser_tool_timeout.py
 python3 real_eval/adapters/ai_researcher/patch_run_command_idle_timeout.py
 python3 real_eval/adapters/ai_researcher/patch_run_command_keepalive.py
