@@ -598,6 +598,17 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 表格:01 TDC kimi → 拒(溯源);01 ARC kimi → 超时(旧墙钟);01 BabyLM kimi → 无效分数(度量 bug)。
 - **02 mcar×kimi rep3(`control_e2emcar_rep3_mcar02_kimi_20261003_072307`,07:23→15:22):失败(native=1 assembly=4)**。完整的一次真实尝试,无 API 报错(429=0)。stage 1 跑满 20 个节点 0 good、0 条官方记录:ModuleNotFoundError 2、NameError 2、TypeError 2、UnboundLocalError 1、RuntimeError 1,其余 12 个无异常但被判 buggy(判官意见集中在"训练完全不学习,评估回报始终≈0"和文件语法错误);7/20 个节点的代码调用了 `official_evaluation`,但没有一个真正跑出官方评估结果。装配在新 ≥1 下限下放行(1 个 stage selection)并执行回放,回放 0 条官方评估 → exit 4——首次由"官方记录缺失"这一真实原因而非下限判负。02 mcar×kimi 计两次真实尝试(rep1、rep3)均失败;rep2 为用户取消、rep3 前两次发射为配置/额度/上游 429 中止,不计。
 
+#### kimi 四格尝试计数(用户 2026-10-03 定:今日这轮记为第 1 次尝试,16:00 发第 2 次)
+| 格子 | 第 1 次尝试(今日 07:22 发射) | 第 2 次尝试(今日 16:00 发射) |
+|---|---|---|
+| 01 TDC×kimi | `…072253`:门槛拒(溯源字段写成 PCNN-ETR/local) | `fullrun_tdc_01_kimi_20261003_160040` |
+| 01 ARC×kimi | `…072256`:超时 137(旧 2h 墙钟),无交付物 | `fullrun_arc_01_kimi_20261003_160043`(24h 墙钟) |
+| 01 BabyLM×kimi | `…072259`:分数无效(交付过期 trace 1.03) | `fullrun_babylm_01_kimi_20261003_160046`(GPU 2) |
+| 02 mcar×kimi | rep3 `…072307`:失败(20 节点 0 官方记录) | rep4(`launch_e2emcar_kimi_4.nohup`) |
+
+- 不计入尝试的历史发射:09-28 额度墙、10-02 上游 429 被停、各次发射配置中止;更早的真实失败(ARC×kimi 两发、02 mcar×kimi rep1)属协议开始前的历史,单独留档。
+- **第 2 次尝试的补丁栈与第 1 次不同**(用户当日清理所致,非同条件复跑):已无预算时钟、已无 exit-delivery(BabyLM/ARC 不再有事后补写,agent 不自己写 idea/报告即记缺失)、ARC 墙钟 2h→24h;context hygiene 本就未生效。核验:TDC 容器 32 核且无预算时钟变量、model-fact 触发;ARC 外层 `timeout 86400s` 且日志无已删补丁字样;BabyLM 内层 GPU=[2]/16 核;02 mcar rep4 ideation 正常。发射前 Kimi 线路探测 6/6 正常。
+
 #### 补丁清理台账(2026-10-03 起,用户逐个梳理)
 | 补丁 | 处置 | 依据 |
 |---|---|---|
