@@ -657,7 +657,10 @@ fi
 # first match wins, audited in delivery_map_resolution.json. Replaces the
 # ad-hoc partial-relocation copies; no content is authored or copied.
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$WORKSPACE" --topic arc_wbe_2026
-if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1}" = 1 ]; then
+# [2026-10-03] Default OFF per grill decision Q6(5): no post-hoc narrative or
+# field completion on the framework's behalf (it wrote 0 files in every 01 ARC
+# run so far, so no ARC result depended on it). Diagnostics only.
+if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-0}" = 1 ]; then
   ARC_CACHE_DIR="$(find "$WORKSPACE/AI-Researcher/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1)"
   ARC_TASK_WP="$(find "$WORKSPACE/AI-Researcher/research_agent/workplace_paper" -type d -path '*/workplace/workplace' 2>/dev/null | head -1)"
   python3 "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" \

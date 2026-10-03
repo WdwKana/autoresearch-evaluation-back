@@ -806,7 +806,12 @@ mkdir -p "$BASE/workspace"
 # (symlinks, audited) before the score hookup looks for them.
 mkdir -p "$BASE/workspace"
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$BASE/workspace" --topic babylm || true
-if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1}" = 1 ]; then
+# [2026-10-03] Default OFF. Grill decision Q6(5) (2026-09-27): the host does not
+# get narratives written for the framework nor backfill fields it did not
+# provide. This step asked the framework's model, after the run had ended, to
+# write missing research_idea.json / final_report.md -- every finished 01 BabyLM
+# run so far relied on it. Kept behind the flag for diagnostics only.
+if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-0}" = 1 ]; then
   BB_WP="$(find "$REPO/research_agent/workplace_paper" -type d -path '*/workplace*/workplace*' 2>/dev/null | head -1 || true)"
   BB_CACHE="$(find "$REPO/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1 || true)"
   python3 "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" \
