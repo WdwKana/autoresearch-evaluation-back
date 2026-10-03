@@ -78,7 +78,7 @@ AI_RESEARCHER_ML_DELIVERY_GLOBS=*.py
 -e
 AI_RESEARCHER_MAX_TURNS=300
 -e
-AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}
+AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-86400}
 -e
 AI_RESEARCHER_LOOP_GUARD_LIMIT=8
 -e
@@ -1007,7 +1007,7 @@ s.close()
 PY
 )"
 cd research_agent
-timeout "${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}s" python run_infer_idea.py \
+timeout "${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-86400}s" python run_infer_idea.py \
   --instance_path ../benchmark/final/psydefdetect/psydefdetect.json \
   --container_name "$inner_prefix" \
   --model "$COMPLETION_MODEL" \

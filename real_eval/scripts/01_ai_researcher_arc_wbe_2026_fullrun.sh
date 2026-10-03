@@ -590,7 +590,7 @@ write_state "running" "Launching AI-Researcher ARC native execution" "0" "python
 
 run_rc=0
 set +e
-timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-7200}s" docker run --rm \
+timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-86400}s" docker run --rm \
   --name "$OUTER_CONTAINER_NAME" \
   --add-host=host.docker.internal:host-gateway \
   --ipc=host \
@@ -621,7 +621,7 @@ timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-7200}s" docker run --rm \
   -e AI_RESEARCHER_PREPARE_BYPASS="${AI_RESEARCHER_PREPARE_BYPASS:-1}" \
   -e AI_RESEARCHER_LOOP_GUARD_LIMIT="${AI_RESEARCHER_LOOP_GUARD_LIMIT:-8}" \
   -e AI_RESEARCHER_MAX_TURNS="${AI_RESEARCHER_MAX_TURNS:-300}" \
-  -e AI_RESEARCHER_TOTAL_BUDGET_SECONDS="${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-7200}" \
+  -e AI_RESEARCHER_TOTAL_BUDGET_SECONDS="${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-86400}" \
   -e AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl \
   -e AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl \
   -e AI_RESEARCHER_WIRE_TAP_LOG=/workspace/wire_tap.jsonl \

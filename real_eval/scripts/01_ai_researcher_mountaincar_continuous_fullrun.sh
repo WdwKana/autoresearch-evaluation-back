@@ -72,7 +72,7 @@ AI_RESEARCHER_ML_DELIVERY_GLOBS=networks.py,config-*.pkl,*.py
 -e
 AI_RESEARCHER_MAX_TURNS=300
 -e
-AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}
+AI_RESEARCHER_TOTAL_BUDGET_SECONDS=${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-86400}
 -e
 AI_RESEARCHER_LOOP_GUARD_LIMIT=8
 -e
@@ -82,7 +82,7 @@ AI_RESEARCHER_REQUEST_PROBE=1
 -e
 AI_RESEARCHER_PROBE_LOG=/workspace/request_probe.jsonl
 -e
-MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS=${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}
+MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS=${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-86400}
 -e
 AI_RESEARCHER_RESPONSE_PROBE_LOG=/workspace/response_probe.jsonl
 EOF
@@ -166,7 +166,7 @@ python3 real_eval/adapters/ai_researcher/patch_response_probe.py
 python3 real_eval/adapters/ai_researcher/patch_reasoning_effort_fallback.py
 PS4='NATIVE_CMD> '
 set -x
-timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-7000}s" python3 research_agent/run_infer_idea.py \
+timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-86400}s" python3 research_agent/run_infer_idea.py \
   --instance_path benchmark/final/mountaincar_continuous/mountaincar_continuous.json \
   --container_name mountaincar_ai_researcher \
   --model "$OPENAI_MODEL" \
