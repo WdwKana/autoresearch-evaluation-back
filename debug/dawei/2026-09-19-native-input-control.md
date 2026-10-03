@@ -587,6 +587,11 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 改动:共享 runner [tdc_admet_tox_framework_fullrun.sh:329](real_eval/scripts/tdc_admet_tox_framework_fullrun.sh#L329) `--cpus 4→32`(用户批准);五个 01 wrapper 向框架容器注入 `AI_RESEARCHER_EXEC_CPUS`(TDC/psydef/mcar/ARC=32,BabyLM=16)供嵌套沙箱隔离补丁取用。内存不动(01 沙箱本不限内存,≥02 的 64g)。
 - 口径:已出分的 01 旧格(ARC/psydef/TDC g6 与 luna 等)为旧预算结果,用户决定不重跑、不纠结;新发射一律新预算。正在跑的 TDC×ds(131845,4 核)按用户指令 kill(容器内 TERM,wrapper 自行收尾),在新预算下重发:`fullrun_tdc_01_ds_20261002_145722`(容器核验 NanoCpus=32、EXEC_CPUS=32、16g)。01 babylm×g6 rep3(140521,沙箱 8 核+GPU 6)用户未点名,**暂未动**,待示下。
 
+#### 10-02 夜间两发终态(2026-10-03 晨收账)
+- **01 TDC×ds(`fullrun_tdc_01_ds_20261002_145722`,paratera,新预算 32 核):端到端通过,隐藏标签 main_score 0.7134**(AMES 0.7681 / hERG 0.6533 / DILI 0.7187)。14:57→16:52 墙钟内完赛,零 4xx/5xx、零 keepalive/idle 触发;调研 115 轮 + ML 207 轮;3 个实验(RandomForest+Morgan 指纹 验证 0.795 被选中、GATv2+GIN 0.603、LogisticRegression 0.696),trace 模型字面值正确。01 TDC×ds 首次出分,也是新预算与 paratera 下第一个完整 01 结果。
+- **01 BabyLM×g6 rep3(`fullrun_babylm_01_g6luna_20261002_140521`,paratera,GPU 6,旧预算沙箱 8 核):完赛,词级验证 ppl 577.24**——2 个实验(baseline lookup embeddings 617.24 → compositional rare-token embeddings 577.24),无容器丢失、无工作区异常、case_resolved,报告齐全;仅开头 2 次 502。**取代 rep2 的伤残 2429.9 入表**。
+- 表格更新:01 TDC ds **0.7134**;01 BabyLM g6 **577.24**。
+
 #### 中转站切换:bianxie → paratera(2026-10-02)
 - 新站 = 并行科技(用户称 bingxing),**API base URL = `https://llmapi.paratera.com/v1`**(`ai.paratera.com` 为门户;`/v1` 无 key 401、带 key 200,118 模型)。
 - **模型 ID 大小写严格**(小写 400 "no healthy deployments"):`GPT-5.6-Luna` / `GPT-6-Luna` / `DeepSeek-V4-Flash` / `Kimi-K2.6`。
