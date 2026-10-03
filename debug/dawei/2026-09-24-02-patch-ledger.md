@@ -31,6 +31,8 @@
 | B9 | patch_bfts_delivery_contract.py / patch_native_finalization.py / arc_contract_finalization.py（09-17） | 交付契约挂到 BFTS 的每阶段输出流；finalization 从 idea 映射 | 早期交付桥思路，后被 75ef6f6 / 5428b62 "交付属于框架"撤掉 | 已撤或停用 |
 | B10 | exit_delivery_check.py（09-03） | 退出时交付检查 | 已由 75ef6f6 移除 | 已撤 |
 
+> 2026-10-03 补记：B10 当时只从 02 路线撤掉，文件本体和 01 的两处接线（BabyLM、ARC wrapper，默认开启）一直残留——01 BabyLM 每个 finished 运行的 `research_idea.json` / `final_report.md` 都是它在运行结束后补写的。今日按 grill 决策 Q6⑤ 彻底删除：文件 `git rm`，01 BabyLM/ARC 的调用块、01 mcar 与三个正式 02 wrapper 入口清单里的条目、两处已注释的调用一并移除。
+
 另：VLM 覆盖（DS 端点对图片返回空 → 只在看图步骤用 gpt-5.6-luna，ed6fb74）是发射器参数，不是适配器；它让 DS 的运行不再是"全角色同一模型"，评估口径上要单独标注。
 
 ## C. 规格臂路线工具（scratchpad `staged/`，快照在 debug/dawei/ladder/staged/；诊断路线，出分但不进正式计分板）

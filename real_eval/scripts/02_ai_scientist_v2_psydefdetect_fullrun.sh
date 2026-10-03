@@ -13,7 +13,6 @@ automation/psydefdetect_execution_budget.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py
-real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -411,12 +410,6 @@ timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}s" python launch_s
   --skip_writeup \
   --skip_review \
   --model_agg_plots "$OPENAI_MODEL"
-# exit_delivery_check DISABLED (2026-09-17): it backfills framework artifacts via
-# the framework model after the native run ends, which the contract boundary
-# forbids (same reasoning as the ARC wrapper's removal). Left out so the psydef
-# control run measures native delivery only. Team decision on final disposition
-# is pending; re-enable by restoring the line below.
-# python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic psydefdetect || true
 
 EOF
 )

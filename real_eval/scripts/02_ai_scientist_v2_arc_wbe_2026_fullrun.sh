@@ -13,7 +13,6 @@ automation/arc_wbe_2026_contract.md
 automation/arc_wbe_2026_execution_budget.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
-real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
 real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 real_eval/adapters/ai_scientist_v2/arc_contract_finalization.py

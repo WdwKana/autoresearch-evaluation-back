@@ -31,7 +31,6 @@ real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py
 real_eval/adapters/ai_researcher/patch_request_probe.py
 real_eval/adapters/ai_researcher/patch_response_probe.py
 real_eval/adapters/ai_researcher/patch_reasoning_effort_fallback.py
-real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"

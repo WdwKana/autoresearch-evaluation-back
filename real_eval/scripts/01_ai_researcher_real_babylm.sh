@@ -619,7 +619,6 @@ PY
 # appropriate (*.py). Topic-agnostic loop/context fixes are pure wins.
 mkdir -p "$REPO/real_eval/adapters/ai_researcher" "$REPO/real_eval/adapters/ai_scientist_v2"
 cp "$ROOT/real_eval/adapters/ai_researcher/"patch_*.py "$REPO/real_eval/adapters/ai_researcher/"
-cp "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" "$REPO/real_eval/adapters/ai_scientist_v2/"
 ( cd "$REPO"
   python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
   python3 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
@@ -806,20 +805,6 @@ mkdir -p "$BASE/workspace"
 # (symlinks, audited) before the score hookup looks for them.
 mkdir -p "$BASE/workspace"
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$BASE/workspace" --topic babylm || true
-# [2026-10-03] Default OFF. Grill decision Q6(5) (2026-09-27): the host does not
-# get narratives written for the framework nor backfill fields it did not
-# provide. This step asked the framework's model, after the run had ended, to
-# write missing research_idea.json / final_report.md -- every finished 01 BabyLM
-# run so far relied on it. Kept behind the flag for diagnostics only.
-if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-0}" = 1 ]; then
-  BB_WP="$(find "$REPO/research_agent/workplace_paper" -type d -path '*/workplace*/workplace*' 2>/dev/null | head -1 || true)"
-  BB_CACHE="$(find "$REPO/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1 || true)"
-  python3 "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" \
-    --workspace "$BASE/workspace" --topic babylm \
-    ${BB_WP:+--extra-context "$BB_WP"} \
-    ${BB_CACHE:+--extra-context "$BB_CACHE"} >"$LOG_DIR/exit_delivery_check.log" 2>&1 || true
-  echo "[babylm-exit-delivery] see logs/exit_delivery_check.log"
-fi
 python3 - "$REPO" "$BASE" <<'PYSCORE'
 import json, shutil, sys
 from pathlib import Path

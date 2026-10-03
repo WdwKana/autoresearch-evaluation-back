@@ -11,7 +11,6 @@ export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 AI-Scientist-v2/ai_scientist/ideas/tdc_admet_tox_topic.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
-real_eval/adapters/ai_scientist_v2/exit_delivery_check.py
 real_eval/adapters/tdc_admet_tox/patch_ai_scientist_v2.py
 automation/tdc_admet_tox_contract.md
 automation/tdc_admet_tox_execution_budget.md
@@ -94,10 +93,6 @@ timeout 5100s python3 launch_scientist_bfts.py \
   --num_cite_rounds 0 \
   --skip_writeup \
   --skip_review
-# exit_delivery_check DISABLED (2026-09-18): post-exit model backfill of framework
-# artifacts is forbidden by the contract boundary (same reasoning as the other
-# 02 topic wrappers). Delivery is owned by the framework's own program in-run.
-# python3 real_eval/adapters/ai_scientist_v2/exit_delivery_check.py --workspace /workspace --topic tdc_admet_tox || true
 
 EOF
 )

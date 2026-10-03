@@ -645,30 +645,12 @@ fi
   exit 31
 }
 
-# --- Layer 2: acceptance (partial relocation + framework-model gap-fill) ---
-# The inline RELOC relocates only a COMPLETE 5-artifact set. When the run is
-# partial, bring whatever exists to the workspace root first (with estimator
-# sidecars), then let the framework's OWN model format the still-missing
-# deliverables from the material the run produced. No host-authored content;
-# no fabrication (the scorer fails closed on trivial predictions => a run with
-# no real result still scores 0). Fully audited in exit_delivery_check.json.
+# --- Layer 2: delivery map ---
 # Delivery map: find artifacts where the framework's worldview natively put
 # them and alias (symlink) to the workspace root -- declared ordered roots,
 # first match wins, audited in delivery_map_resolution.json. Replaces the
 # ad-hoc partial-relocation copies; no content is authored or copied.
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$WORKSPACE" --topic arc_wbe_2026
-# [2026-10-03] Default OFF per grill decision Q6(5): no post-hoc narrative or
-# field completion on the framework's behalf (it wrote 0 files in every 01 ARC
-# run so far, so no ARC result depended on it). Diagnostics only.
-if [ "${AI_RESEARCHER_EXIT_DELIVERY_CHECK:-0}" = 1 ]; then
-  ARC_CACHE_DIR="$(find "$WORKSPACE/AI-Researcher/research_agent" -maxdepth 1 -type d -name 'cache_*' 2>/dev/null | head -1)"
-  ARC_TASK_WP="$(find "$WORKSPACE/AI-Researcher/research_agent/workplace_paper" -type d -path '*/workplace/workplace' 2>/dev/null | head -1)"
-  python3 "$ROOT/real_eval/adapters/ai_scientist_v2/exit_delivery_check.py" \
-    --workspace "$WORKSPACE" --topic arc_wbe_2026 \
-    ${ARC_CACHE_DIR:+--extra-context "$ARC_CACHE_DIR"} \
-    ${ARC_TASK_WP:+--extra-context "$ARC_TASK_WP"} >"$LOG_DIR/exit_delivery_check.log" 2>&1 || true
-  echo "[arc-exit-delivery] see logs/exit_delivery_check.log"
-fi
 
 set +e
 python3 - "$WORKSPACE" "${ARC_WBE_2026_MODEL:-$FRAMEWORK_MODEL_RAW}" "$FRAMEWORK_PROVIDER_BASE_URL" 2>"$LOG_DIR/handoff_gate.err" <<'PY'
