@@ -591,6 +591,7 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - **01 TDC×ds(`fullrun_tdc_01_ds_20261002_145722`,paratera,新预算 32 核):端到端通过,隐藏标签 main_score 0.7134**(AMES 0.7681 / hERG 0.6533 / DILI 0.7187)。14:57→16:52 墙钟内完赛,零 4xx/5xx、零 keepalive/idle 触发;调研 115 轮 + ML 207 轮;3 个实验(RandomForest+Morgan 指纹 验证 0.795 被选中、GATv2+GIN 0.603、LogisticRegression 0.696),trace 模型字面值正确。01 TDC×ds 首次出分,也是新预算与 paratera 下第一个完整 01 结果。
 - **01 BabyLM×g6 rep3(`fullrun_babylm_01_g6luna_20261002_140521`,paratera,GPU 6,旧预算沙箱 8 核):完赛,词级验证 ppl 577.24**——2 个实验(baseline lookup embeddings 617.24 → compositional rare-token embeddings 577.24),无容器丢失、无工作区异常、case_resolved,报告齐全;仅开头 2 次 502。**取代 rep2 的伤残 2429.9 入表**。
 - 表格更新:01 TDC ds **0.7134**;01 BabyLM g6 **577.24**。
+- **kimi 四格重发(2026-10-03 07:22,paratera Kimi-K2.6 线路恢复:晨间探测 4/4 正常;用户批准,BabyLM 指定 GPU 2)**:01 TDC×kimi `fullrun_tdc_01_kimi_20261003_072253`(容器 NanoCpus=32)、01 ARC×kimi `fullrun_arc_01_kimi_20261003_072256`、01 BabyLM×kimi `fullrun_babylm_01_kimi_20261003_072259`(内层沙箱 GPU=[2]、NanoCpus=16——新预算首次在 BabyLM 生效)、02 mcar×kimi rep3(`launch_e2emcar_kimi_3d.nohup`,ideation 正常)。全部新预算、冻结副本、watcher 齐挂。GPT-5.6-Luna 在 paratera 仍 503。
 
 #### 中转站切换:bianxie → paratera(2026-10-02)
 - 新站 = 并行科技(用户称 bingxing),**API base URL = `https://llmapi.paratera.com/v1`**(`ai.paratera.com` 为门户;`/v1` 无 key 401、带 key 200,118 模型)。
