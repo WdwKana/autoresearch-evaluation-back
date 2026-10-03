@@ -131,7 +131,6 @@ cp "$INPUT_ROOT/automation/scripts/run_arc_wbe_2026_local_score.py" "$WORKSPACE/
 cp "$INPUT_ROOT/automation/scripts/arc_wbe_2026_official_adapter.py" "$WORKSPACE/automation/scripts/"
 cp "$INPUT_ROOT/automation/scripts/prepare_arc_wbe_2026_dataset.py" "$WORKSPACE/automation/scripts/"
 mkdir -p "$REPO/real_eval/adapters/ai_researcher"
-cp "$ROOT/real_eval/adapters/ai_researcher/patch_context_hygiene.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_request_probe.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_response_probe.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py" "$REPO/real_eval/adapters/ai_researcher/"
@@ -425,11 +424,6 @@ if model and base:
 else:
     print(f"[{MARK}] OPENAI_MODEL/OPENAI_BASE_URL not set; nothing done")
 PYMODELFACT
-if [ "${AI_RESEARCHER_CONTEXT_HYGIENE:-0}" = 1 ]; then
-  python3 real_eval/adapters/ai_researcher/patch_context_hygiene.py
-else
-  echo "[context-hygiene] disabled (set AI_RESEARCHER_CONTEXT_HYGIENE=1 to enable)"
-fi
 if [ "${AI_RESEARCHER_IDEA_LOOP_FIXES:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 fi
@@ -617,7 +611,6 @@ timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-86400}s" docker run --rm \
   -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/arc_wbe_2026 \
   -e AI_RESEARCHER_REQUEST_PROBE="${AI_RESEARCHER_REQUEST_PROBE:-0}" \
   -e AI_RESEARCHER_EXEC_CPUS="${AI_RESEARCHER_EXEC_CPUS:-32}" \
-  -e AI_RESEARCHER_CONTEXT_HYGIENE="${AI_RESEARCHER_CONTEXT_HYGIENE:-0}" \
   -e AI_RESEARCHER_PREPARE_BYPASS="${AI_RESEARCHER_PREPARE_BYPASS:-1}" \
   -e AI_RESEARCHER_LOOP_GUARD_LIMIT="${AI_RESEARCHER_LOOP_GUARD_LIMIT:-8}" \
   -e AI_RESEARCHER_MAX_TURNS="${AI_RESEARCHER_MAX_TURNS:-300}" \

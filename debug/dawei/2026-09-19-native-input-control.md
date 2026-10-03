@@ -597,6 +597,12 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 落实(不动 01 的输入与评分路径):kimi 格的 score.json 1.03 原样保留为运行记录,表内标"自报值无效(度量 bug;框架自行修正值为 64-68),不参与比较";01 BabyLM 整行加脚注"共用契约下的框架自报值,验证口径由各框架自定;02 该行为诊断路线、使用宿主固定验证集,二者不是同一个量"。待与团队对齐的问题:03-07 的 BabyLM 分数是否同为自报;是否把固定验证函数升为契约内容。
 - 表格:01 TDC kimi → 拒(溯源);01 ARC kimi → 超时(旧墙钟);01 BabyLM kimi → 无效分数(度量 bug)。
 
+#### 补丁清理台账(2026-10-03 起,用户逐个梳理)
+| 补丁 | 处置 | 依据 |
+|---|---|---|
+| `ai_scientist_v2/exit_delivery_check.py` | **删除**(e784c3b):文件 + 01 BabyLM/ARC 调用块 + 01 mcar 与三个正式 02 wrapper 入口清单条目 + 两处已注释调用 | grill Q6⑤ 否定;02 侧 09-17/18 已禁用,01 侧漏关 |
+| `ai_researcher/patch_context_hygiene.py` | **删除**:文件 + 01 ARC wrapper 三处接线(复制、开关块、env 透传) | 09-01 加入当天即改为 opt-in(f6ef98d);全仓仅 ARC 一处接线且默认关;无任何发射脚本/.env 置 1;历史上只在一发 cancelled 的 09-01 kimi ARC 试验里生效过,无入表格子依赖;问题已由堵灌水源的 `patch_idea_loop_fixes` + `patch_file_browser_paging` 在源头解决,且该补丁会改变 agent 可见的对话历史(开/关不可比) |
+
 #### exit-delivery(退出时让框架模型补写缺失交付物)核查与关闭(2026-10-03)
 - 用户指出该机制应已被否定。核查:`real_eval/adapters/ai_scientist_v2/exit_delivery_check.py`(08-28 为 02 而写,09-02/09-03 以"验收层"接入 01)在 01 BabyLM 与 01 ARC 两个 wrapper 中**默认开启**(`AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1`);脚本自述也写明"judgment call … should be ratified"。09-27 grill 决策 Q6 第⑤条"不替框架写叙述(报告、论文),不补填框架未给的字段"已否定此类做法,但当时"实现动作待确认后再做",开关一直没关——决定与代码脱节。
 - 影响面(逐 run 查 `logs/exit_delivery_check.log`):**01 BabyLM 每一个 finished 的运行**都由它在运行结束后补写了 `research_idea.json` 与 `final_report.md`——luna 742.97(09-03)、ds 106.58(09-07)、g6 rep2 2429.9、g6 rep3 577.24、kimi 1.03;困惑度本身来自 agent 自己写的 `experiment_trace.json`(finished 运行中 trace 未被补写)。01 ARC 调用过但所有运行补写 0 个文件(0.0886 / 0.142 不依赖它)。01 mcar / TDC / psydef 不调用。
