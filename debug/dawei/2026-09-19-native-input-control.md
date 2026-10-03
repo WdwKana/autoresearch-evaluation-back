@@ -597,6 +597,11 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 落实(不动 01 的输入与评分路径):kimi 格的 score.json 1.03 原样保留为运行记录,表内标"自报值无效(度量 bug;框架自行修正值为 64-68),不参与比较";01 BabyLM 整行加脚注"共用契约下的框架自报值,验证口径由各框架自定;02 该行为诊断路线、使用宿主固定验证集,二者不是同一个量"。待与团队对齐的问题:03-07 的 BabyLM 分数是否同为自报;是否把固定验证函数升为契约内容。
 - 表格:01 TDC kimi → 拒(溯源);01 ARC kimi → 超时(旧墙钟);01 BabyLM kimi → 无效分数(度量 bug)。
 
+#### exit-delivery(退出时让框架模型补写缺失交付物)核查与关闭(2026-10-03)
+- 用户指出该机制应已被否定。核查:`real_eval/adapters/ai_scientist_v2/exit_delivery_check.py`(08-28 为 02 而写,09-02/09-03 以"验收层"接入 01)在 01 BabyLM 与 01 ARC 两个 wrapper 中**默认开启**(`AI_RESEARCHER_EXIT_DELIVERY_CHECK:-1`);脚本自述也写明"judgment call … should be ratified"。09-27 grill 决策 Q6 第⑤条"不替框架写叙述(报告、论文),不补填框架未给的字段"已否定此类做法,但当时"实现动作待确认后再做",开关一直没关——决定与代码脱节。
+- 影响面(逐 run 查 `logs/exit_delivery_check.log`):**01 BabyLM 每一个 finished 的运行**都由它在运行结束后补写了 `research_idea.json` 与 `final_report.md`——luna 742.97(09-03)、ds 106.58(09-07)、g6 rep2 2429.9、g6 rep3 577.24、kimi 1.03;困惑度本身来自 agent 自己写的 `experiment_trace.json`(finished 运行中 trace 未被补写)。01 ARC 调用过但所有运行补写 0 个文件(0.0886 / 0.142 不依赖它)。01 mcar / TDC / psydef 不调用。
+- 处置:两个 wrapper 的默认值改为 **0**(7944eec,保留开关仅供诊断)。此后 01 BabyLM 若 agent 不自己写 idea/报告,将如实记为交付物缺失。已入表的 01 BabyLM 各格:分数(trace)为框架原生,但 "idea 先于实验锁定" 与 "框架撰写的最终报告" 两项系事后补写,不满足 Q6⑤——是否重跑或加脚注待用户定。
+
 #### 01 墙钟对齐 02(2026-10-03 晨,落实 09-27 "统一 24h/32 核" 的墙钟那一半)
 - 盘点:02 五个 launcher 均 `RUN_TIMEOUT=86400`;01 原为 psydef 7200s、ARC 7200s、mcar 7000s(仅我们手动发射时覆盖为 86400)、TDC 硬编码 7000s、BabyLM 无墙钟。09-27 只定了方向"暂不改",10-02 只落实了 CPU 一半。
 - 改动(wrapper 层):psydef / ARC / mcar 的原生墙钟默认值 → **86400**(同时驱动 agent 可见的 budget clock);共享 runner 内无先于 wrapper 生效的外层墙钟。
