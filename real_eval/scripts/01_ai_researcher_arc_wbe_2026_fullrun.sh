@@ -582,7 +582,7 @@ write_state "running" "Launching AI-Researcher ARC native execution" "0" "python
 
 run_rc=0
 set +e
-timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-86400}s" docker run --rm \
+timeout -k 30s "${AI_RESEARCHER_ARC_TIMEOUT_SECONDS:-21600}s" docker run --rm \
   --name "$OUTER_CONTAINER_NAME" \
   --add-host=host.docker.internal:host-gateway \
   --ipc=host \
