@@ -275,4 +275,9 @@ EOF
 # _20260928_113815, exit 42). Pin the runner's expectation to the model this
 # wrapper actually ran.
 export MOUNTAINCAR_CONTINUOUS_MODEL="$MC_MODEL"
+# [2026-10-04] Official scoring must run where JAX/gymnax exist. The shared runner
+# scores with $MOUNTAINCAR_CONTINUOUS_PYTHON (default: host python, which has
+# neither); point that existing hook at a 01-scoped in-image interpreter instead
+# of editing the shared runner. Verified to reproduce -95.30374908447266 offline.
+export MOUNTAINCAR_CONTINUOUS_PYTHON="${MOUNTAINCAR_CONTINUOUS_PYTHON:-$ROOT/real_eval/adapters/mountaincar_continuous/host_python_jax.sh}"
 exec "$ROOT/real_eval/scripts/mountaincar_framework_fullrun.sh"
