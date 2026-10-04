@@ -611,6 +611,16 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 不计入尝试的历史发射:09-28 额度墙、10-02 上游 429 被停、各次发射配置中止;更早的真实失败(ARC×kimi 两发、02 mcar×kimi rep1)属协议开始前的历史,单独留档。
 - **第 2 次尝试的补丁栈与第 1 次不同**(用户当日清理所致,非同条件复跑):已无预算时钟、已无 exit-delivery(BabyLM/ARC 不再有事后补写,agent 不自己写 idea/报告即记缺失)、ARC 墙钟 2h→24h;context hygiene 本就未生效。核验:TDC 容器 32 核且无预算时钟变量、model-fact 触发;ARC 外层 `timeout 86400s` 且日志无已删补丁字样;BabyLM 内层 GPU=[2]/16 核;02 mcar rep4 ideation 正常。发射前 Kimi 线路探测 6/6 正常。
 
+#### 共享层直接改动审计(2026-10-04,用户问"02 是否做成了专属补丁")
+- 结论:**只有 mcar 评分一处是专属做法**(02 launcher 用未改动的共享评分脚本 + 自己目录下的 `mc_python.sh` 作为 `--python`);放大到整个共享层则**没有做到**——相对上游分叉点(0a675d9,08-25)共享层有 13 个文件被直接改过(+375/−26)。09-27 的"共享文件不直接改、先以补丁形式"裁定只对其后的改动生效(ARC 模型字面值回退改 run-local、mcar 措辞 run-local、其后每次共享改动逐项获批),**裁定之前的存量改动从未转成专属补丁**。
+- 为 02 直接改共享生成器(均落在 `render_ai_scientist_topic` 内,只影响 02 渲染,但物理上在共享文件):4824615(BabyLM 域名列表改读磁盘)、89be78d(BabyLM 结果定义句)、3d94b0c(mcar 结果定义句,在 generate_topic2)、6ccf3c8("只用提供数据"句,写进 babylm/psydef/tdc/topic2 四个生成器)。为 02 改共享 runner:arc_framework_fullrun.sh 的 09-14 四笔(GPU 隔离、num_workers、HF offline 等)、babylm_framework_fullrun.sh 的 c3eb6a3。
+- 为 01 直接改共享生成器(08-26 至 09-03):ARC 生成器多笔(brief 投递、数值语义、numpy-only、适配器符号、路径教义)、mcar 生成器 b140e64/f16bb08、TDC 生成器 15522e0/4878c71、topic2 生成器 8ef1c1f/0acb39c、BabyLM 生成器 910df40。共享 runner:psydef 四笔(09-03/04/14)、mountaincar a8eaa3c。共享契约:mcar 契约与预算由 topic2 填充(ea70e1f)。
+- 09-27 之后且逐项获批的共享改动:7945411(mcar 门槛 ≥1)、d216e4f(两处 EXIT trap 收窄)、b68e0db(TDC 32 核)。
+- 存量是否"对齐合并/转专属补丁"待用户定;转换时需以"渲染结果逐字节不变"作回归判据。
+
+#### 01 mcar 评分环境修复(2026-10-04,专属形式)
+- 用户倾向方案 A(评分在 JAX 环境执行),并强调不直接改共享层。实现:新增 01 专属 `real_eval/adapters/mountaincar_continuous/host_python_jax.sh`(镜像外把自己重新放进 ai-researcher-exec:mountaincar-jax 执行,镜像内即 `python`;评分脚本内部嵌套的 `--python` 调用同样落到镜像内解释器;无网络),01 mcar wrapper 通过共享 runner **已有的** `MOUNTAINCAR_CONTINUOUS_PYTHON` 钩子指向它(0fd776d)。共享 runner 与共享评分脚本零改动。离线测试:对 kimi 163455 的交付物重跑官方评分,rc=0,分数 −95.30374908447266,与重裁逐位一致。
+
 #### kimi 第 2 次尝试终态 + 01 mcar×kimi(2026-10-04 晨收账)
 - **01 mcar×kimi(`fullrun_mcar_01_kimi_20261003_163455`,6h 墙钟、沙箱 32 核、带 model-fact):运行中首次有 01 mcar 走通门槛,随后被宿主评分环境错杀(exit 43),重裁得分 −95.30**。16:35→22:07 自行完成;1 个实验(DPCL-MARS+:势函数奖励塑形 + 双阶段课程的 PPO);5 个 checkpoint、idea 四字段齐全、trace 的模型与 base URL 正确(Kimi-K2.6 / paratera——model-fact 生效,对比 09-28 那发写成 api.openai.com)。失败原因:共享 runner 用 `MC_PYTHON`(默认宿主 `python`)执行官方评分,而宿主 python 无 JAX/gymnax,`evaluate.py` 报 `No module named 'gymnax'`——**宿主侧缺陷,此前无任何 01 mcar 运行走到评分步而未暴露**。按既有口径重裁(`adjudication_mcar01_ge1_20260928/kimi_163455`,门槛按现行 runner 逐字抽取、期望 URL 为 paratera、评分在 ai-researcher-exec:mountaincar-jax 镜像内):gate 通过,**官方 Reward Mean −95.30(std 53.92)**→ 入表。这是 mcar 上第一个不等于起始配置不动点的分数(比 −10.78/−11.30/−13.44 差得多:它的方法把策略训坏了),说明该 topic 并非完全无区分度。**待修:01 mcar 的宿主评分须在 JAX 环境里跑**(方案 A:共享 runner 改为宿主 python3 跑评分脚本、仅 `--python` 指向镜像内 python,与 02 launcher 做法一致,需用户批;方案 B:01 wrapper 层用自重入的 docker 包装脚本,不动共享层)。未修之前,01 mcar 的通过格都要靠重裁出分。
 - **01 TDC×kimi 第 2 次(`…160040`):超时失败**。调研 195 轮 + ML 73 轮,17:49 发出 `timeout 1200 python run_training_testing.py --epochs 2` 后撞 7000s 契约墙钟,根目录无任何交付物;期间 429×13。
