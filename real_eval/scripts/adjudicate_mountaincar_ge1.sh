@@ -16,7 +16,7 @@ BASE_URL=https://api.bianxie.ai/v1
 ADJROOT="$ROOT/real_eval/runs/adjudication_mcar01_ge1_20260928"
 
 adjudicate() {
-  local tag=$1 run=$2 model=$3
+  local tag=$1 run=$2 model=$3 base=${4:-$BASE_URL}
   local src="$ROOT/real_eval/runs/$run/workspace"
   local adj="$ADJROOT/$tag"
   if [ -s "$adj/verdict.json" ]; then
@@ -38,7 +38,7 @@ adjudicate() {
   [ -s "$adj/gate_extracted.py" ] || { echo "[$tag] gate extraction failed"; return 1; }
 
   local gate_rc=0
-  python3 "$adj/gate_extracted.py" "$adj/workspace" "$model" "$BASE_URL" \
+  python3 "$adj/gate_extracted.py" "$adj/workspace" "$model" "$base" \
     >"$adj/logs/gate.log" 2>&1 || gate_rc=$?
   echo "   gate rc=$gate_rc ($(tail -1 "$adj/logs/gate.log" 2>/dev/null || true))"
 
@@ -94,4 +94,9 @@ adjudicate kimi_044203 fullrun_mcar_01_kimi_20260928_044203 kimi-k2.6
 # (gpt-5.6-luna from the .env default) and rejected it with 42 -- host-side
 # defect, not a framework failure. Adjudicate under the run's actual model.
 adjudicate g6_113815 fullrun_mcar_01_g6luna_rep2_20260928_113815 gpt-6-luna
+# kimi 163455 added 2026-10-04: the run passed the in-run delivery gate (5 checkpoints,
+# idea fields, trace model/base URL correct) and was then failed with exit 43 because
+# the host scorer ran evaluate.py with the host python, which has no JAX/gymnax
+# ("No module named gymnax") -- host scoring-environment defect. Provider is paratera.
+adjudicate kimi_163455 fullrun_mcar_01_kimi_20261003_163455 Kimi-K2.6 https://llmapi.paratera.com/v1
 echo "ADJUDICATION_DONE"

@@ -611,6 +611,13 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 不计入尝试的历史发射:09-28 额度墙、10-02 上游 429 被停、各次发射配置中止;更早的真实失败(ARC×kimi 两发、02 mcar×kimi rep1)属协议开始前的历史,单独留档。
 - **第 2 次尝试的补丁栈与第 1 次不同**(用户当日清理所致,非同条件复跑):已无预算时钟、已无 exit-delivery(BabyLM/ARC 不再有事后补写,agent 不自己写 idea/报告即记缺失)、ARC 墙钟 2h→24h;context hygiene 本就未生效。核验:TDC 容器 32 核且无预算时钟变量、model-fact 触发;ARC 外层 `timeout 86400s` 且日志无已删补丁字样;BabyLM 内层 GPU=[2]/16 核;02 mcar rep4 ideation 正常。发射前 Kimi 线路探测 6/6 正常。
 
+#### kimi 第 2 次尝试终态 + 01 mcar×kimi(2026-10-04 晨收账)
+- **01 mcar×kimi(`fullrun_mcar_01_kimi_20261003_163455`,6h 墙钟、沙箱 32 核、带 model-fact):运行中首次有 01 mcar 走通门槛,随后被宿主评分环境错杀(exit 43),重裁得分 −95.30**。16:35→22:07 自行完成;1 个实验(DPCL-MARS+:势函数奖励塑形 + 双阶段课程的 PPO);5 个 checkpoint、idea 四字段齐全、trace 的模型与 base URL 正确(Kimi-K2.6 / paratera——model-fact 生效,对比 09-28 那发写成 api.openai.com)。失败原因:共享 runner 用 `MC_PYTHON`(默认宿主 `python`)执行官方评分,而宿主 python 无 JAX/gymnax,`evaluate.py` 报 `No module named 'gymnax'`——**宿主侧缺陷,此前无任何 01 mcar 运行走到评分步而未暴露**。按既有口径重裁(`adjudication_mcar01_ge1_20260928/kimi_163455`,门槛按现行 runner 逐字抽取、期望 URL 为 paratera、评分在 ai-researcher-exec:mountaincar-jax 镜像内):gate 通过,**官方 Reward Mean −95.30(std 53.92)**→ 入表。这是 mcar 上第一个不等于起始配置不动点的分数(比 −10.78/−11.30/−13.44 差得多:它的方法把策略训坏了),说明该 topic 并非完全无区分度。**待修:01 mcar 的宿主评分须在 JAX 环境里跑**(方案 A:共享 runner 改为宿主 python3 跑评分脚本、仅 `--python` 指向镜像内 python,与 02 launcher 做法一致,需用户批;方案 B:01 wrapper 层用自重入的 docker 包装脚本,不动共享层)。未修之前,01 mcar 的通过格都要靠重裁出分。
+- **01 TDC×kimi 第 2 次(`…160040`):超时失败**。调研 195 轮 + ML 73 轮,17:49 发出 `timeout 1200 python run_training_testing.py --epochs 2` 后撞 7000s 契约墙钟,根目录无任何交付物;期间 429×13。
+- **01 ARC×kimi 第 2 次(`…162459`,6h 墙钟):评分失败(exit 43),模型侧**。五件交付物齐全(无事后补写)、门槛通过;官方评估器 whest 正常跑完 100 个 MLP,报告 "100 of 100 MLP(s) raised during predict"——交付的估计器(Mean-Field Gaussian Propagation)在官方接口下每次预测都抛异常,评分器 fail-closed。评分环境本身无问题(同环境 09-28 给 g6 评出 0.142)。
+- **01 BabyLM×kimi 第 2 次(`…162502`):failed_no_artifacts**。agent 以 case_resolved 自行结束,trace 两个值为 1.00003 / 2.80(再次是不可能的困惑度,原因未查,与第 1 次的 padding 类 bug 同形);未写 `research_idea.json` 与 `final_report.md`,exit-delivery 已删除故如实记为交付物缺失。score.json 虽被评分脚本写出(1.00003),该格按失败记。
+- **kimi 尝试计数更新**:01 TDC 2 次均失败(溯源拒 / 超时);01 ARC 2 次均失败(超时 / 估计器 100% 抛异常);01 BabyLM 2 次均失败(过期无效 trace / 交付物缺失);01 mcar 本发经重裁出分 −95.30;02 mcar×kimi 第 1 次失败,第 2 次被用户取消。
+
 #### 补丁清理台账(2026-10-03 起,用户逐个梳理)
 | 补丁 | 处置 | 依据 |
 |---|---|---|
