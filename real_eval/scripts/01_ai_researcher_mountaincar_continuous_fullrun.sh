@@ -280,4 +280,9 @@ export MOUNTAINCAR_CONTINUOUS_MODEL="$MC_MODEL"
 # neither); point that existing hook at a 01-scoped in-image interpreter instead
 # of editing the shared runner. Verified to reproduce -95.30374908447266 offline.
 export MOUNTAINCAR_CONTINUOUS_PYTHON="${MOUNTAINCAR_CONTINUOUS_PYTHON:-$ROOT/real_eval/adapters/mountaincar_continuous/host_python_jax.sh}"
-exec "$ROOT/real_eval/scripts/mountaincar_framework_fullrun.sh"
+# The shared runner stays at upstream; 01's changes to it are applied to a copy
+# (real_eval/adapters/ai_researcher/shared_layer_patches/, see real_eval/adapters/shared_layer_overlay.py).
+# That copy is where the >=1 experiment gate mentioned in the runtime command above lives.
+SHARED_RUNNER="$(python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" materialize ai_researcher real_eval/scripts/mountaincar_framework_fullrun.sh)"
+export RESEARCHCLAWEVAL_ROOT="$ROOT"
+exec "$SHARED_RUNNER"

@@ -28,4 +28,8 @@ cd /workspace/AI-Scientist-v2 && python ai_scientist/perform_ideation_temp_free.
 cd /workspace/AI-Scientist-v2 && python launch_scientist_bfts.py --topic mountaincar_continuous 2>&1
 EOF
 )
-exec "$ROOT/real_eval/scripts/mountaincar_framework_fullrun.sh"
+# The shared runner stays at upstream; 02's changes to it are applied to a copy
+# (real_eval/adapters/ai_scientist_v2/shared_layer_patches/, see real_eval/adapters/shared_layer_overlay.py).
+SHARED_RUNNER="$(python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" materialize ai_scientist_v2 real_eval/scripts/mountaincar_framework_fullrun.sh)"
+export RESEARCHCLAWEVAL_ROOT="$ROOT"
+exec "$SHARED_RUNNER"

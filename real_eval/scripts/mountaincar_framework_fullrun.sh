@@ -234,7 +234,7 @@ fi
 # Some frameworks (e.g. ARIS) may save checkpoints to subdirectories.
 if [[ "$run_rc" -eq 0 ]]; then
   ckpt_dir="$WORKSPACE/checkpoints"
-  ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l || true)  # no checkpoints must not kill the script (set -e + pipefail)
+  ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l)
   if [[ "$ckpt_count" -ne 5 ]]; then
     echo "checkpoints/ has $ckpt_count files (expected 5). Scanning for misplaced checkpoints..." | tee -a "$LOG_FILE"
     # Search for checkpoint files in known subdirectories
@@ -246,7 +246,7 @@ if [[ "$run_rc" -eq 0 ]]; then
     done
     # Also search for any config-42-*.pkl files anywhere in the workspace
     find "$WORKSPACE" -maxdepth 4 -name "config-42-*.pkl" ! -path "$ckpt_dir/*" -exec cp {} "$ckpt_dir"/ \; 2>/dev/null || true
-    ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l || true)
+    ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l)
     echo "  After recovery: $ckpt_count checkpoint files in checkpoints/" | tee -a "$LOG_FILE"
     if [[ "$ckpt_count" -ne 5 ]]; then
       echo "  WARNING: Still have $ckpt_count checkpoints (expected 5). Handoff may fail." | tee -a "$LOG_FILE"
@@ -287,8 +287,8 @@ if trace.get("framework_native_execution") is not True or trace.get("consumed_to
 if trace.get("workspace_trace_root") != "/workspace":
     raise SystemExit("experiment_trace.json must set workspace_trace_root=/workspace")
 experiments = trace.get("experiments")
-if not isinstance(experiments, list) or len(experiments) < 1:
-    raise SystemExit("experiment_trace.json must record at least 1 experiment")
+if not isinstance(experiments, list) or not 2 <= len(experiments) <= 4:
+    raise SystemExit("experiment_trace.json must record 2-4 experiments")
 ids = []
 for row in experiments:
     eid = row.get("experiment_id") or row.get("id") if isinstance(row, dict) else None

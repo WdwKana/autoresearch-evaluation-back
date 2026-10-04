@@ -161,8 +161,6 @@ trained checkpoints.
 # Inputs
 - starter code root: {topic_root}
 - frozen evaluator: evaluate.py (read-only)
-- a reference module is provided at run time with the starter-code helpers and the official evaluation function
-- experiments of this task are run in the provided MountainCarContinuous-v0 environment with the provided starter code only; a result obtained in a different or simplified environment, or on self-generated data, is not a result of this task
 
 # Contract
 - topic label: {TOPIC_LABEL}
@@ -170,7 +168,7 @@ trained checkpoints.
 
 # Concrete Goal
 1. write and lock research_idea.json before the first experiment,
-2. run one or more materially different experiments and select one result; a result of this task is the Reward Mean reported by the provided reference `official_evaluation` (the frozen evaluate.py on exactly five checkpoints); a reward computed any other way (own rollouts, own evaluator, fewer checkpoints) is not a result of this task,
+2. run one or more materially different experiments and select one result,
 3. deliver exactly five checkpoints under checkpoints/ plus config.yaml and
    src/,
 4. write experiment_trace.json and final_report.md.
@@ -201,8 +199,8 @@ CRITICAL: You MUST use the provided PPO baseline (src/train.py, src/policy.py, s
 """
 BASELINE = "A runnable PPO Actor-Critic baseline is provided in src/."
 COMPARISON = "Compare only official Reward Mean evidence generated from the same frozen evaluate.py."
-EVALUATION = "Write and lock research_idea.json before the first experiment. Run one or more bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Deliver exactly five checkpoints under checkpoints/, config.yaml, src/, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit by running the frozen evaluate.py. CRITICAL: Checkpoints MUST be saved directly to /workspace/checkpoints/ as config-42-0.pkl ... config-42-4.pkl. Do NOT put them in subdirectories. experiment_trace.json MUST be a JSON object with exactly these top-level keys: framework_native_execution (boolean true), consumed_topic_input (boolean true), workspace_trace_root (the string '/workspace'), experiments (a list of experiment objects, each with a unique experiment_id), selected_experiment_id (one of those experiment_ids), framework_internal_model (the resolved OPENAI_MODEL value), framework_internal_api_base_url (the resolved OPENAI_BASE_URL value), idea_artifact (the string 'research_idea.json'), and idea_locked_before_experiments (boolean true)."
-REF = "Do not use unrelated benchmarks, toy environments, placeholder results, synthetic checkpoints, fallback scores, or outputs from previous topics. Do not modify evaluate.py or the Model class name. The contract and execution budget are readable inside your workspace at /workspace/automation/ (the topic contract and its execution_budget markdown)."
+EVALUATION = "Write and lock research_idea.json before the first experiment. Run one or more bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Deliver exactly five checkpoints under checkpoints/, config.yaml, src/, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit by running the frozen evaluate.py. CRITICAL: Checkpoints MUST be saved directly to /workspace/checkpoints/ as config-42-0.pkl ... config-42-4.pkl. Do NOT put them in subdirectories."
+REF = "Do not use unrelated benchmarks, toy environments, placeholder results, synthetic checkpoints, fallback scores, or outputs from previous topics. Do not modify evaluate.py or the Model class name. The contract file is: {contract_file}"
 METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
 '''
 

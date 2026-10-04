@@ -24,7 +24,7 @@ cp "$SP/tier/launch_tier.sh" "$SP/tier/tier_build.py" "$SP/tier/tier_apply.py" "
 # ---- topic input for ideation ----
 PROVIDER_ENV=$PUB/real_eval/runs/fullrun_arc_02_luna_20260917_085638/provider.env
 if [ "$TIER" -ge 1 ]; then
-  python3 "$PUB/automation/scripts/generate_psydefdetect_native_inputs.py" \
+  python3 "$PUB/real_eval/adapters/shared_layer_overlay.py" generate ai_scientist_v2 automation/scripts/generate_psydefdetect_native_inputs.py \
     --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" \
     --contract-file "$PUB/automation/psydefdetect_contract.md" \
     --provider-base-url "$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)" \

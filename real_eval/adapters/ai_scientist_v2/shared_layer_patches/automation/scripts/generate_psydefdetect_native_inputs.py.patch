@@ -1,0 +1,18 @@
+02 (AI-Scientist-v2) patch for the shared file automation/scripts/generate_psydefdetect_native_inputs.py
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+AI-Scientist-v2 topic rendering only:
+  * experiments run on the provided dataset only; a result on synthetic, toy or self-generated
+    data is not a result of this task (6ccf3c8, 2026-09-24)
+
+--- a/automation/scripts/generate_psydefdetect_native_inputs.py
++++ b/automation/scripts/generate_psydefdetect_native_inputs.py
+@@ -389,6 +389,7 @@
+ 
+ # Dataset
+ Use `/data/psydefdetect/PsyDefConv.json` and `automation/psydefdetect_split.json` only.
++Experiments of this task are run on this provided dataset only; a result obtained on synthetic, toy, or self-generated data is not a result of this task.
+ 
+ # Dataset schema
+ - `PsyDefConv.json` is a top-level JSON list. Every usable row has `id` (string), `dialogue_id` (string), `dialogue` (a list of `{{text, speaker}}` objects), `current_text` (string), and `label` (integer 0-8).

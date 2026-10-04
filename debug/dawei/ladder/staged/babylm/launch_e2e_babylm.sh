@@ -29,7 +29,7 @@ python3 - "$WS/tier/tier.json" "$TAG" "$VLM_MODEL" "$GPU" <<'PY'
 import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-babylm-spec",model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),gpu=sys.argv[4],stage_iters="20/6/6/2",ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="babylm_topic.md (production spec, generate_babylm_native_inputs.py) + hf_dataset_reference.py (babylm_reference_v2: corpus loader, fixed validation lines evaluated inside official_validation(name, nll_fn), word-level perplexity, submission keeper)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_babylm.py) + run_babylm_score.py"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
-python3 "$PUB/automation/scripts/generate_babylm_native_inputs.py" --output-root "$INP" --dataset-root "$DATA" --contract-file "$PUB/automation/babylm_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
+python3 "$PUB/real_eval/adapters/shared_layer_overlay.py" generate ai_scientist_v2 automation/scripts/generate_babylm_native_inputs.py --output-root "$INP" --dataset-root "$DATA" --contract-file "$PUB/automation/babylm_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" >/dev/null
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/babylm_topic.md" "$WS/ai_scientist/ideas/babylm_topic.md"
 ln -sfn /data/BabyLM-2026-Strict-Small "$WS/data/BabyLM-2026-Strict-Small"
 cp "$SP/staged/babylm/babylm_reference_v2.py" "$WS/hf_dataset_reference.py"

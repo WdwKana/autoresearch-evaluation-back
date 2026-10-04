@@ -23,7 +23,7 @@ import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-spec",us
 PY
 PROVIDER_ENV=$PUB/real_eval/runs/fullrun_arc_02_luna_20260917_085638/provider.env
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
-python3 "$PUB/automation/scripts/generate_psydefdetect_native_inputs.py" --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" --contract-file "$PUB/automation/psydefdetect_contract.md" --provider-base-url "$BASE_URL" --primary-model gpt-5.6-luna >/dev/null
+python3 "$PUB/real_eval/adapters/shared_layer_overlay.py" generate ai_scientist_v2 automation/scripts/generate_psydefdetect_native_inputs.py --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" --contract-file "$PUB/automation/psydefdetect_contract.md" --provider-base-url "$BASE_URL" --primary-model gpt-5.6-luna >/dev/null
 rsync -a "$INP/automation/" "$WS/automation/"; cp "$PUB/automation/psydefdetect_contract.md" "$WS/automation/psydefdetect_contract.md"; ln -sfn /data/psydefdetect "$WS/data/psydefdetect"
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/psydefdetect_topic.md" "$WS/ai_scientist/ideas/psydefdetect_topic.md"
 cp "$SP/staged/psydefdetect_native_v2.py" "$WS/hf_dataset_reference.py"

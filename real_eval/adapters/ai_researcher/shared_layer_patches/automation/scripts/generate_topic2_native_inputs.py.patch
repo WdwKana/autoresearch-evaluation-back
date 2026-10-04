@@ -1,0 +1,24 @@
+01 (AI-Researcher) patch for the shared file automation/scripts/generate_topic2_native_inputs.py
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+AI-Researcher rendering only (consumed by MountainCar through
+real_eval/adapters/mountaincar_continuous/generate_native_inputs.py and by the 01 topic2 wrappers):
+  * metaprompt EVALUATION: the experiment_trace.json top-level key schema the delivery gate checks
+  * metaprompt REF: the contract and execution budget are readable at /workspace/automation/
+    (the host path upstream prints is not reachable from the container)
+Origin: 8ef1c1f 0acb39c (2026-09-03).
+
+--- a/automation/scripts/generate_topic2_native_inputs.py
++++ b/automation/scripts/generate_topic2_native_inputs.py
+@@ -199,8 +199,8 @@
+ """
+ BASELINE = "A runnable PPO Actor-Critic baseline is provided in src/."
+ COMPARISON = "Compare only official Reward Mean evidence generated from the same frozen evaluate.py."
+-EVALUATION = "Write and lock research_idea.json before the first experiment. Run one or more bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Deliver exactly five checkpoints under checkpoints/, config.yaml, src/, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit by running the frozen evaluate.py. CRITICAL: Checkpoints MUST be saved directly to /workspace/checkpoints/ as config-42-0.pkl ... config-42-4.pkl. Do NOT put them in subdirectories."
+-REF = "Do not use unrelated benchmarks, toy environments, placeholder results, synthetic checkpoints, fallback scores, or outputs from previous topics. Do not modify evaluate.py or the Model class name. The contract file is: {contract_file}"
++EVALUATION = "Write and lock research_idea.json before the first experiment. Run one or more bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Deliver exactly five checkpoints under checkpoints/, config.yaml, src/, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit by running the frozen evaluate.py. CRITICAL: Checkpoints MUST be saved directly to /workspace/checkpoints/ as config-42-0.pkl ... config-42-4.pkl. Do NOT put them in subdirectories. experiment_trace.json MUST be a JSON object with exactly these top-level keys: framework_native_execution (boolean true), consumed_topic_input (boolean true), workspace_trace_root (the string '/workspace'), experiments (a list of experiment objects, each with a unique experiment_id), selected_experiment_id (one of those experiment_ids), framework_internal_model (the resolved OPENAI_MODEL value), framework_internal_api_base_url (the resolved OPENAI_BASE_URL value), idea_artifact (the string 'research_idea.json'), and idea_locked_before_experiments (boolean true)."
++REF = "Do not use unrelated benchmarks, toy environments, placeholder results, synthetic checkpoints, fallback scores, or outputs from previous topics. Do not modify evaluate.py or the Model class name. The contract and execution budget are readable inside your workspace at /workspace/automation/ (the topic contract and its execution_budget markdown)."
+ METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
+ '''
+ 

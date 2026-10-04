@@ -4,12 +4,13 @@
 # the 2026-09-28 rulings). Scope: runs whose ONLY gate failure was the former 2-4
 # experiment count. The original run directories are never modified: required
 # artifacts are copied into a fresh adjudication workspace, the delivery gate is
-# extracted verbatim from the current committed runner (no logic drift), and the
+# extracted verbatim from the runner 01 actually runs -- the shared runner plus 01's
+# patch (real_eval/adapters/ai_researcher/shared_layer_patches/) -- and the
 # official frozen scorer runs inside the same JAX image the framework trained in.
 set -euo pipefail
 
 ROOT=/data/daweiwang/claude-home/researchclaweval-public
-RUNNER="$ROOT/real_eval/scripts/mountaincar_framework_fullrun.sh"
+RUNNER=real_eval/scripts/mountaincar_framework_fullrun.sh
 DATASET="${MOUNTAINCAR_CONTINUOUS_DATASET_ROOT:-$ROOT/data/mountaincar_continuous}"
 IMG=ai-researcher-exec:mountaincar-jax
 BASE_URL=https://api.bianxie.ai/v1
@@ -32,9 +33,10 @@ adjudicate() {
   cp -r "$src/src" "$adj/workspace/src"
   cp -r "$src/checkpoints" "$adj/workspace/checkpoints"
 
-  # Gate logic extracted verbatim from the committed runner heredoc (line ~260).
+  # Gate logic extracted verbatim from the patched runner heredoc (line ~260).
+  python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" show ai_researcher "$RUNNER" > "$adj/runner_patched.sh"
   awk '/python3 - "\$WORKSPACE" "\$MC_MODEL" "\$FRAMEWORK_PROVIDER_BASE_URL"/{f=1;next} f&&/^PY$/{exit} f' \
-    "$RUNNER" > "$adj/gate_extracted.py"
+    "$adj/runner_patched.sh" > "$adj/gate_extracted.py"
   [ -s "$adj/gate_extracted.py" ] || { echo "[$tag] gate extraction failed"; return 1; }
 
   local gate_rc=0
@@ -71,7 +73,7 @@ json.dump({
     "source_run": run,
     "source_workspace_untouched": True,
     "model": model,
-    "gate_version": f"mountaincar_framework_fullrun.sh @ {sha} (>=1 unified)",
+    "gate_version": f"mountaincar_framework_fullrun.sh + 01 shared-layer patch @ {sha} (>=1)",
     "decision_refs": ["grill Q10", "2026-09-28 user approvals: gate>=1 / wrapper wording removal / retro adjudication"],
     "gate_rc": int(gate_rc),
     "score_rc": int(score_rc),

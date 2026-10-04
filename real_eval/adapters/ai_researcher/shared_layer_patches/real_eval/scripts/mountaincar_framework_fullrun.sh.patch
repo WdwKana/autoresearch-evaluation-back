@@ -1,0 +1,52 @@
+01 (AI-Researcher) patch for the shared file real_eval/scripts/mountaincar_framework_fullrun.sh
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+  * native inputs come from real_eval/adapters/mountaincar_continuous/generate_native_inputs.py:
+    the shared generate_mountaincar_continuous_native_inputs.py is upstream's symlink to the
+    topic2 generator and emits topic2_* names this runner cannot copy
+  * zero checkpoints no longer kill the script (set -e + pipefail) before it writes a terminal
+    state (a8eaa3c, 2026-09-24)
+  * delivery gate: experiment_trace.json must record at least 1 experiment (upstream: 2-4),
+    matching the contract text 'one or more' (7945411, user ruling 2026-09-28)
+
+--- a/real_eval/scripts/mountaincar_framework_fullrun.sh
++++ b/real_eval/scripts/mountaincar_framework_fullrun.sh
+@@ -82,7 +82,7 @@
+ [[ -n "$FRAMEWORK_RUNTIME_COMMAND" ]] || { write_state "blocked" "Framework runtime command is empty" 26; exit 26; }
+ 
+ # Generate framework-native inputs (briefs, prompts, contract, budget, scorer, starter copy)
+-python3 "$ROOT/automation/scripts/generate_mountaincar_continuous_native_inputs.py" \
++python3 "$ROOT/real_eval/adapters/mountaincar_continuous/generate_native_inputs.py" ai_researcher \
+   --output-root "$INPUT_ROOT" \
+   --dataset-root "$TOPIC_ROOT" \
+   --contract-file "$CONTRACT_FILE" \
+@@ -234,7 +234,7 @@
+ # Some frameworks (e.g. ARIS) may save checkpoints to subdirectories.
+ if [[ "$run_rc" -eq 0 ]]; then
+   ckpt_dir="$WORKSPACE/checkpoints"
+-  ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l)
++  ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l || true)  # no checkpoints must not kill the script (set -e + pipefail)
+   if [[ "$ckpt_count" -ne 5 ]]; then
+     echo "checkpoints/ has $ckpt_count files (expected 5). Scanning for misplaced checkpoints..." | tee -a "$LOG_FILE"
+     # Search for checkpoint files in known subdirectories
+@@ -246,7 +246,7 @@
+     done
+     # Also search for any config-42-*.pkl files anywhere in the workspace
+     find "$WORKSPACE" -maxdepth 4 -name "config-42-*.pkl" ! -path "$ckpt_dir/*" -exec cp {} "$ckpt_dir"/ \; 2>/dev/null || true
+-    ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l)
++    ckpt_count=$(ls "$ckpt_dir"/*.pkl 2>/dev/null | wc -l || true)
+     echo "  After recovery: $ckpt_count checkpoint files in checkpoints/" | tee -a "$LOG_FILE"
+     if [[ "$ckpt_count" -ne 5 ]]; then
+       echo "  WARNING: Still have $ckpt_count checkpoints (expected 5). Handoff may fail." | tee -a "$LOG_FILE"
+@@ -287,8 +287,8 @@
+ if trace.get("workspace_trace_root") != "/workspace":
+     raise SystemExit("experiment_trace.json must set workspace_trace_root=/workspace")
+ experiments = trace.get("experiments")
+-if not isinstance(experiments, list) or not 2 <= len(experiments) <= 4:
+-    raise SystemExit("experiment_trace.json must record 2-4 experiments")
++if not isinstance(experiments, list) or len(experiments) < 1:
++    raise SystemExit("experiment_trace.json must record at least 1 experiment")
+ ids = []
+ for row in experiments:
+     eid = row.get("experiment_id") or row.get("id") if isinstance(row, dict) else None

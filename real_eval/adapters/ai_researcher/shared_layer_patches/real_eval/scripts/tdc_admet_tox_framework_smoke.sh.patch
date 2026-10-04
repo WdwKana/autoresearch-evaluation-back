@@ -1,0 +1,57 @@
+01 (AI-Researcher) patch for the shared file real_eval/scripts/tdc_admet_tox_framework_smoke.sh
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+  * REAL_EVAL_SMOKE_PROBE=script runs the agent-agnostic wiring probe
+    (real_eval/adapters/probes/tdc_admet_tox_wiring_probe.py) instead of the Codex smoke;
+    the default (codex) is unchanged (9e122d2, 2026-08-28)
+
+--- a/real_eval/scripts/tdc_admet_tox_framework_smoke.sh
++++ b/real_eval/scripts/tdc_admet_tox_framework_smoke.sh
+@@ -105,7 +105,7 @@
+   write_state "blocked" "Missing framework source or native entrypoint" 23
+   exit 23
+ fi
+-if [[ ! -x "$HOST_NODE_ROOT/bin/codex" ]]; then
++if [[ "${REAL_EVAL_SMOKE_PROBE:-codex}" == "codex" && ! -x "$HOST_NODE_ROOT/bin/codex" ]]; then
+   write_state "blocked" "Host Codex CLI is unavailable under $HOST_NODE_ROOT" 24
+   exit 24
+ fi
+@@ -116,6 +116,10 @@
+ chmod -R a+rwX "$WORKSPACE"
+ 
+ cp "$CONTRACT_FILE" "$INPUT_ROOT/automation/tdc_admet_tox_contract.md"
++if [[ "${REAL_EVAL_SMOKE_PROBE:-codex}" == "script" ]]; then
++  mkdir -p "$INPUT_ROOT/probes"
++  cp "$ROOT/real_eval/adapters/probes/tdc_admet_tox_wiring_probe.py" "$INPUT_ROOT/probes/"
++fi
+ cp "$ROOT/automation/tdc_admet_tox_execution_budget.md" "$INPUT_ROOT/automation/"
+ cp "$ROOT/automation/scripts/run_tdc_admet_tox_validation_score.py" "$INPUT_ROOT/automation/scripts/"
+ cp "$ROOT/docs/tdc_admet_tox_"*.md "$INPUT_ROOT/docs/"
+@@ -173,11 +177,15 @@
+ 
+ docker_runtime_command='set -euo pipefail
+ export PATH="/opt/researchclaweval-node/bin:$PATH"
+-test -x /opt/researchclaweval-node/bin/codex
++if [ "${REAL_EVAL_SMOKE_PROBE:-codex}" = "codex" ]; then test -x /opt/researchclaweval-node/bin/codex; fi
+ test -f "/workspace/$FRAMEWORK_NATIVE_ENTRYPOINT_FILE"
+ test -r /data/tdc_admet_tox/test.csv
+ test -r /input/smoke_prompt.txt
+-codex exec --yolo --ephemeral --skip-git-repo-check -C /workspace -o /workspace/tdc_admet_tox_smoke_last_message.txt - < /input/smoke_prompt.txt'
++if [ "${REAL_EVAL_SMOKE_PROBE:-codex}" = "script" ]; then
++  python3 /input/probes/tdc_admet_tox_wiring_probe.py --framework "$FRAMEWORK_NAME" --entrypoint-file "$FRAMEWORK_NATIVE_ENTRYPOINT_FILE" | tee /workspace/tdc_admet_tox_smoke_last_message.txt
++else
++  codex exec --yolo --ephemeral --skip-git-repo-check -C /workspace -o /workspace/tdc_admet_tox_smoke_last_message.txt - < /input/smoke_prompt.txt
++fi'
+ 
+ write_state "running" "Launching blocking headless Codex smoke for $FRAMEWORK_NAME"
+ run_rc=0
+@@ -193,6 +201,8 @@
+   -e CODEX_HOME=/codex-home \
+   -e FRAMEWORK_NATIVE_ENTRYPOINT="$FRAMEWORK_NATIVE_ENTRYPOINT" \
+   -e FRAMEWORK_NATIVE_ENTRYPOINT_FILE="$FRAMEWORK_NATIVE_ENTRYPOINT_FILE" \
++  -e REAL_EVAL_SMOKE_PROBE="${REAL_EVAL_SMOKE_PROBE:-codex}" \
++  -e FRAMEWORK_NAME="$FRAMEWORK_NAME" \
+   -e RESEARCHCLAWEVAL_TOPIC_LABEL=TDC-ADMET-Tox \
+   -e TDC_ADMET_TOX_DATASET_ROOT=/data/tdc_admet_tox \
+   -e TDC_ADMET_TOX_CONTRACT_FILE=/input/automation/tdc_admet_tox_contract.md \

@@ -17,7 +17,7 @@ mkdir -p "$BASE/inputs" "$LOG_DIR"
 [[ -d "$TOPIC_ROOT" ]] || { echo "missing topic root: $TOPIC_ROOT" >&2; exit 21; }
 [[ -f "$CONTRACT_FILE" ]] || { echo "missing contract file: $CONTRACT_FILE" >&2; exit 22; }
 
-python3 "$ROOT/automation/scripts/generate_mountaincar_continuous_native_inputs.py" \
+python3 "$ROOT/real_eval/adapters/mountaincar_continuous/generate_native_inputs.py" ai_researcher \
   --output-root "$BASE/inputs" \
   --dataset-root "$TOPIC_ROOT" \
   --contract-file "$CONTRACT_FILE" >/dev/null

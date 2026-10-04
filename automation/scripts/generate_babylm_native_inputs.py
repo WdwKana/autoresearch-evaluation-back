@@ -73,27 +73,7 @@ The framework owns the hypothesis, algorithm family, feature representation, arc
 """
 
 
-def _actual_domains(dataset_root: Path) -> list[str]:
-    """Domain names read from the materialized dataset (one ``<domain>.train.txt`` per domain).
-
-    The hard-coded list this replaced (bnc_spoken, childes, gutenberg, open_subtitles,
-    simple_wiki, switchboard) did not match the shipped files; AI-Scientist-v2 nodes
-    build file paths from the topic text without listing the directory, so a wrong
-    name there makes them fall back to synthetic data (2026-09-21).
-    """
-    try:
-        return sorted(path.name[: -len(".train.txt")] for path in Path(dataset_root).glob("*.train.txt"))
-    except OSError:
-        return []
-
-
 def render_ai_scientist_topic(dataset_root: Path, contract_file: Path, primary_model: str) -> str:
-    domains = _actual_domains(dataset_root)
-    domain_line = (
-        f"- {len(domains)} text domains, one `<domain>.train.txt` file each: {', '.join(domains)}"
-        if domains
-        else "- text domains: one `<domain>.train.txt` file per domain under the dataset root (list the directory)"
-    )
     return f"""# Title
 {TOPIC_LABEL}: Word-Level Language Modeling Benchmark
 
@@ -102,9 +82,7 @@ Build a reproducible BabyLM Strict-Small word-level language modeling workflow t
 
 # Dataset
 - standardized local dataset root: {dataset_root}
-{domain_line}
-- a reference module is provided at run time with the corpus loader, the fixed validation split and the official validation function
-- experiments of this task are run on this provided corpus only; a result obtained on synthetic, toy, or self-generated text is not a result of this task
+- 6 text domains: bnc_spoken, childes, gutenberg, open_subtitles, simple_wiki, switchboard
 
 # Contract
 - topic label: {TOPIC_LABEL}
@@ -116,7 +94,7 @@ Implement and evaluate a BabyLM word-level language modeling run path that:
 1. consumes the challenge contract directly,
 2. writes and locks `research_idea.json` before the first experiment,
 3. trains and evaluates on the real dataset only,
-4. records word-level validation perplexity for each experiment as reported by the provided reference validation function on its fixed validation lines; a perplexity computed any other way (own split, subsampled or self-generated text, other normalisation) is not a result of this task,
+4. records word-level validation perplexity for each experiment,
 5. writes a concise final report.
 
 # Scientific Independence
@@ -204,7 +182,7 @@ The dataset is available at:
 """
 BASELINE = "No host-prescribed baseline. The framework must choose and justify its own methods."
 COMPARISON = "Compare only word-level validation perplexity across experiments on the same BabyLM dataset and split."
-EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, experiment_trace.json (including model/base URL, idea-lock evidence, and word-level validation_perplexity per experiment), and final_report.md. Location note: 'root-level' means the top of your workplace; files inside your project directory are also collected, so either location is acceptable. The host creates score.json after native exit."
+EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, experiment_trace.json (including model/base URL, idea-lock evidence, and word-level validation_perplexity per experiment), and final_report.md. The host creates score.json after native exit."
 REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic scores, or outputs from previous topics. The mounted text files contain real natural language data; do not fabricate perplexity values. The contract file is: {contract_file}"
 METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
 DATA_INSPECTION_RULES = """

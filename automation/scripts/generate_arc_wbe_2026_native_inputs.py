@@ -159,63 +159,6 @@ The dataset has a fixed validation split. Never compute val and test metrics on 
 """
 
 
-AI_RESEARCHER_TRACE_VALUE_SPEC = """
-## Exact value requirements for experiment_trace.json (host validator is strict)
-
-The host validator rejects the run unless every field below has exactly the
-required type and value semantics. Field names alone are not sufficient.
-
-- `framework_native_execution`: boolean `true`
-- `consumed_topic_input`: boolean `true` (record dataset paths in other fields
-  if desired; this field itself must be the literal boolean)
-- `workspace_trace_root`: the literal string `"/workspace"` (host-side trace
-  root; do not substitute a local experiments directory)
-- `experiments`: a list of 2-4 objects; each object must contain a unique,
-  non-empty string field named `experiment_id` (extra fields are allowed)
-- `selected_experiment_id`: string equal to one `experiments[].experiment_id`
-- `framework_internal_model`: the exact value of the injected `OPENAI_MODEL`
-  environment variable (the model driving the framework's own reasoning; NOT
-  whether experiment scripts called an LLM — never write placeholders such as
-  "not_called")
-- `framework_internal_api_base_url`: the exact value of the injected
-  `OPENAI_BASE_URL` environment variable
-- `idea_artifact`: the literal string `"research_idea.json"`
-- `idea_locked_before_experiments`: boolean `true`
-
-`research_idea.json` must contain non-empty `hypothesis`, `method_rationale`
-(or `rationale`), `expected_failure_modes`, and `comparison_logic`.
-
-## Official scorer runtime constraints for estimator.py (hard requirements)
-
-The host executes `estimator.py` inside the official whest evaluation
-environment after you exit. That environment provides ONLY the Python
-standard library and `numpy`. Any other import — `torch`, `scipy`,
-`sklearn`, `pandas`, etc. — makes the official scoring fail closed with no
-score.
-
-- implement `predict(mlp)` using numpy and the standard library only
-- if your selected method has learned parameters, export them to plain
-  `.npz` / `.json` files next to `estimator.py` and load them with numpy;
-  never ship pickle/torch checkpoints
-- `estimator.py` must be importable standalone: only import your own helper
-  modules if they are also numpy/stdlib-only and shipped alongside it
-- you may still use any library (torch included) DURING experiments to find
-  the method; only the final delivered `estimator.py` must satisfy these
-  constraints
-
-The official adapter statically scans `estimator.py` and accepts ONLY these
-exact symbols — any other naming is rejected without execution:
-
-- define `class Estimator` (this exact class name) with a method
-  `predict(self, mlp)`, OR a factory function `def build_estimator()`
-  returning such an object; do not use a project-specific class name
-- the prediction must never be produced by `zeros`/`ones`/`full`/`empty`
-  constant constructors, and the words "placeholder", "synthetic
-  prediction", or "fallback prediction" must not appear anywhere in the
-  file (fail-closed static checks reject the whole run)
-"""
-
-
 def render_ai_researcher_metaprompt(dataset_root: Path, contract_file: Path) -> str:
     return f'''TASK = "ARC White-Box Estimation Challenge 2026 benchmark execution."
 DATASET = """
@@ -228,8 +171,8 @@ The dataset is available at:
 """
 BASELINE = "No host-prescribed baseline. The framework must choose and justify its own methods."
 COMPARISON = "Compare only official-format outputs or score evidence generated from the same ARC-WBE-2026 contract."
-EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, estimator.py, submission.json, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. Location note: 'root-level' means the top of your workplace; files inside your project directory are also collected, so either location is acceptable. The host creates score.json after native exit."
-REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic submissions, zero/broadcast predictions, fallback scores, or outputs from previous topics. The mounted parquet contains real weights-only records; do not fabricate labels. The full topic contract is mounted at /input/contract.md. The delivery specification (required root-level artifacts, experiment_trace.json fields, and the estimator predict() interface) is in /workplace/dataset_candidate/ARC_WBE_2026_BRIEF.md."
+EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, estimator.py, submission.json, experiment_trace.json (including model/base URL and idea-lock evidence), and final_report.md. The host creates score.json after native exit."
+REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic submissions, zero/broadcast predictions, fallback scores, or outputs from previous topics. The mounted parquet contains real weights-only records; do not fabricate labels. The contract file is: {contract_file}"
 METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
 DATA_INSPECTION_RULES = """
 When inspecting ARC-WBE-2026 parquet or dataset rows, Do not print raw weights, all_layer_means, final_means, or other large tensor/array payloads.
@@ -465,13 +408,6 @@ def generate_native_inputs(
         "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/metaprompt.py": render_ai_researcher_metaprompt(
             dataset_root, contract_file
         ),
-        # Same brief the file-driven frameworks (03/05/07) receive, staged where
-        # AI-Researcher's own dataset_candidate copy makes it visible inside the
-        # inner execution container; paths are the inner-container mounts.
-        "AI-Researcher/benchmark/process/dataset_candidate/arc_wbe_2026/ARC_WBE_2026_BRIEF.md": render_framework_brief(
-            Path("/data/arc_wbe_2026"), Path("/input/contract.md")
-        )
-        + AI_RESEARCHER_TRACE_VALUE_SPEC,
         "AI-Scientist-v2/ai_scientist/ideas/arc_wbe_2026_topic.md": ai_scientist_topic,
         "AI-Scientist-v2/ai_scientist/ideas/my_research_topic.md": ai_scientist_topic,
         "Auto-claude-code-research-in-sleep/ARC_WBE_2026_BRIEF.md": framework_brief,

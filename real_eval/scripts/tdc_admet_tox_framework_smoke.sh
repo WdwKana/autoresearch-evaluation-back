@@ -105,7 +105,7 @@ if [[ ! -d "$FRAMEWORK_SRC" || ! -f "$FRAMEWORK_SRC/$FRAMEWORK_NATIVE_ENTRYPOINT
   write_state "blocked" "Missing framework source or native entrypoint" 23
   exit 23
 fi
-if [[ "${REAL_EVAL_SMOKE_PROBE:-codex}" == "codex" && ! -x "$HOST_NODE_ROOT/bin/codex" ]]; then
+if [[ ! -x "$HOST_NODE_ROOT/bin/codex" ]]; then
   write_state "blocked" "Host Codex CLI is unavailable under $HOST_NODE_ROOT" 24
   exit 24
 fi
@@ -116,10 +116,6 @@ real_eval_purge_cross_topic_residue "$WORKSPACE" tdc_admet_tox
 chmod -R a+rwX "$WORKSPACE"
 
 cp "$CONTRACT_FILE" "$INPUT_ROOT/automation/tdc_admet_tox_contract.md"
-if [[ "${REAL_EVAL_SMOKE_PROBE:-codex}" == "script" ]]; then
-  mkdir -p "$INPUT_ROOT/probes"
-  cp "$ROOT/real_eval/adapters/probes/tdc_admet_tox_wiring_probe.py" "$INPUT_ROOT/probes/"
-fi
 cp "$ROOT/automation/tdc_admet_tox_execution_budget.md" "$INPUT_ROOT/automation/"
 cp "$ROOT/automation/scripts/run_tdc_admet_tox_validation_score.py" "$INPUT_ROOT/automation/scripts/"
 cp "$ROOT/docs/tdc_admet_tox_"*.md "$INPUT_ROOT/docs/"
@@ -177,15 +173,11 @@ docker exec "$RELAY_NAME" python -c \
 
 docker_runtime_command='set -euo pipefail
 export PATH="/opt/researchclaweval-node/bin:$PATH"
-if [ "${REAL_EVAL_SMOKE_PROBE:-codex}" = "codex" ]; then test -x /opt/researchclaweval-node/bin/codex; fi
+test -x /opt/researchclaweval-node/bin/codex
 test -f "/workspace/$FRAMEWORK_NATIVE_ENTRYPOINT_FILE"
 test -r /data/tdc_admet_tox/test.csv
 test -r /input/smoke_prompt.txt
-if [ "${REAL_EVAL_SMOKE_PROBE:-codex}" = "script" ]; then
-  python3 /input/probes/tdc_admet_tox_wiring_probe.py --framework "$FRAMEWORK_NAME" --entrypoint-file "$FRAMEWORK_NATIVE_ENTRYPOINT_FILE" | tee /workspace/tdc_admet_tox_smoke_last_message.txt
-else
-  codex exec --yolo --ephemeral --skip-git-repo-check -C /workspace -o /workspace/tdc_admet_tox_smoke_last_message.txt - < /input/smoke_prompt.txt
-fi'
+codex exec --yolo --ephemeral --skip-git-repo-check -C /workspace -o /workspace/tdc_admet_tox_smoke_last_message.txt - < /input/smoke_prompt.txt'
 
 write_state "running" "Launching blocking headless Codex smoke for $FRAMEWORK_NAME"
 run_rc=0
@@ -201,8 +193,6 @@ docker run --rm \
   -e CODEX_HOME=/codex-home \
   -e FRAMEWORK_NATIVE_ENTRYPOINT="$FRAMEWORK_NATIVE_ENTRYPOINT" \
   -e FRAMEWORK_NATIVE_ENTRYPOINT_FILE="$FRAMEWORK_NATIVE_ENTRYPOINT_FILE" \
-  -e REAL_EVAL_SMOKE_PROBE="${REAL_EVAL_SMOKE_PROBE:-codex}" \
-  -e FRAMEWORK_NAME="$FRAMEWORK_NAME" \
   -e RESEARCHCLAWEVAL_TOPIC_LABEL=TDC-ADMET-Tox \
   -e TDC_ADMET_TOX_DATASET_ROOT=/data/tdc_admet_tox \
   -e TDC_ADMET_TOX_CONTRACT_FILE=/input/automation/tdc_admet_tox_contract.md \

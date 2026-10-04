@@ -1,0 +1,28 @@
+01 (AI-Researcher) patch for the shared file real_eval/scripts/tdc_admet_tox_framework_fullrun.sh
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+  * native inputs are rendered through the 01 overlay of the TDC generator
+  * framework container CPU budget --cpus 4 -> 32, the budget the 02 launcher runs with
+    (b68e0db, user decision 2026-10-02)
+
+--- a/real_eval/scripts/tdc_admet_tox_framework_fullrun.sh
++++ b/real_eval/scripts/tdc_admet_tox_framework_fullrun.sh
+@@ -160,7 +160,7 @@
+ PY
+ )"
+ 
+-python3 "$ROOT/automation/scripts/generate_tdc_admet_tox_native_inputs.py" \
++python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" generate ai_researcher automation/scripts/generate_tdc_admet_tox_native_inputs.py \
+   --output-root "$INPUT_ROOT" \
+   --primary-model "$EVAL_MODEL" \
+   --provider-base-url "$CLIENT_RELAY_BASE_URL"
+@@ -326,7 +326,7 @@
+   docker run --rm
+   --name "tdc-fw-$RUN_TOKEN"
+   --network "$NETWORK_NAME"
+-  --cpus 4
++  --cpus 32
+   --memory 16g
+   --pids-limit 2048
+   --env-file "$PROVIDER_ENV"

@@ -30,7 +30,7 @@ PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
 cp "$PUB/automation/scripts/run_tdc_admet_tox_validation_score.py" "$WS/automation/scripts/"
 ln -sfn /data/tdc_admet_tox "$WS/data/tdc_admet_tox"
-python3 "$PUB/automation/scripts/generate_tdc_admet_tox_native_inputs.py" --output-root "$INP" --primary-model "$MODEL" --provider-base-url "$BASE_URL" >/dev/null
+python3 "$PUB/real_eval/adapters/shared_layer_overlay.py" generate ai_scientist_v2 automation/scripts/generate_tdc_admet_tox_native_inputs.py --output-root "$INP" --primary-model "$MODEL" --provider-base-url "$BASE_URL" >/dev/null
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/tdc_admet_tox_topic.md" "$WS/ai_scientist/ideas/tdc_admet_tox_topic.md"
 cp "$SP/staged/tdc/$REF.py" "$WS/hf_dataset_reference.py"
 cp "$SP/staged/tdc/launch_e2e_tdc_model.sh" "$SP/staged/tdc/assemble_tdc.py" "$SP/staged/tdc/$REF.py" "$WS/ai_scientist/ideas/tdc_admet_tox_topic.md" "$SP/tier/tier_apply.py" "$RUN/"

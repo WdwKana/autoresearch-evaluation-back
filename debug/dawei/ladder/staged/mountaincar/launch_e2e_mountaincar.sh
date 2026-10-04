@@ -27,7 +27,7 @@ python3 - "$WS/tier/tier.json" "$TAG" "$VLM_MODEL" <<'PY'
 import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="e2e-mountaincar-spec",model_tag=sys.argv[2],vlm_model_override=(sys.argv[3] or None),image="ai-scientist-v2:runtime-mountaincar",cpus=32,stage_iters="20/6/6/2",ideation_patches="label normalization, tolerant parser, MAX_NUM_TOKENS 16384, retry x3",topic_input="topic2_topic.md (production spec, generate_mountaincar_continuous_native_inputs.py) + hf_dataset_reference.py (mountaincar_reference_v1: starter copy, starter training, frozen-evaluator official_evaluation, submission keeper)",data_mounted=True,stages_open="1-4 (20/6/6/2)",assembly="host deterministic (assemble_mountaincar.py) + frozen evaluate.py via image"); json.dump(T,open(p,"w"),ensure_ascii=False,indent=1)
 PY
 BASE_URL="$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)"
-python3 "$PUB/automation/scripts/generate_mountaincar_continuous_native_inputs.py" --output-root "$INP" --dataset-root "$DATA" --contract-file "$PUB/automation/topic2_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" --no-gpu-required >/dev/null
+python3 "$PUB/real_eval/adapters/mountaincar_continuous/generate_native_inputs.py" ai_scientist_v2 --output-root "$INP" --dataset-root "$DATA" --contract-file "$PUB/automation/topic2_contract.md" --provider-base-url "$BASE_URL" --primary-model "$MODEL" --no-gpu-required >/dev/null
 cp "$INP/AI-Scientist-v2/ai_scientist/ideas/topic2_topic.md" "$WS/ai_scientist/ideas/mountaincar_topic.md"
 ln -sfn /data/mountaincar_continuous "$WS/data/mountaincar_continuous"
 cp "$SP/staged/mountaincar/mountaincar_reference_v1.py" "$WS/hf_dataset_reference.py"

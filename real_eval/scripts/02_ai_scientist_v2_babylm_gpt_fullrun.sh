@@ -291,4 +291,8 @@ timeout "${AI_SCIENTIST_V2_BABYLM_TIMEOUT_SECONDS:-14400}s" python launch_scient
   --model_agg_plots "$OPENAI_MODEL"
 EOF
 )
-exec "$ROOT"/real_eval/scripts/babylm_framework_fullrun.sh
+# The shared runner stays at upstream; 02's changes to it are applied to a copy
+# (real_eval/adapters/ai_scientist_v2/shared_layer_patches/, see real_eval/adapters/shared_layer_overlay.py).
+SHARED_RUNNER="$(python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" materialize ai_scientist_v2 real_eval/scripts/babylm_framework_fullrun.sh)"
+export RESEARCHCLAWEVAL_ROOT="$ROOT"
+exec "$SHARED_RUNNER"

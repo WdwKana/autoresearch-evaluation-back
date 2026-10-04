@@ -413,4 +413,8 @@ timeout "${AI_SCIENTIST_V2_PSYDEFDETECT_TIMEOUT_SECONDS:-7200}s" python launch_s
 
 EOF
 )
-exec "$ROOT"/real_eval/scripts/psydefdetect_framework_fullrun.sh
+# The shared runner stays at upstream; 02's changes to it are applied to a copy
+# (real_eval/adapters/ai_scientist_v2/shared_layer_patches/, see real_eval/adapters/shared_layer_overlay.py).
+SHARED_RUNNER="$(python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" materialize ai_scientist_v2 real_eval/scripts/psydefdetect_framework_fullrun.sh)"
+export RESEARCHCLAWEVAL_ROOT="$ROOT"
+exec "$SHARED_RUNNER"

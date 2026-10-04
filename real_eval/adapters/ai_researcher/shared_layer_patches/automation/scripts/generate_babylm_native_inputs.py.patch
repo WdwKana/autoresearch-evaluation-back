@@ -1,0 +1,20 @@
+01 (AI-Researcher) patch for the shared file automation/scripts/generate_babylm_native_inputs.py
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+AI-Researcher rendering only:
+  * metaprompt EVALUATION: location note ('root-level' means the top of the workplace; files
+    inside the project directory are also collected)
+Origin: 910df40 (2026-09-03).
+
+--- a/automation/scripts/generate_babylm_native_inputs.py
++++ b/automation/scripts/generate_babylm_native_inputs.py
+@@ -182,7 +182,7 @@
+ """
+ BASELINE = "No host-prescribed baseline. The framework must choose and justify its own methods."
+ COMPARISON = "Compare only word-level validation perplexity across experiments on the same BabyLM dataset and split."
+-EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, experiment_trace.json (including model/base URL, idea-lock evidence, and word-level validation_perplexity per experiment), and final_report.md. The host creates score.json after native exit."
++EVALUATION = "Write and lock research_idea.json before the first experiment. Run 2-4 bounded framework-native experiments selected by the framework. Use the injected OPENAI_BASE_URL, OPENAI_API_KEY, and OPENAI_MODEL for all internal calls. Promote the selected result to root-level research_idea.json, experiment_trace.json (including model/base URL, idea-lock evidence, and word-level validation_perplexity per experiment), and final_report.md. Location note: 'root-level' means the top of your workplace; files inside your project directory are also collected, so either location is acceptable. The host creates score.json after native exit."
+ REF = "Do not use unrelated benchmarks, toy datasets, placeholder results, synthetic scores, or outputs from previous topics. The mounted text files contain real natural language data; do not fabricate perplexity values. The contract file is: {contract_file}"
+ METHOD_OWNERSHIP = "The framework owns the hypothesis, algorithm family, feature representation, architecture, hyperparameters, experiment sequence, comparison, and selected method."
+ DATA_INSPECTION_RULES = """

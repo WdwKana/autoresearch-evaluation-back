@@ -61,7 +61,7 @@ mkdir -p "$WORKSPACE" "$INPUT_ROOT" "$LOG_DIR" "$CODEX_HOME_DIR"
 [[ -d "$SRC" ]] || { echo "missing framework source: $SRC" >&2; exit 23; }
 write_state "starting" "Preparing AI-Researcher MountainCar fullrun workspace"
 
-python3 "$ROOT/automation/scripts/generate_topic2_native_inputs.py" \
+python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" generate ai_researcher automation/scripts/generate_topic2_native_inputs.py \
   --output-root "$INPUT_ROOT" --dataset-root "$TOPIC_ROOT" --contract-file "$CONTRACT_FILE" \
   --provider-base-url "$FRAMEWORK_PROVIDER_BASE_URL" --primary-model "$FRAMEWORK_MODEL_RAW" >/dev/null
 

@@ -19,7 +19,7 @@ mkdir -p "$BASE/inputs" "$LOG_DIR"
 [[ -d "$DATASET_ROOT" ]] || { echo "missing dataset root: $DATASET_ROOT" >&2; exit 21; }
 [[ -f "$CONTRACT_FILE" ]] || { echo "missing contract file: $CONTRACT_FILE" >&2; exit 22; }
 
-python3 "$ROOT/automation/scripts/generate_arc_wbe_2026_native_inputs.py" \
+python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" generate ai_researcher automation/scripts/generate_arc_wbe_2026_native_inputs.py \
   --output-root "$BASE/inputs" \
   --dataset-root "$DATASET_ROOT" \
   --contract-file "$CONTRACT_FILE" >/dev/null

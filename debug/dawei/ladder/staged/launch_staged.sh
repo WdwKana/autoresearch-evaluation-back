@@ -26,7 +26,7 @@ import json,sys; p=sys.argv[1]; T=json.load(open(p)); T.update(arm="staged",topi
 PY
 # inputs: theme-style topic + host loader in BOTH native code slots; data/split/scorer mounted like the production runner
 PROVIDER_ENV=$PUB/real_eval/runs/fullrun_arc_02_luna_20260917_085638/provider.env
-python3 "$PUB/automation/scripts/generate_psydefdetect_native_inputs.py" --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" --contract-file "$PUB/automation/psydefdetect_contract.md" --provider-base-url "$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)" --primary-model gpt-5.6-luna >/dev/null
+python3 "$PUB/real_eval/adapters/shared_layer_overlay.py" generate ai_scientist_v2 automation/scripts/generate_psydefdetect_native_inputs.py --output-root "$INP" --dataset-root "$PUB/data/psydefdetect" --contract-file "$PUB/automation/psydefdetect_contract.md" --provider-base-url "$(grep -E '^OPENAI_BASE_URL=' "$PROVIDER_ENV" | cut -d= -f2-)" --primary-model gpt-5.6-luna >/dev/null
 rsync -a "$INP/automation/" "$WS/automation/"; cp "$PUB/automation/psydefdetect_contract.md" "$WS/automation/psydefdetect_contract.md"; ln -sfn /data/psydefdetect "$WS/data/psydefdetect"
 cp "$SP/tier/psydefdetect_native.md" "$WS/ai_scientist/ideas/psydefdetect_native.md"
 cp "$SP/tier/psydefdetect_native.py" "$WS/hf_dataset_reference.py"

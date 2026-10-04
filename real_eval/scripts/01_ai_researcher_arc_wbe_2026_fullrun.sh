@@ -85,7 +85,7 @@ write_state "starting" "Preparing AI-Researcher ARC-WBE-2026 fullrun workspace"
   --source-root "$DATASET_ROOT" \
   --output-root "$FRAMEWORK_DATASET_ROOT"
 
-python3 "$ROOT/automation/scripts/generate_arc_wbe_2026_native_inputs.py" \
+python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" generate ai_researcher automation/scripts/generate_arc_wbe_2026_native_inputs.py \
   --output-root "$INPUT_ROOT" \
   --dataset-root /data/arc_wbe_2026 \
   --contract-file "$CONTRACT_FILE" \

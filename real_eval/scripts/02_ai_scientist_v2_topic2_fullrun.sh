@@ -186,4 +186,8 @@ timeout "${TOPIC2_FRAMEWORK_TIMEOUT:-7200}s" python launch_scientist_bfts.py \
   --model_agg_plots "$OPENAI_MODEL"
 EOF
 )
-exec "$ROOT"/real_eval/scripts/topic2_framework_fullrun.sh
+# The shared runner stays at upstream; 02's changes to it are applied to a copy
+# (real_eval/adapters/ai_scientist_v2/shared_layer_patches/, see real_eval/adapters/shared_layer_overlay.py).
+SHARED_RUNNER="$(python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" materialize ai_scientist_v2 real_eval/scripts/topic2_framework_fullrun.sh)"
+export RESEARCHCLAWEVAL_ROOT="$ROOT"
+exec "$SHARED_RUNNER"

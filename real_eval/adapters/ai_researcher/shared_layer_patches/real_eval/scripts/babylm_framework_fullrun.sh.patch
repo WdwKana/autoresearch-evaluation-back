@@ -1,0 +1,49 @@
+01 (AI-Researcher) patch for the shared file real_eval/scripts/babylm_framework_fullrun.sh
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+  * native inputs are rendered through the 01 overlay of the BabyLM generator
+  * EXIT cleanup removes only this run's inner sandboxes (prefix + run id) instead of every
+    ai_researcher_babylm_* container on the host (d216e4f, 2026-10-02)
+  * REAL_EVAL_ALLOWED_GPUS: opt-in device-level GPU confinement; unset keeps --gpus all
+    (c3eb6a3, 2026-09-18)
+
+--- a/real_eval/scripts/babylm_framework_fullrun.sh
++++ b/real_eval/scripts/babylm_framework_fullrun.sh
+@@ -58,7 +58,10 @@
+     real_eval_assert_no_new_forbidden_artifacts "$FRAMEWORK_SRC" "$TEMPLATE_ARTIFACTS_BEFORE"
+   fi
+ }
+-trap 'check_template_clean; docker ps -q --filter "name=ai_researcher_babylm_" | xargs -r docker rm -f' EXIT
++# [2026-10-02, user-approved shared-layer fix] Exit cleanup removes only THIS run's
++# inner sandboxes (prefix + run id); the former prefix-wide purge killed concurrent
++# runs' live containers (see 01_ai_researcher_real_babylm.sh history).
++trap 'check_template_clean; docker ps --format "{{.Names}}" | grep -E "^ai_researcher_babylm_.*${RUN_ID}" | xargs -r docker rm -f' EXIT
+ 
+ write_state() {
+   local status="$1"
+@@ -107,7 +110,7 @@
+   exit 25
+ fi
+ 
+-python3 "$ROOT/automation/scripts/generate_babylm_native_inputs.py" \
++python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" generate ai_researcher automation/scripts/generate_babylm_native_inputs.py \
+   --output-root "$INPUT_ROOT" \
+   --dataset-root "$DATASET_ROOT" \
+   --contract-file "$CONTRACT_FILE" \
+@@ -233,7 +236,14 @@
+   "${docker_host_args[@]}"
+ )
+ if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
+-  docker_cmd+=(--gpus all)
++  if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
++    # Device-level GPU confinement, same opt-in pattern as the ARC/psydef
++    # runners: callers that declare their allowed GPUs get a docker-level
++    # device boundary workers cannot cross. Unset keeps --gpus all.
++    docker_cmd+=(--gpus "device=${REAL_EVAL_ALLOWED_GPUS}")
++  else
++    docker_cmd+=(--gpus all)
++  fi
+ fi
+ if [[ -n "$FRAMEWORK_ENTRYPOINT" ]]; then
+   docker_cmd+=(--entrypoint "$FRAMEWORK_ENTRYPOINT")

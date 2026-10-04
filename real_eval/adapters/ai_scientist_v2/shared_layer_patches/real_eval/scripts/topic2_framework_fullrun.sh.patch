@@ -1,0 +1,17 @@
+02 (AI-Scientist-v2) patch for the shared file real_eval/scripts/topic2_framework_fullrun.sh
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+  * native inputs are rendered through the 02 overlay of the topic2 generator (no other change)
+
+--- a/real_eval/scripts/topic2_framework_fullrun.sh
++++ b/real_eval/scripts/topic2_framework_fullrun.sh
+@@ -84,7 +84,7 @@
+ [[ -n "$FRAMEWORK_RUNTIME_COMMAND" ]] || { write_state "blocked" "Framework runtime command is empty" 26; exit 26; }
+ 
+ # Generate framework-native inputs (briefs, prompts, contract, budget, scorer, starter copy)
+-python3 "$ROOT/automation/scripts/generate_topic2_native_inputs.py" \
++python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" generate ai_scientist_v2 automation/scripts/generate_topic2_native_inputs.py \
+   --output-root "$INPUT_ROOT" \
+   --dataset-root "$TOPIC_ROOT" \
+   --contract-file "$CONTRACT_FILE" \

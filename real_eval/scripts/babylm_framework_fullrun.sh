@@ -58,10 +58,7 @@ check_template_clean() {
     real_eval_assert_no_new_forbidden_artifacts "$FRAMEWORK_SRC" "$TEMPLATE_ARTIFACTS_BEFORE"
   fi
 }
-# [2026-10-02, user-approved shared-layer fix] Exit cleanup removes only THIS run's
-# inner sandboxes (prefix + run id); the former prefix-wide purge killed concurrent
-# runs' live containers (see 01_ai_researcher_real_babylm.sh history).
-trap 'check_template_clean; docker ps --format "{{.Names}}" | grep -E "^ai_researcher_babylm_.*${RUN_ID}" | xargs -r docker rm -f' EXIT
+trap 'check_template_clean; docker ps -q --filter "name=ai_researcher_babylm_" | xargs -r docker rm -f' EXIT
 
 write_state() {
   local status="$1"
@@ -236,14 +233,7 @@ declare -a docker_cmd=(
   "${docker_host_args[@]}"
 )
 if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
-  if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
-    # Device-level GPU confinement, same opt-in pattern as the ARC/psydef
-    # runners: callers that declare their allowed GPUs get a docker-level
-    # device boundary workers cannot cross. Unset keeps --gpus all.
-    docker_cmd+=(--gpus "device=${REAL_EVAL_ALLOWED_GPUS}")
-  else
-    docker_cmd+=(--gpus all)
-  fi
+  docker_cmd+=(--gpus all)
 fi
 if [[ -n "$FRAMEWORK_ENTRYPOINT" ]]; then
   docker_cmd+=(--entrypoint "$FRAMEWORK_ENTRYPOINT")

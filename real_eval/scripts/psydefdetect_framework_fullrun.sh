@@ -64,13 +64,13 @@ check_template_clean() {
   fi
 }
 cleanup_relay() {
-  local rc=${1:-$?}
+  local rc=$?
   set +e
   [[ "$RELAY_STARTED" == "1" ]] && docker rm -f "$RELAY_NAME" >/dev/null 2>&1
   [[ "$NETWORK_CREATED" == "1" ]] && docker network rm "$RELAY_NETWORK" >/dev/null 2>&1
   exit "$rc"
 }
-trap '_exit_rc=$?; check_template_clean || _exit_rc=$?; cleanup_relay "$_exit_rc"' EXIT
+trap 'check_template_clean; cleanup_relay' EXIT
 
 write_state() {
   local status="$1"
@@ -115,7 +115,7 @@ if [[ "$EVAL_MODEL" == kimi-* ]]; then
     write_state "blocked" "Kimi PsyDefDetect evaluation model must be kimi-k2.6, got: $EVAL_MODEL" 27
     exit 27
   fi
-  if [[ "${PSYDEFDETECT_KIMI_ALLOW_DIRECT:-0}" != "1" && "$FRAMEWORK_ISOLATED_RELAY" != "1" && ( "$PROVIDER_CONFIG" != "$ROOT/api/codex_kimi_k27_code_relay_container.toml" || "$PROVIDER_BASE_URL" != "http://host.docker.internal:8787/v1" ) ]]; then
+  if [[ "$FRAMEWORK_ISOLATED_RELAY" != "1" && ( "$PROVIDER_CONFIG" != "$ROOT/api/codex_kimi_k27_code_relay_container.toml" || "$PROVIDER_BASE_URL" != "http://host.docker.internal:8787/v1" ) ]]; then
     write_state "blocked" "Kimi PsyDefDetect requires the canonical Docker-bridge relay provider config" 28
     exit 28
   fi
@@ -294,15 +294,7 @@ if [[ "$FRAMEWORK_ISOLATED_RELAY" == "1" ]]; then
   docker_cmd+=(--network "$RELAY_NETWORK")
 fi
 if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
-  if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
-    # Device-level GPU confinement, same opt-in pattern as the ARC runner
-    # (see arc_framework_fullrun.sh): callers that declare their allowed
-    # GPUs get a docker-level device boundary workers cannot cross. Unset
-    # keeps --gpus all for every other caller.
-    docker_cmd+=(--gpus "device=${REAL_EVAL_ALLOWED_GPUS}")
-  else
-    docker_cmd+=(--gpus all)
-  fi
+  docker_cmd+=(--gpus all)
 fi
 if [[ -n "$FRAMEWORK_ENTRYPOINT" ]]; then
   docker_cmd+=(--entrypoint "$FRAMEWORK_ENTRYPOINT")
@@ -356,8 +348,8 @@ if [[ "$run_rc" -eq 0 && -n "$FRAMEWORK_LOG_FORBIDDEN_PATTERN" ]] && rg -q "$FRA
   run_rc=43
 fi
 
-if [[ "$run_rc" -eq 0 || "$run_rc" -eq 124 || "$run_rc" -eq 137 ]]; then
-  if ! python3 - "$WORKSPACE" "$EVAL_MODEL" <<'PY'
+if [[ "$run_rc" -eq 0 ]]; then
+  python3 - "$WORKSPACE" "$EVAL_MODEL" <<'PY'
 from __future__ import annotations
 
 import json
@@ -414,10 +406,6 @@ if (
 if not isinstance(trace.get("workspace_trace_root"), str) or not trace["workspace_trace_root"].strip():
     raise SystemExit("experiment_trace.json must include workspace_trace_root")
 PY
-  then
-    write_state "failed" "PsyDefDetect handoff validation failed (non-conforming or missing artifacts); see log" 44
-    exit 44
-  fi
 fi
 
 mkdir -p "$BASE/artifacts"
@@ -453,11 +441,8 @@ payload = {
 Path(sys.argv[1]).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 
-if [[ "$run_rc" -ne 0 && "$run_rc" -ne 124 && "$run_rc" -ne 137 ]]; then
+if [[ "$run_rc" -ne 0 ]]; then
   write_state "failed" "PsyDefDetect framework-native full run exited non-zero; see log" "$run_rc"
   exit "$run_rc"
-fi
-if [[ "$run_rc" -eq 124 || "$run_rc" -eq 137 ]]; then
-  echo "[psydef] native run hit timeout ($run_rc) but produced conforming artifacts -- scoring accepted (consistent with ARC/mcar)"
 fi
 write_state "finished" "PsyDefDetect framework-native full run exited successfully" 0

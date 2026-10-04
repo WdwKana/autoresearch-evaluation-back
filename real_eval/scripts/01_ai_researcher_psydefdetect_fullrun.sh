@@ -1014,4 +1014,8 @@ timeout "${AI_RESEARCHER_PSYDEFDETECT_TIMEOUT_SECONDS:-86400}s" python run_infer
   --category psydefdetect
 EOF
 )
-exec "$ROOT"/real_eval/scripts/psydefdetect_framework_fullrun.sh
+# The shared runner stays at upstream; 01's changes to it are applied to a copy
+# (real_eval/adapters/ai_researcher/shared_layer_patches/, see real_eval/adapters/shared_layer_overlay.py).
+SHARED_RUNNER="$(python3 "$ROOT/real_eval/adapters/shared_layer_overlay.py" materialize ai_researcher real_eval/scripts/psydefdetect_framework_fullrun.sh)"
+export RESEARCHCLAWEVAL_ROOT="$ROOT"
+exec "$SHARED_RUNNER"

@@ -36,6 +36,3 @@ real_eval/systemd_runs/
 .sdd/
 recovery/
 
-my_provider.toml
-my_provider_deepseek.toml
-my_provider_kimi.toml

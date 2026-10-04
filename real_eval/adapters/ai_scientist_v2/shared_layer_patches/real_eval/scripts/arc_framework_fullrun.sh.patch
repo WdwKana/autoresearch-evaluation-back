@@ -1,0 +1,70 @@
+02 (AI-Scientist-v2) patch for the shared file real_eval/scripts/arc_framework_fullrun.sh
+Applied at run time by real_eval/adapters/shared_layer_overlay.py; the shared file itself
+stays byte-identical to upstream.
+
+  * EXIT cleanup removes only this run's inner sandboxes (prefix + run id) instead of every
+    arc_wbe_2026_eval_* container on the host (d216e4f, 2026-10-02)
+  * REAL_EVAL_ALLOWED_GPUS: opt-in device-level GPU confinement -- 02's GPU manager overrides
+    CUDA_VISIBLE_DEVICES per worker, so the docker device set is the only boundary workers
+    cannot cross; unset keeps --gpus all (37c9ea1 0c85257, 2026-09-14)
+  * HF_HUB_OFFLINE / HF_DATASETS_OFFLINE default to 1: the topic is fully local and stray hub
+    calls otherwise hang on the network (a6bdfab, 2026-09-14)
+
+--- a/real_eval/scripts/arc_framework_fullrun.sh
++++ b/real_eval/scripts/arc_framework_fullrun.sh
+@@ -81,7 +81,10 @@
+ }
+ 
+ real_eval_require_clean_dir "$BASE"
+-trap 'docker ps -q --filter "name=arc_wbe_2026_eval_" | xargs -r docker rm -f' EXIT
++# [2026-10-02, user-approved shared-layer fix] Exit cleanup removes only THIS run's
++# inner sandboxes (prefix + run id), never every arc_wbe_2026_eval_* container on
++# the host -- the 01 ARC inner sandboxes share that prefix.
++trap 'docker ps --format "{{.Names}}" | grep -E "^arc_wbe_2026_eval_.*${RUN_ID}" | xargs -r docker rm -f' EXIT
+ mkdir -p "$BASE" "$INPUT_ROOT" "$CODEX_HOME_DIR" "$LOG_DIR"
+ if [[ -n "$FRAMEWORK_HOST_HOME_DIR" ]]; then
+   mkdir -p "$FRAMEWORK_HOST_HOME_DIR"
+@@ -255,7 +258,18 @@
+       "${docker_host_args[@]}"
+     )
+     if [[ "$FRAMEWORK_DISABLE_GPU" != "1" ]]; then
+-      docker_cmd+=(--gpus all)
++      if [[ -n "${REAL_EVAL_ALLOWED_GPUS:-}" ]]; then
++        # Device-level GPU confinement. The env-level CUDA_VISIBLE_DEVICES
++        # attempt FAILED: 02's GPU manager enumerates devices via NVML and
++        # overrides the variable per worker process (run 20260914_075102:
++        # workers grabbed GPUs 0-3, other tenants' cards). Restricting the
++        # device set at the docker level is the only boundary worker code
++        # cannot cross; inside the container the allowed card(s) renumber
++        # from 0. Opt-in: unset keeps --gpus all for other frameworks.
++        docker_cmd+=(--gpus "device=${REAL_EVAL_ALLOWED_GPUS}")
++      else
++        docker_cmd+=(--gpus all)
++      fi
+     fi
+     if [[ -n "$FRAMEWORK_ENTRYPOINT" ]]; then
+       docker_cmd+=(--entrypoint "$FRAMEWORK_ENTRYPOINT")
+@@ -274,6 +288,23 @@
+       -e RESEARCHCLAWEVAL_TOPIC_DATASET_ROOT=/data/arc_wbe_2026
+       -e RESEARCHCLAWEVAL_TOPIC_CONTRACT_FILE=$FRAMEWORK_CONTAINER_WORKDIR/automation/arc_wbe_2026_contract.md
+       -e ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS="${ARC_WBE_2026_FRAMEWORK_TIMEOUT_SECONDS:-3600}"
++      # ARC-WBE-2026 is a fully local task: its only data is the mounted parquet
++      # at /data/arc_wbe_2026 and the official scorer is numpy-only -- no topic
++      # code legitimately needs HuggingFace. Framework agents nonetheless
++      # sometimes emit a stray load_dataset()/from_pretrained() (observed: a
++      # BFTS node hanging ~10 min on load_dataset("ag_news") against the default
++      # hub before its own try/except timed out). Default the container to HF
++      # offline so such strays fail instantly instead of hanging on the network;
++      # this matches 01's TDC/mountaincar wrappers, which are also non-HF topics.
++      # Overridable per framework (export HF_HUB_OFFLINE=0) in the unlikely case
++      # one needs the hub for ARC.
++      -e HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
++      -e HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
++    )
++    # (env-level CUDA_VISIBLE_DEVICES confinement removed: 02's GPU manager
++    # overrides it per worker; superseded by --gpus device= above. It would
++    # also conflict with device-level renumbering.)
++    docker_cmd+=(
+       -e FRAMEWORK_NAME="$FRAMEWORK_NAME"
+       -e FRAMEWORK_SLUG="$FRAMEWORK_SLUG"
+       -e REAL_EVAL_RUN_ID="$RUN_ID"
