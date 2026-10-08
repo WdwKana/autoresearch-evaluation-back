@@ -32,7 +32,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(os.environ.get("RESEARCHCLAWEVAL_ROOT") or Path(os.path.abspath(__file__)).parents[3])
+# the checkout this file lives in, spelled as the caller invoked it (a RESEARCHCLAWEVAL_ROOT
+# naming another checkout is rejected by the overlay engine this script calls)
+ROOT = Path(os.path.abspath(__file__)).parents[3]
 OVERLAY = ROOT / "real_eval" / "adapters" / "shared_layer_overlay.py"
 TOPIC2_GENERATOR = "automation/scripts/generate_topic2_native_inputs.py"
 TOPIC2_CONTRACT = ROOT / "automation" / "topic2_contract.md"
