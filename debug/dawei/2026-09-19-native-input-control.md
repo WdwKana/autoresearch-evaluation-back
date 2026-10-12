@@ -628,6 +628,13 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 已知可见差异与待用户裁决:① 只有 TDC runner 把整棵渲染输入树只读挂到容器 `/input`,01 TDC 容器内的 `/input/AI-Scientist-v2/ai_scientist/ideas/tdc_admet_tox_topic.md` 现为上游文本(少 02 那句"只用提供文件");旧 02 正式 TDC 包装器反向同理;没有任何指令/文件指向它,工作区不复制。② 03–07 从本仓库运行恢复上游行为:mcar 门槛 2–4、mcar 生成器符号链接 → 上游 mcar 流程本就在复制步骤失败、TDC 4 核、EXIT 按前缀清容器、psydef runner 吞退出码/无超时接受、无 `REAL_EVAL_ALLOWED_GPUS` 钩子——队友自己的 checkout 一直如此;这些补丁可直接作为向上游提案的材料。③ `.gitignore` 凭据条目只在本地 exclude:fresh clone 后要重加(或向上游提 PR 加 `my_provider*.toml`)。④ 我们新增在 `real_eval/scripts/` 的 5 个自有文件(adjudicate_*、harvest_before_rm.sh、probe_02_ideation_raw.py、resolve_native_artifacts.py)只是新增、不改上游文件,未搬。⑤ TDC 提示词措辞错位(4878c71 把 3,600 s 句插进 "predictions" 与 ".csv" 之间)原样保留在 01 补丁里并已在补丁头注明。
 - 发射方式变化:01 发射脚本只需冻结包装器副本(包装器自己物化补丁后的 runner),并 `export RESEARCHCLAWEVAL_ROOT=<本 checkout>`;旧的"cp runner + sed exec 行"写法失配,其 `grep -q` 自检会拦住不发。
 
+#### 运行记录交付(合作者过程打分;2026-10-11 打包,10-12 上传完成)
+- 用户要求:把表里各格对应的运行记录(全部过程记录 + 最终产物)整理后上传 Hugging Face 给合作者打过程分;run 目录只放原生文件、不过分删除、不动原 run 目录;顶层目录名要能看出框架与模型;探针里的数据片段不给合作者。
+- 核对:44 个目录逐格对上(01 mcar 的分数在 `adjudication_mcar01_ge1_20260928/`;01 mcar g6 的 manifest 期望模型写错为 gpt-5.6-luna 属已知宿主缺陷,trace/裁决为 gpt-6-luna;01 BabyLM 的 idea/报告系事后补写)。
+- 包:`real_eval/run_checks/handover_20261011/package/`(脚本 `handover_pack.py` / `prune_derived.py` / `verify_package.py` / `make_readme.py` / `verify_remote.py` 同目录)。布局 `runs/<框架>__<topic>__<模型>__[<角色>__]<run_id>/`,57 个 run + 1 个裁决目录,14,814 个文件,4.8 GB(原始 50.8 GB)。剔除(仅对副本):凭据文件、探针(request/response_probe、wire_tap、prompt_logs)、数据集副本及 agent 重新序列化的语料(127 个文件,约 1 GB,按内容识别)、与 AI-Researcher 模板逐字节相同的文件、缓存、指向外部的符号链接。核查:32 个计分 run 交付物齐全;凭据扫描 0 命中;残留数据片段仅在原生终端输出/日志里(psydef 10 文件、BabyLM 61 文件、TDC SMILES 74 文件)。
+- 上传:`Refrainkana33/researchclaweval-01-02-run-records`(dataset,**暂 private**,用户原意公开,待其看过残留片段数后决定)。教训:`upload_large_folder` 默认 worker=核数−2(382)把代理连接撑断;Xet 通道经代理大量 CAS 网络错误(8 worker 时 36 分钟 1,156 错、零进展);夜间经典 LFS 通道也陷入 "Max retries" 重试风暴(16 小时 +46 文件、6 GB 日志)。最终配置:`HF_HUB_DISABLE_XET=1` + `hf_transfer` + 4 worker + 重试噪音只计数,07:05 重启后 10 分钟传完。远端校验:缺失 0;2,281 个 LFS 文件 sha256 与本地 SHA256SUMS 全部一致;40 个非 LFS 文件抽样下载哈希一致;大小一致。
+- 用户的 HF token 曾贴在对话里(存于 ~/.cache/huggingface/token,600),建议交付后作废重发。
+
 #### 01 mcar 评分环境修复(2026-10-04,专属形式)
 - 用户倾向方案 A(评分在 JAX 环境执行),并强调不直接改共享层。实现:新增 01 专属 `real_eval/adapters/mountaincar_continuous/host_python_jax.sh`(镜像外把自己重新放进 ai-researcher-exec:mountaincar-jax 执行,镜像内即 `python`;评分脚本内部嵌套的 `--python` 调用同样落到镜像内解释器;无网络),01 mcar wrapper 通过共享 runner **已有的** `MOUNTAINCAR_CONTINUOUS_PYTHON` 钩子指向它(0fd776d)。共享 runner 与共享评分脚本零改动。离线测试:对 kimi 163455 的交付物重跑官方评分,rc=0,分数 −95.30374908447266,与重裁逐位一致。
 
