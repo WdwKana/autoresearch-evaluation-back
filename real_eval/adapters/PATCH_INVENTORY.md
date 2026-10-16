@@ -64,9 +64,26 @@
 
 交付运行记录时这三者的输出(`request_probe.jsonl` / `response_probe.jsonl` / `wire_tap.jsonl`)按用户决定整体剔除。
 
-### 01 包装器内嵌的 inline 补丁(18 段,待逐段登记)
+### 01/02 包装器内嵌的 inline 补丁(我们新增 14 段;psydef 01 包装器里的 2 段是上游自带的)
 
-`01_ai_researcher_arc_wbe_2026_fullrun.sh` 10 段、`01_ai_researcher_real_babylm.sh` 6 段、`01_ai_researcher_psydefdetect_fullrun.sh` 2 段、`01_ai_researcher_tdc_admet_tox_fullrun.sh` 1 段。它们以 `python3 - <<'PY'` 形式写在 RUNTIME_COMMAND 里,没有文件名和 WHY 头,是最该抽成独立补丁文件的部分。已知内容包括:model-fact 注入(把实际模型名/URL 写进 brief)、交付映射(把框架原生位置的交付物链接到工作区根)、psydef 的紧凑化改写、BabyLM 的 metaprompt 与数据集放置。
+包装器相对上游的改动分四种:调用上述补丁文件的命令行(01 各包装器 18–21 行)、环境/预算设置(CPU 32、墙钟、`AI_RESEARCHER_MAX_TURNS=300`、loop-guard 上限、HF 离线、探针日志路径、`AI_RESEARCHER_PREPARE_BYPASS=1`、交付文件 glob 等)、overlay 重定向(exec 物化后的共享 runner)、以及下面这些以 `python3 - <<'PY…'` 写在 RUNTIME_COMMAND 里的 inline 块——它们在实质上也是补丁,只是没有独立文件和 WHY 头,是最该抽出去的部分:
+
+| 包装器 | 块 | 行数 | 做什么 | 归类 |
+|---|---|---|---|---|
+| 01 ARC | `PYMODELFACT` | 30 | model-fact 注入:把容器里实际注入的模型名/base URL 字面值追加到每份 run 内的 brief,防止 agent 写成占位符或臆造的公开 URL(`…131103` 写成 "gpt-4") | agent_prompt_replacement 边缘(只加事实) |
+| 01 ARC | `PY` | 21 | 交付映射/搬运:把框架原生位置的交付物链接到工作区根(`resolve_native_artifacts.py`) | host_handoff_promotion 边缘(只搬不写) |
+| 01 mcar | `PYMODELFACT` | 32 | 同上(mcar) | 同上 |
+| 01 mcar | `PYRELOC` | 79 | 把框架保存在子目录里的五个 checkpoint 搬到 `checkpoints/`(门槛要求的位置);可离线对留存 run 重放 | host_handoff_promotion 边缘 |
+| 01 TDC | `PYMODELFACT` | 32 | 同上(TDC) | 同上 |
+| 01 BabyLM | `PY` | 39 | 修 `run_infer_idea.py` 模块级调用缺参数、注册工具模块(ARC 包装器已有同样修法) | 实现缺陷修正 |
+| 01 BabyLM | `PYTT` | 17 | `count_tokens()` 对含 `<\|endoftext\|>` 的语料会抛错;改用允许特殊 token 的编码 | 稳健性 |
+| 01 BabyLM | `PYMODEL` | 54 | 论文撰写阶段默认模型名硬编码,导致研究完成后 writeup 全丢;改用注入的模型 | relay_env |
+| 01 BabyLM | `PYCACHE` | 50 | `compose_section()` 硬编码的 agent 缓存文件名与研究阶段实际写出的不符;对齐 | 实现缺陷修正 |
+| 01 BabyLM | `PYNONE` | 32 | LLM 返回空时 `write_temp_log()` 写 None 导致 writeup 崩溃;加保护 | 稳健性 |
+| 01 BabyLM | `PYSCORE` | 21 | 从框架自报的 trace 读 validation_perplexity 写 score.json | score_creation 边缘(只抄框架自报值) |
+| 02 ARC(旧正式包装器) | `PY` | 34 | 上游"有则复制 experiment_results,随后无条件删除"的顺序缺陷 | 实现缺陷修正 |
+| 02 ARC(旧正式包装器) | `PYSPEC` | 49 | 把交付契约写进 idea JSON,使 BFTS 编码 agent 能看到(它看不到 ideation 的系统提示) | agent_prompt_replacement |
+| 02 psydef(旧正式包装器) | `PYTOK` | 8 | 同 PYTT 的 tiktoken 特殊 token 修法 | 稳健性 |
 
 其它 01 专属文件:`mountaincar_continuous/patch_ai_researcher.py`(mcar 运行时适配)、`mountaincar_continuous/host_python_jax.sh`(让共享 runner 的官方评分在 JAX 镜像内执行)、`tdc_admet_tox/patch_ai_researcher.py`(TDC 运行时适配,610 行;上游 e742d15 已用 `install_runtime_adapter.py` 重写)。
 
