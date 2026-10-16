@@ -40,211 +40,19 @@ real_eval_require_clean_dir "$BASE"
 mkdir -p "$BASE" "$LOG_DIR"
 real_eval_rsync_repo "$SRC" "$REPO"
 
-# Upstream ships research_agent/constant.py without PLATFORM, so every tool
-# module that imports it fails during the tools package's recursive import and
-# run_infer_idea.py dies with "cannot import name 'gen_code_tree_structure'".
-# The ARC wrapper already patches this; BabyLM never did. Same minimal fix:
-# define PLATFORM and register the tool modules explicitly.
-python3 - "$REPO/research_agent/constant.py" "$REPO/research_agent/inno/tools/__init__.py" "$REPO/research_agent/run_infer_idea.py" <<'PY'
-from pathlib import Path
-import sys
+# PY inline block extracted to real_eval/adapters/babylm/patch_entrypoint_ai_researcher.py (2026-10-16); body unchanged.
+python3 "$ROOT/real_eval/adapters/babylm/patch_entrypoint_ai_researcher.py" "$REPO/research_agent/constant.py" "$REPO/research_agent/inno/tools/__init__.py" "$REPO/research_agent/run_infer_idea.py"
 
-entrypoint = Path(sys.argv[3])
-text = entrypoint.read_text(encoding="utf-8")
-# Upstream's main() takes (args, references); the module-level call passes only
-# args. The ARC wrapper already patches this; BabyLM never did.
-if '    main(args)\n' in text:
-    text = text.replace('    main(args)\n', '    main(args, references="")\n', 1)
-# GitHub code search needs a token the public setup does not ship (401 kills the
-# run). ARC bypasses it for its category; do the same for babylm.
-old_gh = '        github_result = self.git_search({"metadata": metadata})'
-new_gh = '        github_result = "" if category == "babylm" else self.git_search({"metadata": metadata})'
-if old_gh in text:
-    text = text.replace(old_gh, new_gh, 1)
-else:
-    print("SKIP: GitHub-search insertion point not found")
-entrypoint.write_text(text, encoding="utf-8")
+# PYTT inline block extracted to real_eval/adapters/babylm/patch_tiktoken_special_tokens.py (2026-10-16); body unchanged.
+python3 "$ROOT/real_eval/adapters/babylm/patch_tiktoken_special_tokens.py" "$REPO/benchmark_collection/utils/openai_utils.py"
 
-constants = Path(sys.argv[1])
-text = constants.read_text(encoding="utf-8")
-if "PLATFORM =" not in text:
-    constants.write_text(text + "\nPLATFORM = 'linux/amd64'\n", encoding="utf-8")
+# PYMODEL inline block extracted to real_eval/adapters/babylm/patch_writeup_model_routing.py (2026-10-16); body unchanged.
+python3 "$ROOT/real_eval/adapters/babylm/patch_writeup_model_routing.py" "$REPO/benchmark_collection/utils/openai_utils.py"
 
-tools = Path(sys.argv[2])
-text = tools.read_text(encoding="utf-8")
-old = "import_tools_recursively(current_dir, 'inno.tools')"
-new = '''for module_name in (
-    "terminal_tools",
-    "inner",
-    "inno_tools.planning_tools",
-    "inno_tools.web_tools",
-):
-    importlib.import_module(f"research_agent.inno.tools.{module_name}")'''
-if old in text:
-    tools.write_text(text.replace(old, new), encoding="utf-8")
-else:
-    print("SKIP: tool registration insertion point not found")
-PY
-
-python3 - "$REPO/benchmark_collection/utils/openai_utils.py" <<'PYTT'
-from pathlib import Path
-import sys
-
-# count_tokens() calls tiktoken encode() with default args, which raises on any
-# text containing a special token such as <|endoftext|>. BabyLM corpora are
-# GPT-2-style text and contain that literal, so paper composition dies after the
-# research work is already done (run fullrun_babylm_01_20260827_092535 lost 8.5
-# hours of completed training to this). Count them as ordinary text.
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-old = "    return len(encoding.encode(text))"
-new = "    return len(encoding.encode(text, disallowed_special=()))"
-if old in text:
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
-else:
-    print("SKIP: count_tokens insertion point not found")
-PYTT
-
-python3 - "$REPO/benchmark_collection/utils/openai_utils.py" <<'PYMODEL'
-from pathlib import Path
-import sys
-
-# Run fullrun_babylm_01_20260828_130336 finished its research (EXIT_CODE=0) and
-# then lost the whole writeup: SectionComposer defaults gpt_model to
-# 'gpt-4o-mini-2024-07-18' and MethodologyComposer never overrides it, so all
-# 22 writing-phase calls hit the provider as gpt-4o-mini and got 403 (token has
-# no access to that model). chat() swallows the 403 and returns None, which
-# then crashes the first consumer that assumes text. Two source-level fixes:
-# route every GPTClient through the injected OPENAI_MODEL, and make chat()
-# degrade to "" instead of None so no consumer can crash on a failed call.
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-
-old = "        self.model = model"
-new = '        self.model = os.environ.get("OPENAI_MODEL") or model'
-if old in text:
-    text = text.replace(old, new, 1)
-else:
-    print("SKIP: GPTClient model assignment not found")
-
-old = """                    response = await self._get_response(messages, temperature, max_tokens)
-
-                    # \u2705 Log the output
-                    log_message("Assistant Message", datetime.datetime.now(), f"Paper Agent: {response.strip()}")
-
-                    return response"""
-new = """                    response = await self._get_response(messages, temperature, max_tokens)
-                    if not isinstance(response, str):
-                        print("Empty completion content; coercing to empty string")
-                        response = ""
-                    log_message("Assistant Message", datetime.datetime.now(), f"Paper Agent: {response.strip()}")
-
-                    return response"""
-if old in text:
-    text = text.replace(old, new, 1)
-else:
-    print("SKIP: chat success path not found")
-
-for prefix, indent in (
-    ('            print("Warning: Input tokens exceed model\'s context window")', "            "),
-    ('                        print(f"Final attempt failed: {str(e)}")', "                        "),
-    ('                    print(f"Unexpected error: {str(e)}")', "                    "),
-    ('            print(f"Error in chat method: {str(e)}")', "            "),
-):
-    old = prefix + "\n" + indent + "return None"
-    new = prefix + "\n" + indent + 'return ""'
-    if old in text:
-        text = text.replace(old, new, 1)
-    else:
-        print(f"SKIP: return-None site not found after: {prefix.strip()[:40]}")
-
-path.write_text(text, encoding="utf-8")
-PYMODEL
-
-python3 - "$REPO/paper_agent/methodology_composing_using_template.py" <<'PYCACHE'
-from pathlib import Path
-import sys
-
-# compose_section() hardcodes a list of agent cache files, but the research phase
-# writes paper_survey_agent.json / code_survey_agent.json -- there is no
-# survey_agent.json -- so paper composition dies with FileNotFoundError after the
-# research work is finished. Two separate loops consume this list (runs
-# fullrun_babylm_01_20260828_051721 and _144108 died at one each), so resolve the
-# list once where it is built instead of guarding each consumer in turn.
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-old = """        agent_files = [
-            'prepare_agent.json',
-            'survey_agent.json',
-            'coding_plan_agent.json',
-            'machine_learning_agent.json',
-            'judge_agent.json',
-            'machine_learning_agent_iter_submit.json',
-            'experiment_analysis_agent_iter_refine_1.json',
-            'machine_learning_agent_iter_refine_1.json',
-        ]"""
-new = """        _requested_agent_files = [
-            'prepare_agent.json',
-            'survey_agent.json',
-            'coding_plan_agent.json',
-            'machine_learning_agent.json',
-            'judge_agent.json',
-            'machine_learning_agent_iter_submit.json',
-            'experiment_analysis_agent_iter_refine_1.json',
-            'machine_learning_agent_iter_refine_1.json',
-        ]
-        _agent_aliases = {
-            'survey_agent.json': ['survey_agent.json', 'paper_survey_agent.json', 'code_survey_agent.json'],
-        }
-        agent_files = []
-        for _requested in _requested_agent_files:
-            _resolved = next(
-                (c for c in _agent_aliases.get(_requested, [_requested])
-                 if os.path.isfile(os.path.join(agent_dir, c))),
-                None,
-            )
-            if _resolved is None:
-                logging.warning(f"skipping absent agent cache file: {_requested}")
-                continue
-            agent_files.append(_resolved)"""
-if old in text:
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
-elif "_requested_agent_files" not in text:
-    print("SKIP: agent_files definition not found")
-PYCACHE
-python3 - "$REPO/paper_agent/section_composer.py" <<'PYNONE'
-from pathlib import Path
-import sys
-
-# write_temp_log() writes whatever the structure generator returned; when an LLM
-# call yields nothing it is None and the writeup dies with
-# "write() argument must be str, not None" after the research is complete
-# (run fullrun_babylm_01_20260828_055119). Coerce to text.
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-
-# Root cause of the same family: generate_or_revise_structure returns whatever
-# gpt_client.chat() gives back, and a None answer then propagates into
-# write_temp_log / structure.split (run fullrun_babylm_01_20260828_121236 died
-# on "'NoneType' object has no attribute 'split'"). Coerce at the source so an
-# empty LLM reply degrades to an empty structure instead of killing the writeup.
-comp = path.parent / "methodology_composing_using_template.py"
-if comp.is_file():
-    ctext = comp.read_text(encoding="utf-8")
-    old_ret = "        return await self.gpt_client.chat(prompt=prompt)"
-    new_ret = ("        _arc_result = await self.gpt_client.chat(prompt=prompt)\n"
-               "        return _arc_result if isinstance(_arc_result, str) else (current_structure or \"\")")
-    if old_ret in ctext and "_arc_result" not in ctext:
-        comp.write_text(ctext.replace(old_ret, new_ret, 1), encoding="utf-8")
-    elif old_ret not in ctext and "_arc_result" not in ctext:
-        print("SKIP: structure generator return anchor not found")
-old = "        with open(filename, 'w', encoding='utf-8') as f:\n            f.write(content)"
-new = "        with open(filename, 'w', encoding='utf-8') as f:\n            f.write(content if isinstance(content, str) else ('' if content is None else str(content)))"
-if old in text:
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
-else:
-    print("SKIP: write_temp_log insertion point not found")
-PYNONE
+# PYCACHE inline block extracted to real_eval/adapters/babylm/patch_writeup_agent_cache_files.py (2026-10-16); body unchanged.
+python3 "$ROOT/real_eval/adapters/babylm/patch_writeup_agent_cache_files.py" "$REPO/paper_agent/methodology_composing_using_template.py"
+# PYNONE inline block extracted to real_eval/adapters/babylm/patch_writeup_none_guard.py (2026-10-16); body unchanged.
+python3 "$ROOT/real_eval/adapters/babylm/patch_writeup_none_guard.py" "$REPO/paper_agent/section_composer.py"
 real_eval_provider_env_from_codex_toml "$PROVIDER_CONFIG" "$PROVIDER_ENV"
 real_eval_semantic_env_from_usage_md "$SEMANTIC_SOURCE" "$SEMANTIC_ENV"
 cp "$ROOT/api/github.env" "$GITHUB_ENV" 2>/dev/null || echo "GITHUB_AI_TOKEN=" > "$GITHUB_ENV"
@@ -804,28 +612,8 @@ mkdir -p "$BASE/workspace"
 # (symlinks, audited) before the score hookup looks for them.
 mkdir -p "$BASE/workspace"
 python3 "$ROOT/real_eval/scripts/resolve_native_artifacts.py" --workspace "$BASE/workspace" --topic babylm || true
-python3 - "$REPO" "$BASE" <<'PYSCORE'
-import json, shutil, sys
-from pathlib import Path
-
-repo, base = Path(sys.argv[1]), Path(sys.argv[2])
-target = base / "workspace" / "experiment_trace.json"
-if not target.is_file():
-    candidates = sorted(
-        repo.glob("research_agent/workplace_paper/task_*/workplace*/workplace*/experiment_trace.json")
-    ) + sorted(repo.glob("research_agent/workplace_paper/task_*/workplace*/workplace*/project/experiment_trace.json"))
-    newest = max(candidates, key=lambda c: c.stat().st_mtime, default=None)
-    if newest is not None:
-        shutil.copy2(newest, target)
-        (base / "workspace" / "handoff_relocation.json").write_text(json.dumps({
-            "relocated_verbatim": ["experiment_trace.json"],
-            "source": str(newest),
-            "note": "framework-authored trace copied unchanged for host scoring",
-        }, indent=2) + "\n", encoding="utf-8")
-        print(f"[babylm-handoff] relocated trace from {newest}")
-    else:
-        print("[babylm-handoff] framework wrote no experiment_trace.json; nothing relocated")
-PYSCORE
+# PYSCORE inline block extracted to real_eval/adapters/babylm/relocate_trace_ai_researcher.py (2026-10-16); body unchanged.
+python3 "$ROOT/real_eval/adapters/babylm/relocate_trace_ai_researcher.py" "$REPO" "$BASE"
 if [[ -s "$BASE/workspace/experiment_trace.json" ]]; then
   if python3 "$ROOT/automation/scripts/run_babylm_score.py"       --run-root "$BASE" --output-score "$BASE/workspace/score.json"       >"$LOG_DIR/official_score.log" 2>&1; then
     echo "[babylm-score] $(cat "$BASE/workspace/score.json" | head -c 200)"

@@ -150,6 +150,9 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_tool_args_resilience.py" "$REPO
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_file_browser_text.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_exec_env_provision.py" "$REPO/real_eval/adapters/ai_researcher/"
 cp "$ROOT/real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py" "$REPO/real_eval/adapters/ai_researcher/"
+# topic-scoped 01 patch (extracted from the former PYMODELFACT inline block, 2026-10-16)
+mkdir -p "$REPO/real_eval/adapters/arc_wbe_2026"
+cp "$ROOT/real_eval/adapters/arc_wbe_2026/patch_model_fact_ai_researcher.py" "$REPO/real_eval/adapters/arc_wbe_2026/"
 
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
 from pathlib import Path
@@ -386,43 +389,8 @@ RUNTIME_COMMAND=$(cat <<EOF
 set -euo pipefail
 echo "AI_RESEARCHER_NATIVE_INFER_IDEA"
 cd /workspace/AI-Researcher
-# 01-scoped input-fact patch (run-local copies only; the shared generator stays
-# untouched per the 2026-09-28 shared-layer ruling). The trace gate requires
-# framework_internal_model / framework_internal_api_base_url to equal the injected
-# values byte-for-byte, but the brief never stated the literals; kimi hallucinated
-# "gpt-4" (fullrun_arc_01_kimi_20260927_131103). Append the literals, read from THIS
-# container's env, to every run-local copy of the brief.
-python3 - <<'PYMODELFACT'
-import os
-from pathlib import Path
-
-MARK = "arc01-model-fact"
-model = os.environ.get("OPENAI_MODEL", "")
-base = os.environ.get("OPENAI_BASE_URL", "")
-pairs = [
-    ("  \"not_called\")", f'  "not_called"); in this run that value is exactly "{model}"'),
-    ("  `OPENAI_BASE_URL` environment variable", f'  `OPENAI_BASE_URL` environment variable; in this run that value is exactly "{base}"'),
-]
-if model and base:
-    for f in Path("/workspace").rglob("ARC_WBE_2026_BRIEF.md"):
-        text = f.read_text(encoding="utf-8")
-        if MARK in text or "in this run that value is exactly" in text:
-            print(f"[{MARK}] already present: {f}")
-            continue
-        n = 0
-        for old, new in pairs:
-            if text.count(old) == 1:
-                text = text.replace(old, new, 1)
-                n += 1
-        if n:
-            text += f"\n<!-- {MARK}: injected-model literals appended by the 01 wrapper -->\n"
-            f.write_text(text, encoding="utf-8")
-            print(f"[{MARK}] {n} literal(s) appended: {f}")
-        else:
-            print(f"[{MARK}] anchors not found in {f}; brief left untouched")
-else:
-    print(f"[{MARK}] OPENAI_MODEL/OPENAI_BASE_URL not set; nothing done")
-PYMODELFACT
+# PYMODELFACT inline block extracted to real_eval/adapters/arc_wbe_2026/patch_model_fact_ai_researcher.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/arc_wbe_2026/patch_model_fact_ai_researcher.py
 if [ "${AI_RESEARCHER_IDEA_LOOP_FIXES:-1}" = 1 ]; then
   python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 fi

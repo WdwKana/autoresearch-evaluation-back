@@ -18,6 +18,8 @@ real_eval/adapters/ai_scientist_v2/patch_bfts_delivery_contract.py
 real_eval/adapters/ai_scientist_v2/arc_contract_finalization.py
 real_eval/adapters/ai_scientist_v2/patch_native_finalization.py
 real_eval/adapters/ai_scientist_v2/patch_task_definition_taskdesc.py
+real_eval/adapters/ai_scientist_v2/patch_bfts_cleanup_guard.py
+real_eval/adapters/arc_wbe_2026/patch_idea_delivery_spec_ai_scientist_v2.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -99,41 +101,8 @@ if marker not in text:
     raise SystemExit("AI-Scientist-v2 ARC handoff prompt insertion point not found")
 path.write_text(text.replace(marker, addition, 1), encoding="utf-8")
 PY
-python3 - launch_scientist_bfts.py <<'PY'
-from pathlib import Path
-import sys
-
-# Upstream copies experiment_results only "if os.path.exists(...)" but then
-# removes it unconditionally, so a run whose stages produced no aggregated
-# results directory crashes at the very end -- after all BFTS work is done
-# (observed in runs fullrun_arc_02_bounded_20260827_{081051,082742_b,084434}).
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-old = '    shutil.rmtree(osp.join(idea_dir, "experiment_results"))'
-new = (
-    '    _arc_results_dir = osp.join(idea_dir, "experiment_results")\n'
-    '    if osp.exists(_arc_results_dir):\n'
-    '        shutil.rmtree(_arc_results_dir)'
-)
-if old in text:
-    text = text.replace(old, new, 1)
-else:
-    print("SKIP: experiment_results cleanup insertion point not found")
-old_kw = 'keywords = ["python", "torch", "mp", "bfts", "experiment"]'
-new_kw = ('keywords = ["python", "torch", "mp", "bfts", "experiment"]\n'
-          '    _arc_self_pids = {current_process.pid, current_process.ppid()}')
-if old_kw in text and "_arc_self_pids" not in text:
-    text = text.replace(old_kw, new_kw, 1)
-old_sig = """            if any(keyword in cmdline for keyword in keywords):
-                proc.send_signal(signal.SIGTERM)"""
-new_sig = """            if any(keyword in cmdline for keyword in keywords) and proc.pid not in _arc_self_pids:
-                proc.send_signal(signal.SIGTERM)"""
-if old_sig in text:
-    text = text.replace(old_sig, new_sig, 1)
-else:
-    print("SKIP: orphan-cleanup insertion point not found")
-path.write_text(text, encoding="utf-8")
-PY
+# PY inline block extracted to real_eval/adapters/ai_scientist_v2/patch_bfts_cleanup_guard.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/ai_scientist_v2/patch_bfts_cleanup_guard.py launch_scientist_bfts.py
 python3 real_eval/adapters/ai_scientist_v2/patch_ideation_task_framing.py
 rm -f ai_scientist/ideas/arc_wbe_2026_topic.json
 timeout "${AI_SCIENTIST_V2_ARC_IDEATION_TIMEOUT_SECONDS:-1800}s" python ai_scientist/perform_ideation_temp_free.py \
@@ -157,56 +126,8 @@ if not (idea.get("Risk Factors and Limitations") or idea.get("Expected Failure M
     raise SystemExit("AI-Scientist-v2 native idea does not define failure modes")
 print("AI_SCIENTIST_V2_ARC_IDEA_OK")
 PY
-python3 - ai_scientist/ideas/arc_wbe_2026_topic.json "$OPENAI_MODEL" "$OPENAI_BASE_URL" <<'PYSPEC'
-from pathlib import Path
-import json
-import sys
-
-# The delivery contract is injected only into the ideation system prompt, so the
-# BFTS coding agent -- which loads this idea JSON and never sees that prompt --
-# has no way to learn where artifacts must land (run
-# fullrun_arc_02_bounded_20260828_054050 finished all stages and delivered
-# nothing to /workspace). Carry the same requirements into the idea record the
-# BFTS stages actually read. Host defines the output schema only; the method,
-# experiments and results stay entirely framework-authored.
-path = Path(sys.argv[1])
-model, base_url = sys.argv[2], sys.argv[3]
-ideas = json.loads(path.read_text(encoding="utf-8"))
-spec = (
-    "\n\nARC delivery contract (host output schema; the method remains yours). "
-    "ALL FIVE files below are mandatory; a run missing ANY of them is scored as a "
-    "total failure, so write submission.json and final_report.md even if brief:\n"
-    "- write these five files at the workspace root /workspace: research_idea.json, "
-    "estimator.py, submission.json, experiment_trace.json, final_report.md;\n"
-    "- estimator.py must define `class Estimator` with `predict(self, mlp)` returning "
-    "a (32, 256) numpy array; numpy and the standard library only (the official "
-    "scorer provides nothing else); ship learned parameters beside it as .npz;\n"
-    "- CRITICAL interface fact: the mlp argument is an OBJECT, not an array. "
-    "np.asarray(mlp) raises 'float() argument must be ... not MLP' and forfeits the "
-    "run (a prior attempt failed on all 100 evaluation MLPs exactly this way). Read "
-    "mlp.weights -- an ordered list of per-layer (width, width) numpy weight "
-    "matrices -- plus mlp.width, mlp.depth, and mlp.seed for any randomness. "
-    "Design and test every experiment against this interface;\n"
-    "- never return zeros/ones/full/empty constants and never use the words "
-    "placeholder or fallback prediction (the scorer rejects them);\n"
-    "- experiment_trace.json must contain framework_native_execution=true, "
-    "consumed_topic_input=true, workspace_trace_root='/workspace', a list of 2-4 "
-    "experiments each with a unique string experiment_id, selected_experiment_id "
-    "matching one of them, framework_internal_model='" + model + "', "
-    "framework_internal_api_base_url='" + base_url + "', "
-    "idea_artifact='research_idea.json', idea_locked_before_experiments=true;\n"
-    "- research_idea.json needs non-empty hypothesis, method_rationale, "
-    "expected_failure_modes and comparison_logic."
-)
-changed = False
-for idea in ideas if isinstance(ideas, list) else []:
-    if isinstance(idea, dict) and "ARC delivery contract" not in str(idea.get("Experiments", "")):
-        idea["Experiments"] = str(idea.get("Experiments", "")) + spec
-        changed = True
-if not changed:
-    print("SKIP: no idea record to annotate")
-path.write_text(json.dumps(ideas, indent=2), encoding="utf-8")
-PYSPEC
+# PYSPEC inline block extracted to real_eval/adapters/arc_wbe_2026/patch_idea_delivery_spec_ai_scientist_v2.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/arc_wbe_2026/patch_idea_delivery_spec_ai_scientist_v2.py ai_scientist/ideas/arc_wbe_2026_topic.json "$OPENAI_MODEL" "$OPENAI_BASE_URL"
 python3 - bfts_config.yaml "$OPENAI_MODEL" <<'PY'
 from pathlib import Path
 import os

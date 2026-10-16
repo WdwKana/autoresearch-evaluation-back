@@ -13,6 +13,7 @@ automation/psydefdetect_execution_budget.md
 real_eval/adapters/ai_scientist_v2/patch_ai_scientist_v2_common.py
 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py
+real_eval/adapters/ai_scientist_v2/patch_ideation_max_tokens.py
 EOF
 )
 export FRAMEWORK_RUNTIME_KIND="docker"
@@ -38,20 +39,8 @@ python3 real_eval/adapters/ai_scientist_v2/patch_semantic_scholar_bounded.py
 # fullrun_psydef_02_ds_r5_20260919_212250 lost a complete idea to "**Action**:").
 python3 real_eval/adapters/ai_scientist_v2/patch_ideation_action_format.py
 echo "[psydef-wrapper] shared adapter applied"
-# Ideation output cap: upstream llm.py hardcodes MAX_NUM_TOKENS = 4096. A model
-# that reasons before answering spends part of that on reasoning, and its
-# FinalizeIdea JSON is cut mid-string ("Unterminated string", 0 ideas: run
-# fullrun_psydef_02_ds_r5_20260919_212837). Same remedy the maintainers' BabyLM
-# wrapper already applies.
-python3 - <<'PYTOK'
-from pathlib import Path
-llm = Path("ai_scientist/llm.py")
-text = llm.read_text(encoding="utf-8")
-if "MAX_NUM_TOKENS = 4096" not in text and "MAX_NUM_TOKENS = 16384" not in text:
-    raise SystemExit("MAX_NUM_TOKENS anchor not found in ai_scientist/llm.py")
-llm.write_text(text.replace("MAX_NUM_TOKENS = 4096", "MAX_NUM_TOKENS = 16384"), encoding="utf-8")
-print("[psydef-wrapper] ideation MAX_NUM_TOKENS = 16384")
-PYTOK
+# PYTOK inline block extracted to real_eval/adapters/ai_scientist_v2/patch_ideation_max_tokens.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/ai_scientist_v2/patch_ideation_max_tokens.py
 python3 - ai_scientist/llm.py "$OPENAI_MODEL" ai_scientist/utils/token_tracker.py ai_scientist/perform_ideation_temp_free.py ai_scientist/tools/semantic_scholar.py ai_scientist/treesearch/agent_manager.py ai_scientist/treesearch/parallel_agent.py launch_scientist_bfts.py ai_scientist/treesearch/backend/backend_openai.py ai_scientist/treesearch/interpreter.py <<'PY'
 from pathlib import Path
 import sys

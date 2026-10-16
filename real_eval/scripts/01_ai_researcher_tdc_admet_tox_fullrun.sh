@@ -12,6 +12,7 @@ export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 AI-Researcher/benchmark/final/tdc_admet_tox/tdc_admet_tox.json
 AI-Researcher/benchmark/process/dataset_candidate/tdc_admet_tox/metaprompt.py
 real_eval/adapters/tdc_admet_tox/patch_ai_researcher.py
+real_eval/adapters/tdc_admet_tox/patch_model_fact_ai_researcher.py
 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
@@ -106,43 +107,8 @@ python3 real_eval/adapters/ai_researcher/patch_refine_report_fallback.py
 python3 real_eval/adapters/ai_researcher/patch_resource_visibility.py
 python3 real_eval/adapters/ai_researcher/patch_logger_resilience.py
 python3 real_eval/adapters/ai_researcher/patch_tool_args_resilience.py
-# [tdc01-model-fact] Run-local input-fact injection (A-class, ARC precedent;
-# user-approved topic-wide rollout 2026-09-28). The TDC inputs tell the agent the
-# trace fields come "from OPENAI_MODEL/OPENAI_BASE_URL"; append the actual
-# injected literals so the agent cannot substitute a hallucinated public URL.
-python3 - <<'PYMODELFACT'
-import os
-from pathlib import Path
-
-MARK = "tdc01-model-fact"
-model = os.environ.get("OPENAI_MODEL", "")
-base = os.environ.get("OPENAI_BASE_URL", "")
-FACT = (
-    f"\n<!-- {MARK}: injected-provider literals appended by the 01 wrapper -->\n"
-    f"Injected provider facts for this run: `framework_internal_model` must be exactly "
-    f"\"{model}\" and `framework_internal_api_base_url` must be exactly \"{base}\". Copy "
-    f"these two literals verbatim into experiment_trace.json; do not guess or substitute "
-    f"other values such as public provider URLs.\n"
-)
-if model and base:
-    hits = 0
-    for f in Path("/workspace").rglob("*.md"):
-        try:
-            text = f.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        if MARK in text:
-            hits += 1
-            print(f"[{MARK}] already present: {f}")
-            continue
-        if "framework_internal_model" in text or "internal API model" in text:
-            f.write_text(text + FACT, encoding="utf-8")
-            hits += 1
-            print(f"[{MARK}] appended: {f}")
-    print(f"[{MARK}] {hits} run-local input file(s) carry the injected literals")
-else:
-    print(f"[{MARK}] OPENAI_MODEL/OPENAI_BASE_URL not set; nothing done")
-PYMODELFACT
+# PYMODELFACT inline block extracted to real_eval/adapters/tdc_admet_tox/patch_model_fact_ai_researcher.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/tdc_admet_tox/patch_model_fact_ai_researcher.py
 python3 - <<'PY'
 from research_agent.inno.tools import (
     execute_command,

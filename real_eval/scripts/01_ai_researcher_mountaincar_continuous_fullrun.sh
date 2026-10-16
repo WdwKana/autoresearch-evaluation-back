@@ -10,6 +10,8 @@ export FRAMEWORK_ENTRY_PATHS=$(cat <<'EOF'
 AI-Researcher/benchmark/final/mountaincar_continuous/mountaincar_continuous.json
 AI-Researcher/benchmark/process/dataset_candidate/mountaincar_continuous/metaprompt.py
 real_eval/adapters/mountaincar_continuous/patch_ai_researcher.py
+real_eval/adapters/mountaincar_continuous/patch_model_fact_ai_researcher.py
+real_eval/adapters/mountaincar_continuous/relocate_handoff_ai_researcher.py
 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
 real_eval/adapters/ai_researcher/patch_prepare_bypass.py
 real_eval/adapters/ai_researcher/patch_empty_input_truth.py
@@ -94,49 +96,8 @@ export PYTHONPATH=/workspace:/workspace/research_agent/inno/tools:${PYTHONPATH:-
 if [ -d /workspace/AI-Researcher/benchmark ]; then
   cp -r /workspace/AI-Researcher/benchmark/. /workspace/benchmark/
 fi
-# [2026-09-28] Experiment-count contract unified to "one or more" (>=1), matching the
-# original upstream topic2 pair (user decision, per-item approved). The shared gate in
-# mountaincar_framework_fullrun.sh now enforces >=1, so the former [mcar-01-wording]
-# run-local rewrite to "2 to 4" is removed and agents read the contract text as-is.
-# [mcar01-model-fact] Run-local input-fact injection (A-class, ARC precedent
-# [arc01-model-fact]; user-approved topic-wide rollout 2026-09-28): the contract
-# requires the trace to record the injected internal API model/base URL, and
-# fullrun_mcar_01_kimi_20260928_044203 hallucinated api.openai.com there. Append
-# the actual injected literals to every run-local input .md that states that
-# requirement. Facts only; no method content.
-python3 - <<'PYMODELFACT'
-import os
-from pathlib import Path
-
-MARK = "mcar01-model-fact"
-model = os.environ.get("OPENAI_MODEL", "")
-base = os.environ.get("OPENAI_BASE_URL", "")
-FACT = (
-    f"\n<!-- {MARK}: injected-provider literals appended by the 01 wrapper -->\n"
-    f"Injected provider facts for this run: `framework_internal_model` must be exactly "
-    f"\"{model}\" and `framework_internal_api_base_url` must be exactly \"{base}\". Copy "
-    f"these two literals verbatim into experiment_trace.json; do not guess or substitute "
-    f"other values such as public provider URLs.\n"
-)
-if model and base:
-    hits = 0
-    for f in Path("/workspace").rglob("*.md"):
-        try:
-            text = f.read_text(encoding="utf-8")
-        except Exception:
-            continue
-        if MARK in text:
-            hits += 1
-            print(f"[{MARK}] already present: {f}")
-            continue
-        if "framework_internal_model" in text or "internal API model" in text:
-            f.write_text(text + FACT, encoding="utf-8")
-            hits += 1
-            print(f"[{MARK}] appended: {f}")
-    print(f"[{MARK}] {hits} run-local input file(s) carry the injected literals")
-else:
-    print(f"[{MARK}] OPENAI_MODEL/OPENAI_BASE_URL not set; nothing done")
-PYMODELFACT
+# PYMODELFACT inline block extracted to real_eval/adapters/mountaincar_continuous/patch_model_fact_ai_researcher.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/mountaincar_continuous/patch_model_fact_ai_researcher.py
 python3 real_eval/adapters/mountaincar_continuous/patch_ai_researcher.py
 # New framework-fix stack (same adapters as ARC; mcar delivery globs).
 python3 real_eval/adapters/ai_researcher/patch_idea_loop_fixes.py
@@ -171,100 +132,8 @@ timeout "${MOUNTAINCAR_CONTINUOUS_INFER_TIMEOUT_SECONDS:-21600}s" python3 resear
   --max_iter_times 1 \
   --category mountaincar_continuous || echo "[mcar] native infer exited non-zero (rc=$?, e.g. timeout 124) -- proceeding to handoff+score"
 set +x
-# The contract asks for five checkpoints at /workspace/checkpoints, but the
-# agent produces them inside its own workplace. Relocate verbatim; never author.
-#
-# A checkpoint is only evaluable together with the src/ (networks.py, config.yaml,
-# helpers.py) it was trained with. The agent may leave several checkpoint sets
-# (fullrun_mcar_01_luna_20260903_153128 left workplace/checkpoints and
-# workplace/project/checkpoints, each with its own networks.py); copying every
-# config-42-*.pkl it can find mixes the sets and leaves the host's starter src/
-# at the root, so the frozen evaluator fails with a parameter-shape mismatch even
-# though each set scores on its own. So: pick ONE set (newest complete one) and
-# carry its code with it -- every src/ on the path from the workplace root down
-# to that set, outer first, inner wins, files copied verbatim.
-# MCAR_HANDOFF_WORKSPACE exists only so this block can be replayed offline
-# against a retained run tree; inside the container it is always /workspace.
-python3 - <<'PYRELOC'
-import json
-import os
-import shutil
-from pathlib import Path
-
-ws = Path(os.environ.get("MCAR_HANDOFF_WORKSPACE", "/workspace"))
-target = ws / "checkpoints"
-target.mkdir(parents=True, exist_ok=True)
-NAMES = [f"config-42-{i}.pkl" for i in range(5)]
-existing = sorted(p.name for p in target.glob("config-42-*.pkl"))
-moved = []
-provenance = {}
-if len(existing) >= 5:
-    print(f"[mcar-handoff] checkpoints already at workspace root: {existing}")
-else:
-    found = list(ws.glob("**/workplace/**/checkpoints/config-42-*.pkl")) or list(
-        ws.glob("**/checkpoints/config-42-*.pkl")
-    )
-    sets = {}
-    for source in found:
-        if source.parent == target or not source.is_file():
-            continue
-        sets.setdefault(source.parent, []).append(source)
-    complete = [d for d, files in sets.items() if sorted(f.name for f in files) == NAMES]
-    pool = complete or list(sets)
-    if not pool:
-        print("[mcar-handoff] no framework-produced checkpoints found")
-    else:
-        chosen = max(pool, key=lambda d: max(f.stat().st_mtime for f in sets[d]))
-        print(
-            f"[mcar-handoff] {len(sets)} checkpoint set(s) found, {len(complete)} complete; "
-            f"using newest: {chosen}"
-        )
-        for source in sorted(sets[chosen]):
-            shutil.copy2(source, target / source.name)
-            moved.append(str(source))
-        print(f"[mcar-handoff] relocated {len(moved)} checkpoint(s)")
-        provenance["checkpoint_set"] = str(chosen)
-        set_root = chosen.parent
-        chain = [a for a in [set_root, *set_root.parents] if a != ws and ws in a.parents]
-        overlay = []
-        for ancestor in reversed(chain):  # outermost first, innermost wins
-            src_dir = ancestor / "src"
-            if not src_dir.is_dir():
-                continue
-            for f in sorted(src_dir.rglob("*")):
-                if not f.is_file() or "__pycache__" in f.parts:
-                    continue
-                dest = ws / "src" / f.relative_to(src_dir)
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(f, dest)
-                overlay.append(str(f))
-        print(f"[mcar-handoff] overlaid {len(overlay)} src file(s) from the chosen set's code")
-        moved.extend(overlay)
-        provenance["src_overlay"] = overlay
-
-# The gate also requires research_idea.json, experiment_trace.json and
-# final_report.md at the workspace root; the agent writes them inside its own
-# workplace (run fullrun_mcar_01_20260828_142606 had a complete PPO trace there
-# while the root had none). Relocate verbatim, newest wins, never author.
-for name in ("research_idea.json", "experiment_trace.json", "final_report.md"):
-    target = ws / name
-    if target.is_file() and target.stat().st_size:
-        continue
-    candidates = [c for c in ws.rglob(name) if c != target and c.is_file() and c.stat().st_size]
-    if not candidates:
-        print(f"[mcar-handoff] no framework-authored {name} found")
-        continue
-    newest = max(candidates, key=lambda c: c.stat().st_mtime)
-    shutil.copy2(newest, target)
-    moved.append(str(newest))
-    print(f"[mcar-handoff] relocated {name} from {newest}")
-
-if moved:
-    (ws / "handoff_relocation.json").write_text(
-        json.dumps({"topic": "mountaincar_continuous", "relocated": moved, **provenance}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-PYRELOC
+# PYRELOC inline block extracted to real_eval/adapters/mountaincar_continuous/relocate_handoff_ai_researcher.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/mountaincar_continuous/relocate_handoff_ai_researcher.py
 EOF
 )
 # [2026-10-02] The shared runner derives its own MC_MODEL (gate expectation) from

@@ -64,26 +64,31 @@
 
 交付运行记录时这三者的输出(`request_probe.jsonl` / `response_probe.jsonl` / `wire_tap.jsonl`)按用户决定整体剔除。
 
-### 01/02 包装器内嵌的 inline 补丁(我们新增 14 段;psydef 01 包装器里的 2 段是上游自带的)
+### 01/02 包装器内嵌的 inline 补丁 → 已抽成独立文件(2026-10-16;我们新增的 13 段;psydef 01 包装器里的 2 段是上游自带的)
 
-包装器相对上游的改动分四种:调用上述补丁文件的命令行(01 各包装器 18–21 行)、环境/预算设置(CPU 32、墙钟、`AI_RESEARCHER_MAX_TURNS=300`、loop-guard 上限、HF 离线、探针日志路径、`AI_RESEARCHER_PREPARE_BYPASS=1`、交付文件 glob 等)、overlay 重定向(exec 物化后的共享 runner)、以及下面这些以 `python3 - <<'PY…'` 写在 RUNTIME_COMMAND 里的 inline 块——它们在实质上也是补丁,只是没有独立文件和 WHY 头,是最该抽出去的部分:
+包装器相对上游的改动分四种:调用上述补丁文件的命令行(01 各包装器 18–21 行)、环境/预算设置(CPU 32、墙钟、`AI_RESEARCHER_MAX_TURNS=300`、loop-guard 上限、HF 离线、探针日志路径、`AI_RESEARCHER_PREPARE_BYPASS=1`、交付文件 glob 等)、overlay 重定向(exec 物化后的共享 runner)、以及原先以 `python3 - <<'PY…'` 写在 RUNTIME_COMMAND / 宿主侧的 13 段 inline 块。第四种已于 2026-10-16 逐段抽成独立文件:正文逐字节不变,原块前的注释并入文件头 WHY;包装器原位改为一行调用(留一行指向注释),文件加进 `FRAMEWORK_ENTRY_PATHS`(mcar / TDC / 02 ARC / 02 psydef)或 01 ARC 的 `cp` 清单带进容器,BabyLM 的五段本就在宿主侧按 `$ROOT/...` 调用:
 
-| 包装器 | 块 | 行数 | 做什么 | 归类 |
+| 原包装器 · 块 | 现文件(`real_eval/adapters/…`) | 运行侧 | 做什么 | 归类 |
 |---|---|---|---|---|
-| 01 ARC | `PYMODELFACT` | 30 | model-fact 注入:把容器里实际注入的模型名/base URL 字面值追加到每份 run 内的 brief,防止 agent 写成占位符或臆造的公开 URL(`…131103` 写成 "gpt-4") | agent_prompt_replacement 边缘(只加事实) |
-| 01 ARC | `PY` | 21 | 交付映射/搬运:把框架原生位置的交付物链接到工作区根(`resolve_native_artifacts.py`) | host_handoff_promotion 边缘(只搬不写) |
-| 01 mcar | `PYMODELFACT` | 32 | 同上(mcar) | 同上 |
-| 01 mcar | `PYRELOC` | 79 | 把框架保存在子目录里的五个 checkpoint 搬到 `checkpoints/`(门槛要求的位置);可离线对留存 run 重放 | host_handoff_promotion 边缘 |
-| 01 TDC | `PYMODELFACT` | 32 | 同上(TDC) | 同上 |
-| 01 BabyLM | `PY` | 39 | 修 `run_infer_idea.py` 模块级调用缺参数、注册工具模块(ARC 包装器已有同样修法) | 实现缺陷修正 |
-| 01 BabyLM | `PYTT` | 17 | `count_tokens()` 对含 `<\|endoftext\|>` 的语料会抛错;改用允许特殊 token 的编码 | 稳健性 |
-| 01 BabyLM | `PYMODEL` | 54 | 论文撰写阶段默认模型名硬编码,导致研究完成后 writeup 全丢;改用注入的模型 | relay_env |
-| 01 BabyLM | `PYCACHE` | 50 | `compose_section()` 硬编码的 agent 缓存文件名与研究阶段实际写出的不符;对齐 | 实现缺陷修正 |
-| 01 BabyLM | `PYNONE` | 32 | LLM 返回空时 `write_temp_log()` 写 None 导致 writeup 崩溃;加保护 | 稳健性 |
-| 01 BabyLM | `PYSCORE` | 21 | 从框架自报的 trace 读 validation_perplexity 写 score.json | score_creation 边缘(只抄框架自报值) |
-| 02 ARC(旧正式包装器) | `PY` | 34 | 上游"有则复制 experiment_results,随后无条件删除"的顺序缺陷 | 实现缺陷修正 |
-| 02 ARC(旧正式包装器) | `PYSPEC` | 49 | 把交付契约写进 idea JSON,使 BFTS 编码 agent 能看到(它看不到 ideation 的系统提示) | agent_prompt_replacement |
-| 02 psydef(旧正式包装器) | `PYTOK` | 8 | 同 PYTT 的 tiktoken 特殊 token 修法 | 稳健性 |
+| 01 ARC · `PYMODELFACT` | `arc_wbe_2026/patch_model_fact_ai_researcher.py` | 容器内,原生入口前 | model-fact 注入:把容器里实际注入的模型名/base URL 字面值追加到每份 run 内 brief,防止 agent 写占位符或臆造公开 URL(`…131103` 写成 "gpt-4") | agent_prompt_replacement 边缘(只加事实) |
+| 01 mcar · `PYMODELFACT` | `mountaincar_continuous/patch_model_fact_ai_researcher.py` | 容器内,原生入口前 | 同上(mcar) | 同上 |
+| 01 mcar · `PYRELOC` | `mountaincar_continuous/relocate_handoff_ai_researcher.py` | 容器内,原生入口后、门槛前 | 把框架存在子目录里的一套完整 checkpoint(最新)连同其 src/ 原样搬到契约位置;idea/trace/report 同理(最新者胜);`MCAR_HANDOFF_WORKSPACE` 可对留存 run 离线重放 | host_handoff_promotion 边缘(只搬不写) |
+| 01 TDC · `PYMODELFACT` | `tdc_admet_tox/patch_model_fact_ai_researcher.py` | 容器内,原生入口前 | 同上(TDC) | 同上 |
+| 01 BabyLM · `PY` | `babylm/patch_entrypoint_ai_researcher.py` | 宿主侧,启动前改源码副本 | `constant.py` 缺 `PLATFORM`、工具模块显式注册、`main()` 模块级调用缺参数、GitHub 搜索无 token(ARC 包装器已有同样修法) | 实现缺陷修正 |
+| 01 BabyLM · `PYTT` | `babylm/patch_tiktoken_special_tokens.py` | 宿主侧 | `count_tokens()` 对含 `<\|endoftext\|>` 的语料抛错;按普通文本计数 | 稳健性 |
+| 01 BabyLM · `PYMODEL` | `babylm/patch_writeup_model_routing.py` | 宿主侧 | 论文撰写阶段默认模型名硬编码(22 次 403,研究完成后 writeup 全丢);改用注入模型;`chat()` 失败返回 "" 而非 None | relay_env |
+| 01 BabyLM · `PYCACHE` | `babylm/patch_writeup_agent_cache_files.py` | 宿主侧 | `compose_section()` 硬编码的 agent 缓存文件名与研究阶段实际写出的不符;对齐,缺失者跳过 | 实现缺陷修正 |
+| 01 BabyLM · `PYNONE` | `babylm/patch_writeup_none_guard.py` | 宿主侧 | LLM 返回 None 时 `write_temp_log()` / `structure.split` 崩溃;加保护 | 稳健性 |
+| 01 BabyLM · `PYSCORE` | `babylm/relocate_trace_ai_researcher.py` | 宿主侧,运行后、官方评分前 | 把框架自写的 `experiment_trace.json` 原样复制到工作区根并记 `handoff_relocation.json`;score.json 由官方 `run_babylm_score.py` 写(此前表格误写为"写 score.json") | host_handoff_promotion 边缘(只抄) |
+| 02 ARC(旧正式包装器)· `PY` | `ai_scientist_v2/patch_bfts_cleanup_guard.py` | 容器内 | 上游"有则复制 experiment_results,随后无条件删除"的顺序缺陷;孤儿进程清理不杀自身 | 实现缺陷修正 |
+| 02 ARC(旧正式包装器)· `PYSPEC` | `arc_wbe_2026/patch_idea_delivery_spec_ai_scientist_v2.py` | 容器内 | 把交付契约写进 idea JSON,使 BFTS 编码 agent 能看到(它看不到 ideation 的系统提示) | agent_prompt_replacement |
+| 02 psydef(旧正式包装器)· `PYTOK` | `ai_scientist_v2/patch_ideation_max_tokens.py` | 容器内 | ideation 输出上限 `MAX_NUM_TOKENS` 4096→16384(推理模型把 FinalizeIdea JSON 截断;此前表格误写为 tiktoken 修法) | 稳健性 |
+
+抽出时的核验(scratchpad `extract_verify/`):13 段正文与原 heredoc 文本逐字节一致;旧块(`python3 -` 读 stdin)与新文件在相同夹具副本上的输出逐字节一致——宿主可跑的 10 段直接比对(含 mcar 留存 run `…153128` 的两套 checkpoint 工作区副本),3 段绑定 `/workspace` 的 model-fact 在 `ai-researcher:runtime-ready` 镜像里比对(含幂等第二遍);六个包装器 `bash -n` 通过;01 五个包装器的补丁序列重放 112 OK / 0 FAIL;`shared_layer_overlay.py check` 不受影响。
+
+**抽出时发现(01 ARC `PYMODELFACT`)**:该块原来位于包装器**未加引号**的 heredoc `RUNTIME_COMMAND=$(cat <<EOF …)` 内,宿主 bash 对第二个锚点里的 `` `OPENAI_BASE_URL` `` 做了命令替换(宿主 stderr "OPENAI_BASE_URL: command not found"),容器收到的锚点是三个空格 + "environment variable",永远匹配不上。留存的 9 个 01×ARC 运行日志全部是 "1 literal(s) appended":只追加了模型名字面值,base URL 字面值从未追加(kimi 20261008 的 run 内 brief 可证)。独立文件按原文执行,两条都追加——这是一处**行为变化**(更接近 09-28 的本意),已写进该文件头。
+
+仍留在包装器里的 heredoc 均为上游自带;01 ARC 的两个交付门槛块(handoff gate / postscore gate)与上游逐字一致,只多了 `2>"$LOG_DIR/*.err"` 的 stderr 落盘。另:`real_eval/scripts/resolve_native_artifacts.py`(交付映射:把框架原生位置的交付物链接到工作区根,host_handoff_promotion 边缘)是我们在 910df40 新增的独立脚本而非 inline 块,却放在共享脚本目录——属"代码位置迁移"议题,建议移入 `real_eval/adapters/`。
 
 其它 01 专属文件:`mountaincar_continuous/patch_ai_researcher.py`(mcar 运行时适配)、`mountaincar_continuous/host_python_jax.sh`(让共享 runner 的官方评分在 JAX 镜像内执行)、`tdc_admet_tox/patch_ai_researcher.py`(TDC 运行时适配,610 行;上游 e742d15 已用 `install_runtime_adapter.py` 重写)。
 
