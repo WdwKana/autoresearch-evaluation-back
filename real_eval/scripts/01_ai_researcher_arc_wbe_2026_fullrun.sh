@@ -153,6 +153,7 @@ cp "$ROOT/real_eval/adapters/ai_researcher/patch_ml_delivery_validation.py" "$RE
 # topic-scoped 01 patch (extracted from the former PYMODELFACT inline block, 2026-10-16)
 mkdir -p "$REPO/real_eval/adapters/arc_wbe_2026"
 cp "$ROOT/real_eval/adapters/arc_wbe_2026/patch_model_fact_ai_researcher.py" "$REPO/real_eval/adapters/arc_wbe_2026/"
+cp "$ROOT/real_eval/adapters/arc_wbe_2026/relocate_handoff_ai_researcher.py" "$REPO/real_eval/adapters/arc_wbe_2026/"
 
 python3 - "$REPO/research_agent/inno/environment/utils.py" <<'PY'
 from pathlib import Path
@@ -440,65 +441,8 @@ python run_infer_idea.py \
   --port "\$PORT" \
   --max_iter_times 0 \
   --category arc_wbe_2026
-python3 - <<'RELOC'
-import json
-import shutil
-from pathlib import Path
-
-# Framework-side delivery bridge: the agent's writable universe (the inner
-# container's /workplace) maps to the task workplace below, not to this outer
-# container's /workspace root where the host handoff gate and validators look.
-# Relocate the framework-authored root-level artifacts verbatim; content is
-# never generated, repaired, or modified here.
-required = ["research_idea.json", "estimator.py", "submission.json", "experiment_trace.json", "final_report.md"]
-ws = Path("/workspace")
-if all((ws / name).is_file() and (ws / name).stat().st_size for name in required):
-    print("[arc-handoff] root-level artifacts already present; nothing to relocate")
-else:
-    candidates = []
-    for base in sorted(ws.glob("AI-Researcher/research_agent/workplace_paper/task_*/workplace/workplace")):
-        candidates.append(base)
-        candidates.append(base / "project")
-    src = next(
-        (c for c in candidates if all((c / n).is_file() and (c / n).stat().st_size for n in required)),
-        None,
-    )
-    if src is None:
-        print("[arc-handoff] no complete framework-delivered artifact set found; nothing relocated")
-    else:
-        for name in required:
-            shutil.copy2(src / name, ws / name)
-        # estimator.py must be runnable at the workspace root: also carry its
-        # data sidecars (the brief mandates numpy-loadable .npz/.json params
-        # shipped next to estimator.py).
-        sidecars = []
-        for path in sorted(src.iterdir()):
-            if not path.is_file() or path.name in required:
-                continue
-            if path.suffix == ".npz" or (
-                path.name.startswith("estimator") and path.suffix in {".json", ".npz"}
-            ):
-                shutil.copy2(path, ws / path.name)
-                sidecars.append(path.name)
-        (ws / "handoff_relocation.json").write_text(
-            json.dumps(
-                {
-                    "relocated_verbatim": required,
-                    "estimator_sidecars": sidecars,
-                    "source": str(src),
-                    "note": (
-                        "framework-authored files copied unchanged from the framework's "
-                        "native workplace to the wrapper-checked workspace root by the "
-                        "framework runtime command"
-                    ),
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        print("[arc-handoff] relocated framework artifacts verbatim from " + str(src))
-RELOC
+# RELOC inline block extracted to real_eval/adapters/arc_wbe_2026/relocate_handoff_ai_researcher.py (2026-10-16); body unchanged.
+python3 real_eval/adapters/arc_wbe_2026/relocate_handoff_ai_researcher.py
 EOF
 )
 

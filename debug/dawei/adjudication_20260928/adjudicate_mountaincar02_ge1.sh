@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Relocated 2026-10-16 from real_eval/scripts/ into debug/dawei/adjudication_20260928/ as frozen
+# evidence of the 2026-09-28 re-adjudication (see README.md). Only the path variables below were changed
+# (derived from this file's location); the pre-relocation text is in git history before 2026-10-16.
 # Retroactive >=1 adjudication for retained 02 MountainCar runs that failed at the
 # old 2-stage-selection assembly floor (2026-09-28 user approval). Mirrors the
 # staged e2e launcher's assemble -> host-validate -> host-score chain, with
@@ -8,9 +11,8 @@
 # 0 stages with official records; kimi rep1 (4 selections) is not a candidate.
 set -uo pipefail
 
-PUB=/data/daweiwang/claude-home/researchclaweval-public
-SP=/tmp/claude-0/-root-researchclaweval-public/51dbc20a-062b-4219-ba2a-1b69cde17c93/scratchpad
-STAGED=$SP/staged/mountaincar
+PUB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"  # repo root, derived from this file
+STAGED="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers"  # pinned copies of the ladder helpers this run used
 DATA=$PUB/data/mountaincar_continuous
 ADJROOT=$PUB/real_eval/runs/adjudication_mcar02_ge1_20260928
 BASE_URL=https://api.bianxie.ai/v1
@@ -48,10 +50,10 @@ adjudicate() {
     fi
   fi
 
-  python3 - "$adj" "$run" "$model" "$asm_rc" "$val_rc" "$score_rc" <<'PROV'
+  python3 - "$adj" "$run" "$model" "$asm_rc" "$val_rc" "$score_rc" "$PUB" <<'PROV'
 import json, subprocess, sys, datetime
-adj, run, model, asm_rc, val_rc, score_rc = sys.argv[1:7]
-sha = subprocess.run(["git", "-C", "/data/daweiwang/claude-home/researchclaweval-public",
+adj, run, model, asm_rc, val_rc, score_rc, root = sys.argv[1:8]
+sha = subprocess.run(["git", "-C", root,
                       "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
 score = None
 try:

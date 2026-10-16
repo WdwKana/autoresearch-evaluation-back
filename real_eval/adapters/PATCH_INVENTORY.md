@@ -64,13 +64,14 @@
 
 交付运行记录时这三者的输出(`request_probe.jsonl` / `response_probe.jsonl` / `wire_tap.jsonl`)按用户决定整体剔除。
 
-### 01/02 包装器内嵌的 inline 补丁 → 已抽成独立文件(2026-10-16;我们新增的 13 段;psydef 01 包装器里的 2 段是上游自带的)
+### 01/02 包装器内嵌的 inline 补丁 → 已抽成独立文件(2026-10-16;我们新增的 14 段;psydef 01 包装器里的 2 段是上游自带的)
 
 包装器相对上游的改动分四种:调用上述补丁文件的命令行(01 各包装器 18–21 行)、环境/预算设置(CPU 32、墙钟、`AI_RESEARCHER_MAX_TURNS=300`、loop-guard 上限、HF 离线、探针日志路径、`AI_RESEARCHER_PREPARE_BYPASS=1`、交付文件 glob 等)、overlay 重定向(exec 物化后的共享 runner)、以及原先以 `python3 - <<'PY…'` 写在 RUNTIME_COMMAND / 宿主侧的 13 段 inline 块。第四种已于 2026-10-16 逐段抽成独立文件:正文逐字节不变,原块前的注释并入文件头 WHY;包装器原位改为一行调用(留一行指向注释),文件加进 `FRAMEWORK_ENTRY_PATHS`(mcar / TDC / 02 ARC / 02 psydef)或 01 ARC 的 `cp` 清单带进容器,BabyLM 的五段本就在宿主侧按 `$ROOT/...` 调用:
 
 | 原包装器 · 块 | 现文件(`real_eval/adapters/…`) | 运行侧 | 做什么 | 归类 |
 |---|---|---|---|---|
 | 01 ARC · `PYMODELFACT` | `arc_wbe_2026/patch_model_fact_ai_researcher.py` | 容器内,原生入口前 | model-fact 注入:把容器里实际注入的模型名/base URL 字面值追加到每份 run 内 brief,防止 agent 写占位符或臆造公开 URL(`…131103` 写成 "gpt-4") | agent_prompt_replacement 边缘(只加事实) |
+| 01 ARC · `RELOC`(10-16 补抽;首次清点按 `PY…` 标签漏掉) | `arc_wbe_2026/relocate_handoff_ai_researcher.py` | 容器内,原生入口后、门槛前 | 把框架原生 workplace 里第一套完整的五件交付物 + estimator 的 .npz/.json 随行件原样复制到 /workspace 根,记 `handoff_relocation.json` | host_handoff_promotion 边缘(只搬不写) |
 | 01 mcar · `PYMODELFACT` | `mountaincar_continuous/patch_model_fact_ai_researcher.py` | 容器内,原生入口前 | 同上(mcar) | 同上 |
 | 01 mcar · `PYRELOC` | `mountaincar_continuous/relocate_handoff_ai_researcher.py` | 容器内,原生入口后、门槛前 | 把框架存在子目录里的一套完整 checkpoint(最新)连同其 src/ 原样搬到契约位置;idea/trace/report 同理(最新者胜);`MCAR_HANDOFF_WORKSPACE` 可对留存 run 离线重放 | host_handoff_promotion 边缘(只搬不写) |
 | 01 TDC · `PYMODELFACT` | `tdc_admet_tox/patch_model_fact_ai_researcher.py` | 容器内,原生入口前 | 同上(TDC) | 同上 |
@@ -89,6 +90,26 @@
 **抽出时发现(01 ARC `PYMODELFACT`)**:该块原来位于包装器**未加引号**的 heredoc `RUNTIME_COMMAND=$(cat <<EOF …)` 内,宿主 bash 对第二个锚点里的 `` `OPENAI_BASE_URL` `` 做了命令替换(宿主 stderr "OPENAI_BASE_URL: command not found"),容器收到的锚点是三个空格 + "environment variable",永远匹配不上。留存的 9 个 01×ARC 运行日志全部是 "1 literal(s) appended":只追加了模型名字面值,base URL 字面值从未追加(kimi 20261008 的 run 内 brief 可证)。独立文件按原文执行,两条都追加——这是一处**行为变化**(更接近 09-28 的本意),已写进该文件头。
 
 仍留在包装器里的 heredoc 均为上游自带;01 ARC 的两个交付门槛块(handoff gate / postscore gate)与上游逐字一致,只多了 `2>"$LOG_DIR/*.err"` 的 stderr 落盘。另:`real_eval/scripts/resolve_native_artifacts.py`(交付映射:把框架原生位置的交付物链接到工作区根,host_handoff_promotion 边缘)是我们在 910df40 新增的独立脚本而非 inline 块,却放在共享脚本目录——属"代码位置迁移"议题,建议移入 `real_eval/adapters/`。
+
+### 01 交付桥家族的定位(2026-10-16 按留存运行核查)
+
+"交付桥"= 把框架按自己世界观写出的交付物弄到评测要求的位置。01 侧共四件,外加一个兜底工具:
+
+| 件 | 方式 | 运行侧 | 主题 | 核查结论 |
+|---|---|---|---|---|
+| `arc_wbe_2026/relocate_handoff_ai_researcher.py`(原 RELOC 块) | 复制五件 + 随行件 | 容器内,原生入口后 | ARC | **在做实事**:两次 kimi 交付运行(10-03 `…162459`、10-08 `…100501`)都由它从 `task_*/workplace/workplace` 复制到根 |
+| `real_eval/scripts/resolve_native_artifacts.py`(交付地图) | 符号链接 | 宿主,门槛前 | ARC、BabyLM | ARC 两次都记 `already-present`(RELOC 已做完,它是空转);BabyLM 两次 finished 运行(10-02 g6 `…140521`、10-03 kimi `…072259`)各链了一次 `experiment_trace.json`,idea/report 记 unresolved |
+| `babylm/relocate_trace_ai_researcher.py`(原 PYSCORE 块) | 复制 trace | 宿主,resolver 之后 | BabyLM | 两次都 "nothing relocated":resolver 先链好,`is_file()` 为真即跳过——已被 resolver 取代 |
+| `mountaincar_continuous/relocate_handoff_ai_researcher.py`(原 PYRELOC 块) | 复制一套完整 checkpoint + src | 容器内,原生入口后 | mcar | 两次(10-03 kimi `…163455`、09-28 g6 rep2 `…113815`)都记 "checkpoints already at workspace root",未写 `handoff_relocation.json`:agent 已直接写在根(`/project` 链接 + brief 的坐标注解起了作用),它只剩"两套 checkpoint 时挑一套"的保险 |
+| `real_eval/scripts/harvest_before_rm.sh` | `docker cp` 后再删容器 | 宿主,手工 | 全部 | 从未接入 runner;销毁容器前的兜底 |
+
+TDC 没有桥:agent 直接写根(10-02 ds `…145722` 的 trace / predictions 都是根下普通文件,无原生副本)。
+
+**定位**:ARC 的桥仍在做实事(框架的 workplace 与根没有统一);mcar、TDC 已靠"让 agent 直接写在要求的目录"解决,桥退化为保险;BabyLM 只有 trace 还依赖桥。resolver 与 relocate_trace 在 BabyLM 上重叠,relocate_trace 可退役;resolver 的 mcar 地图无人调用,是死条目。另一个历史事实:10-03 之前 01 BabyLM 每次 finished 运行的 `research_idea.json` / `final_report.md` 都由运行结束后的 exit-delivery 层让模型补写(grill Q6⑤ 否定,e784c3b 删除,台账 10-03 节),此后无 BabyLM 成功运行可核。
+
+**不删,只定位**(用户 10-16 决定):四件保留;若日后把 ARC 的 workplace 与根统一(项目目录路径由主题名+模型名决定,可预知,可用挂载/链接在运行前绑定),四件全部变为空操作。
+
+两个 mcar 追溯重裁脚本(2026-09-28 裁定的证据,非流程工具)已从 `real_eval/scripts/` 移至 `debug/dawei/adjudication_20260928/`(`real_eval/run_checks/` 被 .gitignore 忽略),连同产出裁决时所用助手脚本的钉死副本与 README;只改了路径推导,原文在 10-16 之前的 git 历史里。
 
 其它 01 专属文件:`mountaincar_continuous/patch_ai_researcher.py`(mcar 运行时适配)、`mountaincar_continuous/host_python_jax.sh`(让共享 runner 的官方评分在 JAX 镜像内执行)、`tdc_admet_tox/patch_ai_researcher.py`(TDC 运行时适配,610 行;上游 e742d15 已用 `install_runtime_adapter.py` 重写)。
 

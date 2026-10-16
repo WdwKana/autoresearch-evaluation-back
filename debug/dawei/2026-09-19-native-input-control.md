@@ -686,3 +686,9 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - **发现**:01 ARC 的 model-fact 块原在**未加引号**的 `RUNTIME_COMMAND=$(cat <<EOF` 里,宿主 bash 把第二锚点的 `` `OPENAI_BASE_URL` `` 当命令替换掉了(宿主日志 "OPENAI_BASE_URL: command not found",三份发射日志可证),容器收到的锚点永远匹配不上——留存 9 个 01×ARC 运行全是 "1 literal(s) appended",base URL 字面值从未进过 brief。独立文件按原文执行会追加两条:这是行为变化,记在文件头与清单里,未做任何"保留旧错"的处理;是否回退由用户定。
 - 剩下的 heredoc 全是上游自带(01 ARC 两个门槛块仅多 stderr 落盘)。`real_eval/scripts/resolve_native_artifacts.py` 是我们 910df40 新增的独立脚本(非 inline 块),放在共享脚本目录,列为位置迁移候选。
 - 用户待定:ARC model-fact 的行为变化是否接受;`resolve_native_artifacts.py` 与 `debug/dawei/ladder/` 的迁移顺序(先迁还是先移植到上游新历史 e742d15)。
+
+### 交付桥定位核查 + 漏抽的 RELOC 块 + 重裁脚本归档(2026-10-16)
+- 用户问:01 的搬运桥是否已因"让 agent 直接写在要求目录"而失去作用。按 5 次留存运行核查(ARC kimi `…162459`/`…100501`,BabyLM g6 `…140521`/kimi `…072259`,mcar kimi `…163455`/g6 rep2 `…113815`):ARC 仍由容器内的 RELOC 块实际复制五件交付物(宿主 resolver 随后记 already-present,空转);mcar 两次都 "checkpoints already at workspace root",桥未动任何文件,只剩保险;BabyLM 只有 trace 由 resolver 链接,relocate_trace 已被其取代;TDC 无桥。结论与定位写入 `real_eval/adapters/PATCH_INVENTORY.md`"01 交付桥家族的定位"节;用户决定不删,只定位。
+- 核查中发现 ARC 包装器还有一段我们的 inline 块 `python3 - <<'RELOC'`(标签不以 PY 开头,首次清点漏掉):按同一规则抽成 `real_eval/adapters/arc_wbe_2026/relocate_handoff_ai_researcher.py`,加进 ARC 的 `cp` 清单;正文逐字节一致,旧块 vs 新文件在 `ai-researcher:runtime-ready` 镜像内对合成夹具(完整原生集 + 不完整 project 集 + 随行件)输出逐字节一致,幂等第二遍 "already present";块体无 `$`/反引号,不受未加引号 heredoc 影响。
+- 顺带确认 10-03 前 01 BabyLM 的 idea/report 由已删除的 exit-delivery 层补写一事已在 10-03 节记录;10-03 之后无 BabyLM 成功运行可核。
+- 两个 mcar 追溯重裁脚本按用户同意归档:`real_eval/scripts/adjudicate_mountaincar*_ge1.sh` → `debug/dawei/adjudication_20260928/`(`real_eval/run_checks/` 被 .gitignore 忽略,不能放那里),附 helpers/(02 裁决所用 ladder 助手在裁决记录的 commit 08e8ae8 的原文——当前 ladder 副本在 12:08 的 8ecb5a5 已改第二道下限;三格 0 个回放得分,结论不受该下限影响)与 README;脚本只改路径推导(ROOT/PUB 按文件位置,STAGED 指向 helpers/,去掉 scratchpad 路径),原文在 10-16 前的历史里。

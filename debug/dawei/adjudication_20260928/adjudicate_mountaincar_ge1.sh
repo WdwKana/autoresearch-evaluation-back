@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Relocated 2026-10-16 from real_eval/scripts/ into debug/dawei/adjudication_20260928/ as frozen
+# evidence of the 2026-09-28 re-adjudication (see README.md). Only the path variables below were changed
+# (derived from this file's location); the pre-relocation text is in git history before 2026-10-16.
 # Retroactive adjudication of retained 01 MountainCar runs under the unified
 # ">=1 experiments" contract (2026-09-28 user decision; see grill-decisions Q10 and
 # the 2026-09-28 rulings). Scope: runs whose ONLY gate failure was the former 2-4
@@ -9,7 +12,7 @@
 # official frozen scorer runs inside the same JAX image the framework trained in.
 set -euo pipefail
 
-ROOT=/data/daweiwang/claude-home/researchclaweval-public
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"  # repo root, derived from this file
 RUNNER=real_eval/scripts/mountaincar_framework_fullrun.sh
 DATASET="${MOUNTAINCAR_CONTINUOUS_DATASET_ROOT:-$ROOT/data/mountaincar_continuous}"
 IMG=ai-researcher-exec:mountaincar-jax
@@ -58,10 +61,10 @@ adjudicate() {
     echo "   score rc=$score_rc"
   fi
 
-  python3 - "$adj" "$run" "$model" "$gate_rc" "$score_rc" <<'PROV'
+  python3 - "$adj" "$run" "$model" "$gate_rc" "$score_rc" "$ROOT" <<'PROV'
 import json, subprocess, sys, datetime
-adj, run, model, gate_rc, score_rc = sys.argv[1:6]
-sha = subprocess.run(["git", "-C", "/data/daweiwang/claude-home/researchclaweval-public",
+adj, run, model, gate_rc, score_rc, root = sys.argv[1:7]
+sha = subprocess.run(["git", "-C", root,
                       "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
 score = None
 try:
