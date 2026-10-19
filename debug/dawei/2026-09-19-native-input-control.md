@@ -692,3 +692,6 @@ ARC 参考模块打包器修复(`class Estimator(<YourClass>): pass` 代替别�
 - 核查中发现 ARC 包装器还有一段我们的 inline 块 `python3 - <<'RELOC'`(标签不以 PY 开头,首次清点漏掉):按同一规则抽成 `real_eval/adapters/arc_wbe_2026/relocate_handoff_ai_researcher.py`,加进 ARC 的 `cp` 清单;正文逐字节一致,旧块 vs 新文件在 `ai-researcher:runtime-ready` 镜像内对合成夹具(完整原生集 + 不完整 project 集 + 随行件)输出逐字节一致,幂等第二遍 "already present";块体无 `$`/反引号,不受未加引号 heredoc 影响。
 - 顺带确认 10-03 前 01 BabyLM 的 idea/report 由已删除的 exit-delivery 层补写一事已在 10-03 节记录;10-03 之后无 BabyLM 成功运行可核。
 - 两个 mcar 追溯重裁脚本按用户同意归档:`real_eval/scripts/adjudicate_mountaincar*_ge1.sh` → `debug/dawei/adjudication_20260928/`(`real_eval/run_checks/` 被 .gitignore 忽略,不能放那里),附 helpers/(02 裁决所用 ladder 助手在裁决记录的 commit 08e8ae8 的原文——当前 ladder 副本在 12:08 的 8ecb5a5 已改第二道下限;三格 0 个回放得分,结论不受该下限影响)与 README;脚本只改路径推导(ROOT/PUB 按文件位置,STAGED 指向 helpers/,去掉 scratchpad 路径),原文在 10-16 前的历史里。
+
+### 提供商状态(2026-10-19)
+- 用户提议 01/02 各发一次 ARC×GPT-5.6-Luna 验证改过的脚本。探测:paratera 上 GPT-5.6-Luna、AZ-GPT-5.6-Luna、GPT-6-Luna、Kimi-K2.6、DeepSeek-V4-Flash 全部 403 `team_model_access_denied`,key 哈希与 10-08 成功运行一致,仅剩 7 个免费 GLM/Paddle 模型可列。用户确认是账号没钱;决定不发,以"逻辑未变"的离线证据为准:13+1 段抽出正文逐字节一致、旧块 vs 新文件夹具等价(含镜像内)、01 ARC 包装器桩 docker 干跑(新文件已随副本进容器、渲染命令无旧 heredoc、无反引号展开错误)、补丁序列重放 112 OK、overlay check 30 处 0 失败。
