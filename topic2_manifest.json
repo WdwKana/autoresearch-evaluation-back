@@ -1,0 +1,67 @@
+{
+  "topic": {
+    "id": "topic2",
+    "label": "Topic 2",
+    "topic_root": "/data/mountaincar_continuous",
+    "contract_file": "/data/daweiwang/claude-home/researchclaweval-public/automation/topic2_contract.md"
+  },
+  "result_fields": [
+    "score",
+    "reward_std",
+    "score_source",
+    "score_artifact"
+  ],
+  "files": {
+    "docs/topic2_summary.md": {
+      "kind": "text"
+    },
+    "automation/topic2_contract.md": {
+      "kind": "text"
+    },
+    "automation/topic2_execution_budget.md": {
+      "kind": "text"
+    },
+    "automation/scripts/run_topic2_host_score.py": {
+      "kind": "text"
+    },
+    "AI-Researcher/benchmark/process/dataset_candidate/topic2/metaprompt.py": {
+      "kind": "text"
+    },
+    "AI-Scientist-v2/ai_scientist/ideas/topic2_topic.md": {
+      "kind": "text"
+    },
+    "AI-Scientist-v2/ai_scientist/ideas/my_research_topic.md": {
+      "kind": "text"
+    },
+    "Auto-claude-code-research-in-sleep/TOPIC2_BRIEF.md": {
+      "kind": "text"
+    },
+    "Auto-claude-code-research-in-sleep/.aris-codex-project/TOPIC2_BRIEF.md": {
+      "kind": "text"
+    },
+    "AutoResearchClaw/topic.txt": {
+      "kind": "text"
+    },
+    "AutoResearchClaw/config.arc.yaml": {
+      "kind": "text"
+    },
+    "DeepScientist/DEEPSCIENTIST_BRIEF.md": {
+      "kind": "text"
+    },
+    "EvoScientist/EVOSCIENTIST_BRIEF.md": {
+      "kind": "text"
+    },
+    "EvoScientist/topic2_start_message.txt": {
+      "kind": "text"
+    },
+    "AI-Researcher/benchmark/final/topic2/topic2.json": {
+      "kind": "json"
+    },
+    "dr-claw/research_brief.json": {
+      "kind": "json"
+    },
+    "dr-claw/tasks.json": {
+      "kind": "json"
+    }
+  }
+}
